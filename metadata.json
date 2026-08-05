@@ -1,0 +1,6 @@
+{
+  "name": "IkoroduSquare",
+  "description": "Local Business Discovery, Marketplace & Digital Commerce Platform for Ikorodu, Lagos, Nigeria.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
