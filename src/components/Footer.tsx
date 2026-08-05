@@ -1,10 +1,10 @@
 import React from 'react';
-import { Building2, MapPin, Phone, Mail, ShieldCheck, Heart, ArrowUpRight } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO } from '../data/mockData';
 
 export const Footer: React.FC = () => {
-  const { setActiveTab, setSelectedCategory } = useApp();
+  const { setActiveTab } = useApp();
 
   return (
     <footer className="bg-emerald-950 text-emerald-100 pt-12 pb-8 border-t border-emerald-900/60">
@@ -56,7 +56,7 @@ export const Footer: React.FC = () => {
                 </button>
               </li>
               <li>
-                <button onClick={() => setActiveTab('promotions-pricing')} className="hover:text-amber-300 transition-colors">
+                <button onClick={() => setActiveTab('promotions')} className="hover:text-amber-300 transition-colors">
                   Vendor Advertising Rates
                 </button>
               </li>

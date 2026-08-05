@@ -55,6 +55,13 @@ interface AppContextType {
 
   // Actions
   addVendorRegistration: (vendorData: Partial<Vendor>) => Vendor;
+  registerCustomer: (customerData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    area: IkoroduArea;
+  }) => User;
   approveVendor: (vendorId: string) => void;
   rejectVendor: (vendorId: string, reason?: string) => void;
   suspendVendor: (vendorId: string) => void;
@@ -304,6 +311,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ]);
 
     return newVendor;
+  };
+
+  const registerCustomer = (customerData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    area: IkoroduArea;
+  }): User => {
+    const newUser: User = {
+      id: `usr-${Date.now()}`,
+      email: customerData.email,
+      firstName: customerData.firstName,
+      lastName: customerData.lastName,
+      phone: customerData.phone,
+      role: 'customer',
+      area: customerData.area,
+      isVerified: true,
+      createdAt: new Date().toISOString(),
+    };
+    setCurrentUser(newUser);
+    setRole('customer');
+
+    // Add notification
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        userId: newUser.id,
+        targetRole: 'customer',
+        title: 'Welcome to IkoroduSquare!',
+        message: `Hi ${customerData.firstName}, your customer account is active. Discover local businesses and shop products.`,
+        type: 'system',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+
+    // Audit log
+    setAuditLogs((prev) => [
+      {
+        id: `log-${Date.now()}`,
+        action: 'CUSTOMER_REGISTERED',
+        performedBy: `${customerData.firstName} ${customerData.lastName}`,
+        role: 'customer',
+        details: `Registered customer account (${customerData.email}) in ${customerData.area}`,
+        timestamp: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+
+    return newUser;
   };
 
   const approveVendor = (vendorId: string) => {
@@ -617,6 +676,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedArea,
         setSelectedArea,
         addVendorRegistration,
+        registerCustomer,
         approveVendor,
         rejectVendor,
         suspendVendor,

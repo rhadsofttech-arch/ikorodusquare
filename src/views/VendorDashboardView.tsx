@@ -123,7 +123,7 @@ export const VendorDashboardView: React.FC = () => {
   return (
     <div className="space-y-6 pb-12">
       {/* Header Store Status Bento Banner */}
-      <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all hover:shadow-md">
+      <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/90 p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
         <div className="flex items-center gap-4">
           <img
             src={vendor.logoUrl}
@@ -235,7 +235,7 @@ export const VendorDashboardView: React.FC = () => {
       {vendorTab === 'overview' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
           {/* Card 1: Key Analytics Stat Tiles (lg:col-span-8) */}
-          <div className="lg:col-span-8 bg-white/95 backdrop-blur-md rounded-3xl p-6 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-300 space-y-4">
+          <div className="lg:col-span-8 bg-white/90 backdrop-blur-md rounded-3xl p-6 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-300 hover:scale-[1.02] space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-emerald-700" />
@@ -276,7 +276,7 @@ export const VendorDashboardView: React.FC = () => {
           </div>
 
           {/* Card 2: Pending Enquiries & Customer Leads Bento Tile (lg:col-span-4) */}
-          <div className="lg:col-span-4 bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-3xl p-6 shadow-xs border border-emerald-800/80 flex flex-col justify-between hover:shadow-md transition-all duration-300">
+          <div className="lg:col-span-4 bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-3xl p-6 shadow-xs border border-emerald-800/80 backdrop-blur-md flex flex-col justify-between hover:shadow-md transition-all duration-300 hover:scale-[1.02]">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -316,7 +316,7 @@ export const VendorDashboardView: React.FC = () => {
           </div>
 
           {/* Card 3: Active Promotions & FCMB Transfer Bento Tile (lg:col-span-6) */}
-          <div className="lg:col-span-6 bg-white/95 backdrop-blur-md rounded-3xl p-6 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between space-y-4">
+          <div className="lg:col-span-6 bg-white/90 backdrop-blur-md rounded-3xl p-6 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -360,7 +360,7 @@ export const VendorDashboardView: React.FC = () => {
           </div>
 
           {/* Card 4: Product Catalog Summary Bento Tile (lg:col-span-6) */}
-          <div className="lg:col-span-6 bg-white/95 backdrop-blur-md rounded-3xl p-6 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between space-y-4">
+          <div className="lg:col-span-6 bg-white/90 backdrop-blur-md rounded-3xl p-6 border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

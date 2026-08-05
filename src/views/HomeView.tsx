@@ -103,7 +103,7 @@ export const HomeView: React.FC = () => {
       {/* 1. Bento Grid Hero Layout */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Main Hero Bento Card (8 cols) */}
-        <div className="lg:col-span-8 relative bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-3xl p-6 sm:p-10 md:p-12 overflow-hidden shadow-lg border border-emerald-800/50 flex flex-col justify-between group">
+        <div className="lg:col-span-8 relative bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-3xl p-6 sm:p-10 md:p-12 overflow-hidden shadow-lg border border-emerald-800/50 flex flex-col justify-between group backdrop-blur-md transition-all duration-300 hover:scale-[1.02]">
           <div className="absolute top-0 right-0 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-teal-400/10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none" />
 
@@ -186,7 +186,10 @@ export const HomeView: React.FC = () => {
 
         {/* Side Bento Metric Tiles (4 cols) */}
         <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-          <div className="p-6 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 space-y-3 relative overflow-hidden group">
+          <div
+            onClick={() => setActiveTab('directory')}
+            className="p-6 bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300 space-y-3 relative overflow-hidden group cursor-pointer"
+          >
             <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
               <Building2 className="w-5 h-5 text-emerald-700" />
             </div>
@@ -197,7 +200,10 @@ export const HomeView: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-6 bg-gradient-to-br from-amber-400 to-amber-500 text-emerald-950 rounded-3xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 space-y-3 relative overflow-hidden group">
+          <div
+            onClick={() => setActiveTab('register-vendor')}
+            className="p-6 bg-gradient-to-br from-amber-400 to-amber-500 text-emerald-950 rounded-3xl shadow-sm hover:shadow-md hover:scale-[1.02] backdrop-blur-md transition-all duration-300 space-y-3 relative overflow-hidden group cursor-pointer"
+          >
             <div className="w-10 h-10 rounded-2xl bg-emerald-950 text-amber-300 flex items-center justify-center font-bold">
               <Zap className="w-5 h-5" />
             </div>
@@ -208,7 +214,10 @@ export const HomeView: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-6 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 space-y-3 hidden lg:block">
+          <div
+            onClick={() => setActiveTab('register-vendor')}
+            className="p-6 bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300 space-y-3 hidden lg:block cursor-pointer"
+          >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Fast Verification</span>
               <span className="text-[10px] font-bold px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">FCMB Verified</span>
@@ -248,7 +257,7 @@ export const HomeView: React.FC = () => {
                   setSearchQuery(cat.name);
                   setActiveTab('directory');
                 }}
-                className={`p-6 rounded-3xl border transition-all duration-300 cursor-pointer group hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
+                className={`p-6 rounded-3xl border transition-all duration-300 cursor-pointer group hover:scale-[1.02] hover:shadow-xl flex flex-col justify-between backdrop-blur-md ${
                   isFeaturedCard
                     ? 'bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white border-emerald-800/80'
                     : 'bg-white/90 backdrop-blur-md text-slate-900 border-slate-200/90 hover:border-emerald-500/50 shadow-xs'
@@ -321,7 +330,7 @@ export const HomeView: React.FC = () => {
           {featuredVendors.slice(0, 6).map((vendor) => (
             <div
               key={vendor.id}
-              className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
+              className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between group"
             >
               <div>
                 {/* Cover & Badges */}
@@ -443,7 +452,7 @@ export const HomeView: React.FC = () => {
             return (
               <div
                 key={product.id}
-                className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
+                className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-lg hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between group"
               >
                 <div>
                   <div
@@ -533,10 +542,10 @@ export const HomeView: React.FC = () => {
             return (
               <div
                 key={option.id}
-                className={`rounded-3xl p-6 border transition-all duration-300 flex flex-col justify-between hover:-translate-y-1 hover:shadow-xl relative ${
+                className={`rounded-3xl p-6 border transition-all duration-300 flex flex-col justify-between hover:scale-[1.02] hover:shadow-xl relative backdrop-blur-md ${
                   isPopular
                     ? 'bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white border-amber-400/60 ring-2 ring-amber-400/30'
-                    : 'bg-white/95 backdrop-blur-md text-slate-900 border-slate-200/90 shadow-xs'
+                    : 'bg-white/90 backdrop-blur-md text-slate-900 border-slate-200/90 shadow-xs'
                 }`}
               >
                 {isPopular && (
@@ -613,7 +622,7 @@ export const HomeView: React.FC = () => {
             return (
               <div
                 key={index}
-                className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden transition-all"
+                className="bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden transition-all duration-300 hover:scale-[1.01]"
               >
                 <button
                   onClick={() => setOpenFaqIndex(isOpen ? null : index)}

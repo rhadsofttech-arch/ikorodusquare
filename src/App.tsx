@@ -26,7 +26,7 @@ const MainContent: React.FC = () => {
       {activeTab === 'marketplace' && <MarketplaceView />}
       {activeTab === 'product-details' && <ProductDetailsView />}
       {activeTab === 'vendor-portal' && <VendorDashboardView />}
-      {activeTab === 'vendor-register' && <VendorRegisterView />}
+      {(activeTab === 'vendor-register' || activeTab === 'register-vendor') && <VendorRegisterView />}
       {activeTab === 'admin-portal' && <AdminPortalView />}
       {activeTab === 'promotions' && <PromotionsPricingView />}
       {activeTab === 'customer-portal' && <CustomerPortalView />}
