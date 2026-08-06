@@ -109,21 +109,12 @@ export const AdminAccessGuard: React.FC<AdminAccessGuardProps> = ({ children }) 
             </button>
           </form>
 
-          {/* Quick Admin Test Button */}
-          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setRole('admin')}
-              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 text-center"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-              <span>One-Click Authenticate as Admin</span>
-            </button>
-
+          {/* Footer Back Link */}
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-center">
             <button
               type="button"
               onClick={() => setActiveTab('home')}
-              className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 py-1"
             >
               <Home className="w-3.5 h-3.5" />
               <span>Back to Public Homepage</span>
