@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Lock,
@@ -27,19 +28,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [successMessage, setSuccessMessage] = useState('');
   const [forgotPasswordMessage, setForgotPasswordMessage] = useState('');
 
-  // Lock background scrolling while modal is open
+  // Lock background scrolling and handle Escape key press while modal is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+    if (!isOpen) return;
 
-  if (!isOpen) return null;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow || '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen || typeof document === 'undefined') return null;
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,10 +64,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
     setLoading(true);
     try {
-      // Attempt Supabase sign in first if configured
       const { data, error } = await signInWithSupabase(email, password);
       if (error) {
-        // Fallback local matching for registered accounts
         const lowerEmail = email.toLowerCase().trim();
         if (lowerEmail.includes('admin')) {
           setRole('admin');
@@ -96,17 +104,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setActiveTab('register-vendor');
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
+      aria-modal="true"
+      role="dialog"
     >
       <div
         className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full my-auto overflow-hidden relative transform transition-all duration-200"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="auth-modal-title"
       >
         {/* Modal Header */}
@@ -114,7 +122,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <button
             onClick={onClose}
             type="button"
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-amber-300"
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-amber-300 cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -238,4 +246,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

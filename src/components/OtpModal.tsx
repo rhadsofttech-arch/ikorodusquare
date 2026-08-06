@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, KeyRound, CheckCircle2, ArrowRight, RefreshCw, Lock, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Mail, KeyRound, CheckCircle2, ArrowRight, RefreshCw, ShieldCheck, AlertTriangle, X } from 'lucide-react';
 
 interface OtpModalProps {
   email: string;
@@ -23,6 +24,27 @@ export const OtpModal: React.FC<OtpModalProps> = ({ email, isOpen, onVerified, o
       sendNewOtp();
     }
   }, [isOpen, email]);
+
+  // Lock body scroll and handle Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow || '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onCancel]);
 
   // Countdown timer for resend interval
   useEffect(() => {
@@ -57,7 +79,7 @@ export const OtpModal: React.FC<OtpModalProps> = ({ email, isOpen, onVerified, o
         }
         setErrorMessage(data.error || 'Failed to send verification email. Please try again.');
       } else {
-        setTimer(60); // Reset rate-limit timer
+        setTimer(60);
         if (data.devCode) {
           setDevCode(data.devCode);
           setInfoMessage(data.warning || 'OTP sent! (Dev Mode preview code available)');
@@ -112,11 +134,27 @@ export const OtpModal: React.FC<OtpModalProps> = ({ email, isOpen, onVerified, o
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/70 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-emerald-100 relative overflow-hidden">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-emerald-100 relative overflow-hidden my-auto">
+        <button
+          onClick={onCancel}
+          type="button"
+          className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+          aria-label="Close OTP verification modal"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
         {/* Top Decorative Header */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-400" />
 
@@ -146,7 +184,7 @@ export const OtpModal: React.FC<OtpModalProps> = ({ email, isOpen, onVerified, o
                 <button
                   type="button"
                   onClick={handleAutoFill}
-                  className="px-2.5 py-1 text-[11px] font-bold bg-amber-400 text-emerald-950 rounded-lg hover:bg-amber-500 transition-colors shadow-sm"
+                  className="px-2.5 py-1 text-[11px] font-bold bg-amber-400 text-emerald-950 rounded-lg hover:bg-amber-500 transition-colors shadow-sm cursor-pointer"
                 >
                   Auto-fill
                 </button>
@@ -201,7 +239,7 @@ export const OtpModal: React.FC<OtpModalProps> = ({ email, isOpen, onVerified, o
                 type="button"
                 disabled={timer > 0 || isSending}
                 onClick={sendNewOtp}
-                className={`font-semibold flex items-center gap-1 ${
+                className={`font-semibold flex items-center gap-1 cursor-pointer ${
                   timer > 0 || isSending
                     ? 'text-gray-400 cursor-not-allowed'
                     : 'text-emerald-700 hover:underline'
@@ -216,14 +254,14 @@ export const OtpModal: React.FC<OtpModalProps> = ({ email, isOpen, onVerified, o
               <button
                 type="button"
                 onClick={onCancel}
-                className="w-1/3 py-2.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                className="w-1/3 py-2.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSending || isVerifying || enteredOtp.trim().length !== 6}
-                className="w-2/3 py-2.5 text-xs font-bold text-emerald-950 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm"
+                className="w-2/3 py-2.5 text-xs font-bold text-emerald-950 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer"
               >
                 {isVerifying ? (
                   <>
@@ -243,4 +281,6 @@ export const OtpModal: React.FC<OtpModalProps> = ({ email, isOpen, onVerified, o
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
