@@ -136,23 +136,64 @@ const LOCAL_STORAGE_KEY = 'ikorodu_square_state_v1';
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isSupabaseConnected = isSupabaseConfigured();
 
-  // Default user is Guest or Customer
+  // Default user is Guest until signed in
   const [currentRole, setRoleState] = useState<UserRole>('guest');
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setActiveTabState] = useState<string>('home');
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
-  const [currentUser, setCurrentUser] = useState<User | null>({
-    id: 'c-101',
-    email: 'bisi.ogundimu@gmail.com',
-    firstName: 'Bisi',
-    lastName: 'Ogundimu',
-    phone: '+234 803 999 1111',
-    role: 'customer',
-    area: 'Agric',
-    isVerified: true,
-    createdAt: new Date().toISOString(),
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Initial URL Route Sync & Popstate listener
+  useEffect(() => {
+    const path = window.location.pathname.toLowerCase();
+    if (path === '/admin') {
+      setActiveTabState('admin-portal');
+    } else if (path === '/marketplace') {
+      setActiveTabState('marketplace');
+    } else if (path === '/directory') {
+      setActiveTabState('directory');
+    } else if (path === '/categories') {
+      setActiveTabState('categories');
+    } else if (path === '/promotions') {
+      setActiveTabState('promotions');
+    } else if (path === '/vendor-portal') {
+      setActiveTabState('vendor-portal');
+    } else if (path === '/register') {
+      setActiveTabState('register-vendor');
+    }
+
+    const handlePopState = () => {
+      const p = window.location.pathname.toLowerCase();
+      if (p === '/admin') setActiveTabState('admin-portal');
+      else if (p === '/marketplace') setActiveTabState('marketplace');
+      else if (p === '/directory') setActiveTabState('directory');
+      else if (p === '/categories') setActiveTabState('categories');
+      else if (p === '/promotions') setActiveTabState('promotions');
+      else if (p === '/vendor-portal') setActiveTabState('vendor-portal');
+      else if (p === '/register') setActiveTabState('register-vendor');
+      else setActiveTabState('home');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    let urlPath = '/';
+    if (tab === 'admin-portal' || tab === 'admin') urlPath = '/admin';
+    else if (tab === 'marketplace') urlPath = '/marketplace';
+    else if (tab === 'directory') urlPath = '/directory';
+    else if (tab === 'categories') urlPath = '/categories';
+    else if (tab === 'promotions' || tab === 'promotions-pricing') urlPath = '/promotions';
+    else if (tab === 'vendor-portal') urlPath = '/vendor-portal';
+    else if (tab === 'register-vendor' || tab === 'vendor-register') urlPath = '/register';
+
+    if (window.location.pathname !== urlPath) {
+      window.history.pushState({}, '', urlPath);
+    }
+  };
 
   // State
   const [vendors, setVendors] = useState<Vendor[]>(() => {

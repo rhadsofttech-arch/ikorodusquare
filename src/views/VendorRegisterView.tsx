@@ -826,7 +826,7 @@ export const VendorRegisterView: React.FC = () => {
                 </p>
               </div>
 
-              <div className="pt-4 flex flex-col sm:flex-row justify-center gap-3">
+              <div className="pt-4 flex justify-center">
                 <button
                   onClick={() => {
                     setRole('vendor');
@@ -835,15 +835,6 @@ export const VendorRegisterView: React.FC = () => {
                   className="px-6 py-3 bg-emerald-800 text-white font-bold text-xs rounded-xl shadow hover:bg-emerald-900"
                 >
                   Go to Vendor Dashboard
-                </button>
-                <button
-                  onClick={() => {
-                    setRole('admin');
-                    setActiveTab('admin-portal');
-                  }}
-                  className="px-6 py-3 bg-amber-400 text-emerald-950 font-bold text-xs rounded-xl shadow hover:bg-amber-500"
-                >
-                  Demo Admin Approval Queue
                 </button>
               </div>
             </div>

@@ -18,13 +18,19 @@ import {
   Sparkles,
   CreditCard,
   Layers,
+  LogIn,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IkoroduArea, UserRole } from '../types';
+import { AuthModal } from './AuthModal';
 
 export const Navbar: React.FC = () => {
   const {
     currentUser,
+    currentRole,
+    setRole,
     activeTab,
     setActiveTab,
     notifications,
@@ -42,6 +48,9 @@ export const Navbar: React.FC = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  const isVendor = currentUser && (currentUser.role === 'vendor' || currentRole === 'vendor');
 
   const ikoroduAreas: (IkoroduArea | 'All')[] = [
     'All',
@@ -198,13 +207,48 @@ export const Navbar: React.FC = () => {
               )}
             </div>
 
+            {/* Authentication / Sign In Button or User Badge */}
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (currentUser.role === 'customer') handleNavClick('customer-portal');
+                    else if (currentUser.role === 'vendor') handleNavClick('vendor-portal');
+                  }}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-200 transition-colors"
+                >
+                  <User className="w-3.5 h-3.5 text-emerald-700" />
+                  <span className="hidden sm:inline">
+                    {currentUser.firstName} ({currentUser.role === 'vendor' ? 'Vendor' : currentUser.role === 'admin' ? 'Admin' : 'Account'})
+                  </span>
+                  <span className="sm:hidden">{currentUser.firstName}</span>
+                </button>
+                <button
+                  onClick={() => setRole('guest')}
+                  className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 hover:border-emerald-600 text-slate-800 hover:text-emerald-950 text-xs font-bold rounded-xl transition-all hover:bg-slate-50"
+              >
+                <LogIn className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Sign In</span>
+              </button>
+            )}
+
             {/* Register Business CTA */}
             <button
               onClick={() => handleNavClick('register-vendor')}
               className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-900 hover:to-teal-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all hover:shadow-md"
             >
               <PlusCircle className="w-4 h-4 text-amber-300" />
-              <span>Register Business</span>
+              <span className="hidden sm:inline">Register Business</span>
+              <span className="sm:hidden">Register</span>
             </button>
 
             {/* Mobile Hamburger Toggle */}
@@ -265,7 +309,7 @@ export const Navbar: React.FC = () => {
             <button
               onClick={() => handleNavClick('promotions-pricing')}
               className={`flex items-center gap-1.5 hover:text-emerald-700 pb-1 border-b-2 transition-all ${
-                activeTab === 'promotions-pricing'
+                activeTab === 'promotions-pricing' || activeTab === 'promotions'
                   ? 'border-emerald-700 text-emerald-950 font-bold'
                   : 'border-transparent text-slate-600'
               }`}
@@ -276,31 +320,20 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Vendor Portal Tab */}
-            <button
-              onClick={() => handleNavClick('vendor-portal')}
-              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs ${
-                activeTab === 'vendor-portal'
-                  ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
-                  : 'bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100'
-              }`}
-            >
-              <Store className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Vendor Dashboard</span>
-            </button>
-
-            {/* Admin Portal Tab */}
-            <button
-              onClick={() => handleNavClick('admin-portal')}
-              className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs ${
-                activeTab === 'admin-portal'
-                  ? 'bg-amber-100 text-amber-950 border border-amber-300'
-                  : 'bg-amber-50/80 text-amber-900 hover:bg-amber-100'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-              <span>Admin Portal</span>
-            </button>
+            {/* Vendor Dashboard Tab - ONLY APPEARS AFTER VENDOR SINGS IN */}
+            {isVendor && (
+              <button
+                onClick={() => handleNavClick('vendor-portal')}
+                className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs ${
+                  activeTab === 'vendor-portal'
+                    ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                    : 'bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Vendor Dashboard</span>
+              </button>
+            )}
           </div>
         </nav>
       </div>
@@ -355,20 +388,43 @@ export const Navbar: React.FC = () => {
             onClick={() => handleNavClick('promotions-pricing')}
             className="block w-full text-left py-2 font-semibold text-slate-800 text-xs border-b border-slate-100"
           >
-            Promotions & Advertising Rates
+            Promotions & Pricing
           </button>
-          <button
-            onClick={() => handleNavClick('vendor-portal')}
-            className="block w-full text-left py-2 font-semibold text-emerald-800 text-xs border-b border-slate-100"
-          >
-            Vendor Dashboard
-          </button>
-          <button
-            onClick={() => handleNavClick('admin-portal')}
-            className="block w-full text-left py-2 font-semibold text-amber-800 text-xs border-b border-slate-100"
-          >
-            Admin Portal
-          </button>
+
+          {/* Vendor Dashboard Mobile Link - ONLY for logged in vendors */}
+          {isVendor && (
+            <button
+              onClick={() => handleNavClick('vendor-portal')}
+              className="block w-full text-left py-2 font-semibold text-emerald-800 text-xs border-b border-slate-100"
+            >
+              Vendor Dashboard
+            </button>
+          )}
+
+          {!currentUser ? (
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setAuthModalOpen(true);
+              }}
+              className="w-full py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4 text-emerald-700" />
+              <span>Sign In</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setRole('guest');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full py-2.5 bg-red-50 text-red-700 text-xs font-bold rounded-xl flex items-center justify-center gap-2 border border-red-200"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out ({currentUser.firstName})</span>
+            </button>
+          )}
+
           <button
             onClick={() => handleNavClick('register-vendor')}
             className="w-full py-2.5 bg-emerald-800 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm"
@@ -378,6 +434,9 @@ export const Navbar: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* Auth Modal Component */}
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </header>
   );
 };

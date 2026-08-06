@@ -2,6 +2,7 @@ import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { AdminAccessGuard } from './components/AdminAccessGuard';
 
 // Views
 import { HomeView } from './views/HomeView';
@@ -27,8 +28,12 @@ const MainContent: React.FC = () => {
       {activeTab === 'product-details' && <ProductDetailsView />}
       {activeTab === 'vendor-portal' && <VendorDashboardView />}
       {(activeTab === 'vendor-register' || activeTab === 'register-vendor') && <VendorRegisterView />}
-      {activeTab === 'admin-portal' && <AdminPortalView />}
-      {activeTab === 'promotions' && <PromotionsPricingView />}
+      {activeTab === 'admin-portal' && (
+        <AdminAccessGuard>
+          <AdminPortalView />
+        </AdminAccessGuard>
+      )}
+      {(activeTab === 'promotions' || activeTab === 'promotions-pricing') && <PromotionsPricingView />}
       {activeTab === 'customer-portal' && <CustomerPortalView />}
     </main>
   );
