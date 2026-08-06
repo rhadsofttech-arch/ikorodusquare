@@ -20,6 +20,7 @@ import {
   Search,
   ChevronRight,
   ArrowRight,
+  ArrowLeft,
   Star,
   Zap,
 } from 'lucide-react';
@@ -42,6 +43,7 @@ export const VendorDashboardView: React.FC = () => {
     categories,
     setActiveTab,
     setSelectedVendorId,
+    currentUser,
   } = useApp();
 
   const [vendorTab, setVendorTab] = useState<'overview' | 'products' | 'enquiries' | 'reviews' | 'promotions' | 'qrcode'>('overview');
@@ -62,8 +64,13 @@ export const VendorDashboardView: React.FC = () => {
   const [promoNotes, setPromoNotes] = useState('');
   const [promoSuccessMsg, setPromoSuccessMsg] = useState(false);
 
-  // Active vendor (default to Sparkle Electronics or first vendor)
-  const vendor = vendors.find((v) => v.id === 'v-3') || vendors[0];
+  // Active vendor (match currentUser vendor or default to Sparkle Electronics)
+  const userVendor = vendors.find(
+    (v) =>
+      (currentUser?.email && v.ownerEmail?.toLowerCase() === currentUser.email.toLowerCase()) ||
+      (currentUser?.id && v.userId === currentUser.id)
+  );
+  const vendor = userVendor || vendors.find((v) => v.id === 'v-3') || vendors[0];
   const vendorProducts = products.filter((p) => p.vendorId === vendor.id);
   const vendorEnquiries = enquiries.filter((e) => e.vendorId === vendor.id);
   const vendorReviews = reviews.filter((r) => r.vendorId === vendor.id);
@@ -122,6 +129,31 @@ export const VendorDashboardView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Top Bar with Back to Marketplace Button */}
+      <div className="flex items-center justify-between bg-emerald-950 p-4 sm:p-5 rounded-2xl text-white shadow-md border border-emerald-800">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black">
+            <Store className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-black font-display text-amber-300">
+              Vendor Control Dashboard
+            </h2>
+            <p className="text-[11px] text-emerald-200">
+              Manage Products • Respond to Customer Enquiries • Submit FCMB Promotion Receipts
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setActiveTab('home')}
+          className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-amber-300"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Marketplace</span>
+        </button>
+      </div>
+
       {/* Header Store Status Bento Banner */}
       <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/90 p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
         <div className="flex items-center gap-4">

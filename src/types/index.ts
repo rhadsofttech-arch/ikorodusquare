@@ -204,7 +204,13 @@ export interface PromotionRequest {
   adminNote?: string;
   requestedAt: string;
   approvedAt?: string;
+  startDate?: string;
   expiresAt?: string;
+  assignedSlot?: 'homepage_banner' | 'featured_product' | 'sponsored_vendor' | 'category_top';
+  assignedTargetId?: string;
+  bannerImageUrl?: string;
+  bannerHeading?: string;
+  bannerSubtext?: string;
 }
 
 export interface NotificationItem {

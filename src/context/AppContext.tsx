@@ -28,6 +28,7 @@ import {
   fetchVendorsFromSupabase,
   saveVendorToSupabase,
   updateVendorInSupabase,
+  deleteVendorFromSupabase,
   fetchProductsFromSupabase,
   saveProductToSupabase,
   deleteProductFromSupabase,
@@ -93,6 +94,8 @@ interface AppContextType {
   approveVendor: (vendorId: string) => void;
   rejectVendor: (vendorId: string, reason?: string) => void;
   suspendVendor: (vendorId: string) => void;
+  reactivateVendor: (vendorId: string) => void;
+  deleteVendorPermanently: (vendorId: string) => void;
   toggleVerifyVendor: (vendorId: string) => void;
   toggleFeatureVendor: (vendorId: string) => void;
 
@@ -108,8 +111,21 @@ interface AppContextType {
   replyEnquiry: (enquiryId: string, replyText: string) => void;
 
   submitPromotionRequest: (data: Omit<PromotionRequest, 'id' | 'status' | 'requestedAt'>) => PromotionRequest;
-  approvePromotionRequest: (requestId: string, adminNote?: string) => void;
+  approvePromotionRequest: (
+    requestId: string,
+    adminNote?: string,
+    slotConfig?: {
+      assignedSlot?: 'homepage_banner' | 'featured_product' | 'sponsored_vendor' | 'category_top';
+      startDate?: string;
+      expiresAt?: string;
+      assignedTargetId?: string;
+      bannerImageUrl?: string;
+      bannerHeading?: string;
+      bannerSubtext?: string;
+    }
+  ) => void;
   rejectPromotionRequest: (requestId: string, adminNote?: string) => void;
+  removeActivePromotion: (requestId: string) => void;
 
   toggleWishlist: (productId: string) => void;
   toggleFollowVendor: (vendorId: string) => void;
@@ -540,6 +556,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateVendorInSupabase(vendorId, { status: 'suspended' });
   };
 
+  const reactivateVendor = (vendorId: string) => {
+    setVendors((prev) =>
+      prev.map((v) => (v.id === vendorId ? { ...v, status: 'approved' } : v))
+    );
+    updateVendorInSupabase(vendorId, { status: 'approved' });
+
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VENDOR_REACTIVATED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Reactivated vendor ID: ${vendorId}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+  };
+
+  const deleteVendorPermanently = (vendorId: string) => {
+    const targetVendor = vendors.find((v) => v.id === vendorId);
+    const vendorName = targetVendor ? targetVendor.businessName : vendorId;
+
+    setVendors((prev) => prev.filter((v) => v.id !== vendorId));
+    setProducts((prev) => prev.filter((p) => p.vendorId !== vendorId));
+    setPromotionRequests((prev) => prev.filter((pr) => pr.vendorId !== vendorId));
+    setReviews((prev) => prev.filter((r) => r.vendorId !== vendorId));
+    setEnquiries((prev) => prev.filter((e) => e.vendorId !== vendorId));
+
+    deleteVendorFromSupabase(vendorId);
+
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VENDOR_PERMANENTLY_DELETED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Permanently deleted vendor "${vendorName}" (ID: ${vendorId}) and associated products, promotions, reviews, and enquiries.`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+  };
+
   const toggleVerifyVendor = (vendorId: string) => {
     const target = vendors.find((v) => v.id === vendorId);
     if (!target) return;
@@ -739,19 +797,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newReq;
   };
 
-  const approvePromotionRequest = (requestId: string, adminNote?: string) => {
+  const approvePromotionRequest = (
+    requestId: string,
+    adminNote?: string,
+    slotConfig?: {
+      assignedSlot?: 'homepage_banner' | 'featured_product' | 'sponsored_vendor' | 'category_top';
+      startDate?: string;
+      expiresAt?: string;
+      assignedTargetId?: string;
+      bannerImageUrl?: string;
+      bannerHeading?: string;
+      bannerSubtext?: string;
+    }
+  ) => {
     const now = new Date();
     setPromotionRequests((prev) =>
       prev.map((req) => {
         if (req.id === requestId) {
-          const expires = new Date();
-          expires.setDate(now.getDate() + req.durationWeeks * 7);
-          const updated = {
+          const start = slotConfig?.startDate ? new Date(slotConfig.startDate) : now;
+          const expires = slotConfig?.expiresAt
+            ? new Date(slotConfig.expiresAt)
+            : new Date(start.getTime() + req.durationWeeks * 7 * 24 * 60 * 60 * 1000);
+
+          const defaultSlot =
+            slotConfig?.assignedSlot ||
+            (req.promoType === 'homepage_banner'
+              ? 'homepage_banner'
+              : req.promoType === 'featured_product'
+              ? 'featured_product'
+              : req.promoType === 'sponsored_vendor'
+              ? 'sponsored_vendor'
+              : req.promoType === 'category_top'
+              ? 'category_top'
+              : 'sponsored_vendor');
+
+          const updated: PromotionRequest = {
             ...req,
             status: 'approved' as const,
             adminNote: adminNote || 'Verified FCMB Bank Transfer.',
             approvedAt: now.toISOString(),
+            startDate: start.toISOString(),
             expiresAt: expires.toISOString(),
+            assignedSlot: defaultSlot,
+            assignedTargetId: slotConfig?.assignedTargetId || req.vendorId,
+            bannerImageUrl: slotConfig?.bannerImageUrl,
+            bannerHeading: slotConfig?.bannerHeading,
+            bannerSubtext: slotConfig?.bannerSubtext,
           };
           savePromotionToSupabase(updated);
           return updated;
@@ -760,10 +851,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    // Update vendor feature state depending on promo type
     const targetReq = promotionRequests.find((r) => r.id === requestId);
     if (targetReq) {
-      if (targetReq.promoType === 'sponsored_vendor' || targetReq.promoType === 'category_top') {
+      if (
+        slotConfig?.assignedSlot === 'sponsored_vendor' ||
+        targetReq.promoType === 'sponsored_vendor' ||
+        targetReq.promoType === 'category_top'
+      ) {
         setVendors((prev) =>
           prev.map((v) => {
             if (v.id === targetReq.vendorId) {
@@ -791,7 +885,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'PROMOTION_APPROVED',
       performedBy: 'Admin',
       role: 'admin',
-      details: `Approved promotion ID ${requestId}`,
+      details: `Approved promotion ID ${requestId} (Slot: ${slotConfig?.assignedSlot || 'default'})`,
       timestamp: new Date().toISOString(),
     };
     setAuditLogs((prev) => [log, ...prev]);
@@ -813,6 +907,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return req;
       })
     );
+  };
+
+  const removeActivePromotion = (requestId: string) => {
+    setPromotionRequests((prev) =>
+      prev.map((req) => {
+        if (req.id === requestId) {
+          const updated = {
+            ...req,
+            status: 'rejected' as const,
+            adminNote: 'Promotion removed by Administrator before expiration.',
+            expiresAt: new Date().toISOString(),
+          };
+          savePromotionToSupabase(updated);
+          return updated;
+        }
+        return req;
+      })
+    );
+
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'PROMOTION_REMOVED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Admin removed active promotion ID: ${requestId}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
   };
 
   // Engagement tracking
@@ -912,6 +1035,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         approveVendor,
         rejectVendor,
         suspendVendor,
+        reactivateVendor,
+        deleteVendorPermanently,
         toggleVerifyVendor,
         toggleFeatureVendor,
         addProduct,
@@ -925,6 +1050,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         submitPromotionRequest,
         approvePromotionRequest,
         rejectPromotionRequest,
+        removeActivePromotion,
         toggleWishlist,
         toggleFollowVendor,
         markNotificationRead,

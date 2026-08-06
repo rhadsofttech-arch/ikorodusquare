@@ -38,6 +38,7 @@ export const HomeView: React.FC = () => {
     vendors,
     products,
     categories,
+    promotionRequests,
     searchQuery,
     setSearchQuery,
     selectedArea,
@@ -56,9 +57,32 @@ export const HomeView: React.FC = () => {
   const [recommendationFilter, setRecommendationFilter] = useState<'all' | 'under50k' | 'topRated' | 'artisan'>('all');
   const [showPredictiveDropdown, setShowPredictiveDropdown] = useState(true);
 
+  // Filter Active Admin-Approved Promotions (Not Expired)
+  const now = new Date();
+  const activePromos = promotionRequests.filter((pr) => {
+    if (pr.status !== 'approved') return false;
+    if (!pr.expiresAt) return true;
+    return new Date(pr.expiresAt) > now;
+  });
+
+  const activeBannerPromo = activePromos.find((pr) => pr.assignedSlot === 'homepage_banner');
+  const sponsoredVendorIds = activePromos
+    .filter((pr) => pr.assignedSlot === 'sponsored_vendor')
+    .map((pr) => pr.vendorId);
+  const featuredProductIds = activePromos
+    .filter((pr) => pr.assignedSlot === 'featured_product')
+    .map((pr) => pr.assignedTargetId || pr.vendorId);
+
   const approvedVendors = vendors.filter((v) => v.status === 'approved');
-  const featuredVendors = approvedVendors.filter((v) => v.isFeatured || v.isVerified);
-  const featuredProducts = products.filter((p) => p.status === 'approved');
+
+  // Sponsored / Featured Vendors: prioritize active admin promos first
+  const sponsoredVendors = approvedVendors.filter(
+    (v) => sponsoredVendorIds.includes(v.id) || v.isFeatured || v.isVerified
+  );
+
+  const featuredProducts = products.filter(
+    (p) => p.status === 'approved' && (featuredProductIds.includes(p.id) || p.isFeatured || true)
+  );
 
   const ikoroduAreas: IkoroduArea[] = [
     'Sabo',
@@ -455,6 +479,38 @@ export const HomeView: React.FC = () => {
         </div>
       </section>
 
+      {/* Dynamic Admin-Assigned Homepage Banner Slot */}
+      {activeBannerPromo && (
+        <section className="relative rounded-3xl overflow-hidden shadow-xl border-2 border-amber-400 bg-emerald-950 text-white p-6 sm:p-8">
+          <img
+            src={activeBannerPromo.bannerImageUrl || 'https://images.unsplash.com/photo-1555421689-491a97ff2040?auto=format&fit=crop&q=80&w=1200'}
+            alt="Promoted Banner"
+            className="absolute inset-0 w-full h-full object-cover opacity-30"
+          />
+          <div className="relative z-10 space-y-3 max-w-2xl">
+            <span className="px-3 py-1 bg-amber-400 text-emerald-950 rounded-full font-black text-[10px] uppercase tracking-wider inline-block">
+              ⭐ Featured Admin Promotion
+            </span>
+            <h2 className="text-xl sm:text-3xl font-black font-display text-white">
+              {activeBannerPromo.bannerHeading || `Promoted Merchant: ${activeBannerPromo.vendorName}`}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-200">
+              {activeBannerPromo.bannerSubtext || 'Discover verified local deals and premium SME goods directly on IkoroduSquare.'}
+            </p>
+            <button
+              onClick={() => {
+                setSelectedVendorId(activeBannerPromo.vendorId);
+                setActiveTab('vendor-details');
+              }}
+              className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs rounded-xl shadow-md transition-all inline-flex items-center gap-2"
+            >
+              <span>Visit Promoted Storefront</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* 2. Personalized Recommendations Section */}
       <section className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -744,7 +800,7 @@ export const HomeView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featuredVendors.slice(0, 6).map((vendor) => (
+          {sponsoredVendors.slice(0, 6).map((vendor) => (
             <div
               key={vendor.id}
               className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xs flex flex-col justify-between group"

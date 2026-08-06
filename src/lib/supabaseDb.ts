@@ -154,6 +154,25 @@ export async function updateVendorInSupabase(
   }
 }
 
+export async function deleteVendorFromSupabase(vendorId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    await supabase.from('products').delete().eq('vendor_id', vendorId);
+    await supabase.from('reviews').delete().eq('vendor_id', vendorId);
+    await supabase.from('enquiries').delete().eq('vendor_id', vendorId);
+    await supabase.from('promotion_requests').delete().eq('vendor_id', vendorId);
+    const { error } = await supabase.from('vendors').delete().eq('id', vendorId);
+    if (error) {
+      console.warn('Supabase deleteVendor error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Error deleting vendor from Supabase:', err);
+    return false;
+  }
+}
+
 // ==========================================
 // PRODUCTS API
 // ==========================================

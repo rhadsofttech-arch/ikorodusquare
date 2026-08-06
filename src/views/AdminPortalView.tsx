@@ -17,55 +17,188 @@ import {
   Ban,
   Clock,
   ExternalLink,
+  ArrowLeft,
+  Trash2,
+  RefreshCw,
+  Calendar,
+  Layers,
+  Image as ImageIcon,
+  MessageSquare,
+  Phone,
+  Store,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO } from '../data/mockData';
+import { PromotionRequest, Vendor } from '../types';
 
 export const AdminPortalView: React.FC = () => {
   const {
     vendors,
     products,
     promotionRequests,
+    enquiries,
+    reviews,
     approveVendor,
     rejectVendor,
     suspendVendor,
+    reactivateVendor,
+    deleteVendorPermanently,
     toggleVerifyVendor,
     toggleFeatureVendor,
     approvePromotionRequest,
     rejectPromotionRequest,
+    removeActivePromotion,
     auditLogs,
     setActiveTab,
     setSelectedVendorId,
+    categories,
   } = useApp();
 
   const [adminTab, setAdminTab] = useState<'pending-vendors' | 'promotions-queue' | 'all-vendors' | 'audit-logs'>('pending-vendors');
 
+  // Directory Merchants Filters & Search
+  const [vendorSearch, setVendorSearch] = useState('');
+  const [vendorStatusFilter, setVendorStatusFilter] = useState<'all' | 'pending' | 'approved' | 'suspended' | 'rejected'>('all');
+  const [vendorCategoryFilter, setVendorCategoryFilter] = useState<string>('All');
+  const [selectedVendorDetail, setSelectedVendorDetail] = useState<Vendor | null>(null);
+  const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
+
+  // Promotion Approval Modal State
+  const [assignSlotModalReq, setAssignSlotModalReq] = useState<PromotionRequest | null>(null);
+  const [assignedSlot, setAssignedSlot] = useState<'homepage_banner' | 'featured_product' | 'sponsored_vendor' | 'category_top'>('sponsored_vendor');
+  const [assignedTargetId, setAssignedTargetId] = useState<string>('');
+  const [bannerImageUrl, setBannerImageUrl] = useState<string>('');
+  const [bannerHeading, setBannerHeading] = useState<string>('');
+  const [bannerSubtext, setBannerSubtext] = useState<string>('');
+  const [customStartDate, setCustomStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [customDurationWeeks, setCustomDurationWeeks] = useState<number>(2);
+
+  // Proof Screenshot Modal
+  const [previewProofUrl, setPreviewProofUrl] = useState<string | null>(null);
+
   const pendingVendors = vendors.filter((v) => v.status === 'pending');
   const pendingPromos = promotionRequests.filter((pr) => pr.status === 'pending');
-  const approvedPromos = promotionRequests.filter((pr) => pr.status === 'approved');
 
-  const totalRevenueNaira = approvedPromos.reduce((sum, pr) => sum + pr.amountNaira, 0);
+  const now = new Date();
+  const activePromos = promotionRequests.filter((pr) => {
+    if (pr.status !== 'approved') return false;
+    if (!pr.expiresAt) return true;
+    return new Date(pr.expiresAt) > now;
+  });
 
-  const [previewProofUrl, setPreviewProofUrl] = useState<string | null>(null);
+  const expiredPromos = promotionRequests.filter((pr) => {
+    if (pr.status === 'rejected') return true;
+    if (pr.status === 'approved' && pr.expiresAt && new Date(pr.expiresAt) <= now) return true;
+    return false;
+  });
+
+  const totalRevenueNaira = promotionRequests
+    .filter((pr) => pr.status === 'approved')
+    .reduce((sum, pr) => sum + pr.amountNaira, 0);
+
+  // Filtered Vendors List
+  const filteredVendors = vendors.filter((v) => {
+    const matchesSearch =
+      v.businessName.toLowerCase().includes(vendorSearch.toLowerCase()) ||
+      v.ownerName.toLowerCase().includes(vendorSearch.toLowerCase()) ||
+      v.ownerEmail.toLowerCase().includes(vendorSearch.toLowerCase()) ||
+      v.area.toLowerCase().includes(vendorSearch.toLowerCase());
+
+    const matchesStatus = vendorStatusFilter === 'all' || v.status === vendorStatusFilter;
+    const matchesCategory = vendorCategoryFilter === 'All' || v.category === vendorCategoryFilter;
+
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
+
+  const openApproveSlotModal = (req: PromotionRequest) => {
+    setAssignSlotModalReq(req);
+    const defaultSlot =
+      req.promoType === 'homepage_banner'
+        ? 'homepage_banner'
+        : req.promoType === 'featured_product'
+        ? 'featured_product'
+        : req.promoType === 'sponsored_vendor'
+        ? 'sponsored_vendor'
+        : req.promoType === 'category_top'
+        ? 'category_top'
+        : 'sponsored_vendor';
+
+    setAssignedSlot(defaultSlot);
+    setAssignedTargetId(req.vendorId);
+    setBannerImageUrl('https://images.unsplash.com/photo-1555421689-491a97ff2040?auto=format&fit=crop&q=80&w=1200');
+    setBannerHeading(`Featured SME Spotlight: ${req.vendorName}`);
+    setBannerSubtext('Shop verified local products & authentic services directly in Ikorodu.');
+    setCustomStartDate(new Date().toISOString().split('T')[0]);
+    setCustomDurationWeeks(req.durationWeeks || 2);
+  };
+
+  const handleConfirmSlotApproval = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assignSlotModalReq) return;
+
+    const start = new Date(customStartDate);
+    const expires = new Date(start.getTime() + customDurationWeeks * 7 * 24 * 60 * 60 * 1000);
+
+    approvePromotionRequest(
+      assignSlotModalReq.id,
+      'FCMB Bank Transfer verified by Administrator.',
+      {
+        assignedSlot,
+        assignedTargetId: assignedTargetId || assignSlotModalReq.vendorId,
+        startDate: start.toISOString(),
+        expiresAt: expires.toISOString(),
+        bannerImageUrl: assignedSlot === 'homepage_banner' ? bannerImageUrl : undefined,
+        bannerHeading: assignedSlot === 'homepage_banner' ? bannerHeading : undefined,
+        bannerSubtext: assignedSlot === 'homepage_banner' ? bannerSubtext : undefined,
+      }
+    );
+
+    setAssignSlotModalReq(null);
+  };
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Top Bar with Back to Marketplace Button */}
+      <div className="flex items-center justify-between bg-emerald-950 p-4 sm:p-5 rounded-2xl text-white shadow-md border border-amber-400/20">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-black font-display text-amber-300">
+              IkoroduSquare Administration Portal
+            </h2>
+            <p className="text-[11px] text-emerald-200">
+              Full Governance • Vendor Verification • Manual FCMB Reconciliation • Promotion Slots
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setActiveTab('home')}
+          className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-amber-300"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Marketplace</span>
+        </button>
+      </div>
+
       {/* Admin Header & System Stats */}
       <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-emerald-950 p-6 sm:p-8 rounded-3xl shadow-lg">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
             <span className="px-2.5 py-0.5 bg-emerald-950 text-amber-300 font-extrabold text-[10px] uppercase tracking-wider rounded-full">
-              Platform Administration
+              Platform Governance
             </span>
             <h1 className="text-2xl sm:text-3xl font-black font-display">
-              IkoroduSquare Control Center
+              Management & Control Center
             </h1>
             <p className="text-xs text-emerald-950 font-semibold">
-              Approve local vendor storefronts and verify manual FCMB bank transfer receipts.
+              Approve local vendor storefronts, manage promotion placements, and monitor platform engagement.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="bg-white/90 backdrop-blur-md p-3 rounded-2xl border border-amber-300 shadow-sm text-center">
               <span className="text-[10px] font-bold text-gray-500 block uppercase">Manual Revenue</span>
               <strong className="text-lg font-black text-emerald-950 font-mono">
@@ -73,7 +206,13 @@ export const AdminPortalView: React.FC = () => {
               </strong>
             </div>
             <div className="bg-emerald-950 text-white p-3 rounded-2xl shadow-sm text-center">
-              <span className="text-[10px] font-bold text-emerald-300 block uppercase">Action Required</span>
+              <span className="text-[10px] font-bold text-emerald-300 block uppercase">Active Promos</span>
+              <strong className="text-lg font-black text-amber-300 font-mono">
+                {activePromos.length} Placed
+              </strong>
+            </div>
+            <div className="bg-emerald-900 text-white p-3 rounded-2xl shadow-sm text-center">
+              <span className="text-[10px] font-bold text-emerald-300 block uppercase">Queue Action</span>
               <strong className="text-lg font-black text-amber-300 font-mono">
                 {pendingVendors.length + pendingPromos.length} Pending
               </strong>
@@ -86,7 +225,7 @@ export const AdminPortalView: React.FC = () => {
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-200">
         <button
           onClick={() => setAdminTab('pending-vendors')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
             adminTab === 'pending-vendors'
               ? 'bg-emerald-950 text-amber-300 shadow-sm'
               : 'bg-white text-gray-600 hover:bg-gray-100'
@@ -95,7 +234,7 @@ export const AdminPortalView: React.FC = () => {
           <Building2 className="w-4 h-4 text-amber-400" />
           <span>Vendor Approvals Queue ({pendingVendors.length})</span>
           {pendingVendors.length > 0 && (
-            <span className="w-4 h-4 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
+            <span className="w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
               {pendingVendors.length}
             </span>
           )}
@@ -103,16 +242,16 @@ export const AdminPortalView: React.FC = () => {
 
         <button
           onClick={() => setAdminTab('promotions-queue')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
             adminTab === 'promotions-queue'
               ? 'bg-emerald-950 text-amber-300 shadow-sm'
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
           <CreditCard className="w-4 h-4 text-emerald-400" />
-          <span>Manual FCMB Payment Verification ({pendingPromos.length})</span>
+          <span>Promotion Slots & Payments ({pendingPromos.length})</span>
           {pendingPromos.length > 0 && (
-            <span className="w-4 h-4 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
+            <span className="w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
               {pendingPromos.length}
             </span>
           )}
@@ -120,20 +259,22 @@ export const AdminPortalView: React.FC = () => {
 
         <button
           onClick={() => setAdminTab('all-vendors')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            adminTab === 'all-vendors' ? 'bg-emerald-950 text-amber-300' : 'bg-white text-gray-600 hover:bg-gray-100'
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            adminTab === 'all-vendors' ? 'bg-emerald-950 text-amber-300 shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Directory Merchants ({vendors.length})
+          <Store className="w-4 h-4 text-amber-400" />
+          <span>Directory Merchants ({vendors.length})</span>
         </button>
 
         <button
           onClick={() => setAdminTab('audit-logs')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            adminTab === 'audit-logs' ? 'bg-emerald-950 text-amber-300' : 'bg-white text-gray-600 hover:bg-gray-100'
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            adminTab === 'audit-logs' ? 'bg-emerald-950 text-amber-300 shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          System Audit Logs
+          <FileText className="w-4 h-4 text-emerald-400" />
+          <span>System Audit Logs</span>
         </button>
       </div>
 
@@ -142,7 +283,7 @@ export const AdminPortalView: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-black text-emerald-950 font-display">
-              Pending Vendor Registrations
+              Pending Vendor Registrations Queue
             </h3>
             <span className="text-xs text-gray-500">
               Review CAC documents & owner details before publishing to IkoroduSquare.
@@ -152,7 +293,7 @@ export const AdminPortalView: React.FC = () => {
           {pendingVendors.length === 0 ? (
             <div className="bg-white p-12 rounded-3xl text-center border border-gray-200 space-y-2">
               <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-              <h4 className="text-base font-bold text-emerald-950">Queue is Clear!</h4>
+              <h4 className="text-base font-bold text-emerald-950">Approval Queue is Clear!</h4>
               <p className="text-xs text-gray-500">All registered SME vendors have been reviewed.</p>
             </div>
           ) : (
@@ -192,7 +333,7 @@ export const AdminPortalView: React.FC = () => {
                       </button>
 
                       <button
-                        onClick={() => rejectVendor(vendor.id, 'Incomplete details')}
+                        onClick={() => rejectVendor(vendor.id, 'Incomplete verification details')}
                         className="px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-xl flex items-center gap-1.5"
                       >
                         <XCircle className="w-4 h-4" />
@@ -201,7 +342,7 @@ export const AdminPortalView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 bg-gray-50 rounded-2xl border text-xs text-gray-700 space-y-1">
+                  <div className="p-4 bg-gray-50 rounded-2xl border text-xs text-gray-700 space-y-2">
                     <p>
                       <strong>Address:</strong> {vendor.address}
                     </p>
@@ -211,16 +352,41 @@ export const AdminPortalView: React.FC = () => {
                     <p>
                       <strong>WhatsApp:</strong> +{vendor.whatsapp} | <strong>Phone:</strong> {vendor.phone}
                     </p>
-                    <p>
-                      <strong>CAC Document:</strong>{' '}
-                      {vendor.cacCertificateUrl ? (
-                        <span className="text-emerald-700 font-bold underline cursor-pointer">
-                          View Attached CAC Document
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">Not provided (Optional)</span>
-                      )}
-                    </p>
+                    <div className="pt-2 border-t flex flex-wrap items-center gap-3">
+                      <span>
+                        <strong>CAC Certificate:</strong>{' '}
+                        {vendor.cacCertificateUrl ? (
+                          <a
+                            href={vendor.cacCertificateUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-700 font-bold underline inline-flex items-center gap-1"
+                          >
+                            <span>View Attached Document</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">Not provided</span>
+                        )}
+                      </span>
+
+                      <span>
+                        <strong>NIN Identification:</strong>{' '}
+                        {vendor.ninDocumentUrl ? (
+                          <a
+                            href={vendor.ninDocumentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-700 font-bold underline inline-flex items-center gap-1"
+                          >
+                            <span>View NIN Document</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">Not provided</span>
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -229,7 +395,7 @@ export const AdminPortalView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: Manual Bank Transfer Promotion Queue */}
+      {/* TAB 2: Promotion Slots & Manual FCMB Reconciliation */}
       {adminTab === 'promotions-queue' && (
         <div className="space-y-6">
           <div className="p-4 bg-emerald-950 text-emerald-100 rounded-2xl text-xs space-y-1">
@@ -238,20 +404,21 @@ export const AdminPortalView: React.FC = () => {
               <span>FCMB Bank Account Statement Reconciliation</span>
             </div>
             <p>
-              Verify incoming bank transfers sent to <strong>{MANUAL_PAYMENT_INFO.bankName}</strong> ({MANUAL_PAYMENT_INFO.accountName} - <strong className="font-mono text-amber-300">{MANUAL_PAYMENT_INFO.accountNumber}</strong>). Match transaction reference & amount before clicking Approve.
+              Verify incoming bank transfers sent to <strong>{MANUAL_PAYMENT_INFO.bankName}</strong> ({MANUAL_PAYMENT_INFO.accountName} - <strong className="font-mono text-amber-300">{MANUAL_PAYMENT_INFO.accountNumber}</strong>). Match transaction reference & amount before assigning promo slots.
             </p>
           </div>
 
+          {/* Pending Payment Requests */}
           <div className="space-y-4">
-            <h3 className="text-base font-black text-emerald-950 font-display">
-              Pending Manual Payment Verification Requests
+            <h3 className="text-base font-black text-emerald-950 font-display flex items-center justify-between">
+              <span>Pending Manual Payment Requests ({pendingPromos.length})</span>
             </h3>
 
             {pendingPromos.length === 0 ? (
-              <div className="bg-white p-12 rounded-3xl text-center border border-gray-200 space-y-2">
-                <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                <h4 className="text-base font-bold text-emerald-950">No Pending Payments</h4>
-                <p className="text-xs text-gray-500">All uploaded bank receipts have been verified.</p>
+              <div className="bg-white p-8 rounded-3xl text-center border border-gray-200 space-y-1">
+                <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+                <h4 className="text-sm font-bold text-emerald-950">No Pending Payments</h4>
+                <p className="text-xs text-gray-500">All uploaded bank receipts have been verified and assigned.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -274,11 +441,11 @@ export const AdminPortalView: React.FC = () => {
                           Merchant: {req.vendorName}
                         </h4>
                         <p className="text-xs text-gray-500 font-mono">
-                          Txn Ref: <strong>{req.txnRef}</strong> • Duration: {req.durationWeeks} Weeks
+                          Txn Ref: <strong>{req.txnRef}</strong> • Requested Duration: {req.durationWeeks} Weeks
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => setPreviewProofUrl(req.proofUrl)}
                           className="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl flex items-center gap-1"
@@ -288,15 +455,15 @@ export const AdminPortalView: React.FC = () => {
                         </button>
 
                         <button
-                          onClick={() => approvePromotionRequest(req.id, 'FCMB statement matched.')}
+                          onClick={() => openApproveSlotModal(req)}
                           className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
                         >
                           <CheckCircle2 className="w-4 h-4 text-amber-300" />
-                          <span>Approve Payment & Activate</span>
+                          <span>Assign Slot & Approve</span>
                         </button>
 
                         <button
-                          onClick={() => rejectPromotionRequest(req.id, 'Invalid bank transaction ref.')}
+                          onClick={() => rejectPromotionRequest(req.id, 'Invalid bank transaction reference.')}
                           className="px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-xl"
                         >
                           Reject
@@ -314,75 +481,290 @@ export const AdminPortalView: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Active Assigned Promotions Table */}
+          <div className="space-y-4 pt-4 border-t border-gray-200">
+            <h3 className="text-base font-black text-emerald-950 font-display flex items-center justify-between">
+              <span>Active Admin-Assigned Promotions ({activePromos.length})</span>
+              <span className="text-xs font-normal text-gray-500">Live on Homepage & Search views</span>
+            </h3>
+
+            {activePromos.length === 0 ? (
+              <div className="bg-white p-8 rounded-3xl text-center border border-gray-200 space-y-1">
+                <Layers className="w-10 h-10 text-gray-400 mx-auto" />
+                <h4 className="text-sm font-bold text-gray-800">No Active Promotions Currently Placed</h4>
+                <p className="text-xs text-gray-500">Approve pending requests above to feature vendor products and banners on the homepage.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl border border-gray-150 overflow-hidden shadow-sm">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase">
+                    <tr>
+                      <th className="p-4">Vendor</th>
+                      <th className="p-4">Assigned Slot</th>
+                      <th className="p-4">Duration & Expiry</th>
+                      <th className="p-4">Amount</th>
+                      <th className="p-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {activePromos.map((promo) => (
+                      <tr key={promo.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="p-4">
+                          <strong className="font-bold text-emerald-950 block">{promo.vendorName}</strong>
+                          <span className="text-[10px] text-gray-500 font-mono">Ref: {promo.txnRef}</span>
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2.5 py-1 bg-amber-100 text-amber-900 font-extrabold text-[10px] rounded-lg border border-amber-300 uppercase">
+                            {promo.assignedSlot || promo.promoType}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-700">
+                          <div className="flex items-center gap-1 font-mono text-[11px]">
+                            <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>
+                              {promo.startDate ? new Date(promo.startDate).toLocaleDateString() : 'Active'} →{' '}
+                              {promo.expiresAt ? new Date(promo.expiresAt).toLocaleDateString() : 'N/A'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4 font-mono font-bold text-emerald-900">
+                          ₦{promo.amountNaira.toLocaleString()}
+                        </td>
+                        <td className="p-4">
+                          <button
+                            onClick={() => removeActivePromotion(promo.id)}
+                            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] rounded-lg transition-all flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Remove Promotion</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Expired / Past Promotions History */}
+          {expiredPromos.length > 0 && (
+            <div className="space-y-4 pt-4 border-t border-gray-200">
+              <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wider">
+                Expired & Rejected History ({expiredPromos.length})
+              </h3>
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden text-xs">
+                <div className="p-3 bg-gray-50 border-b font-bold text-gray-500 flex justify-between">
+                  <span>Merchant</span>
+                  <span>Promo Type</span>
+                  <span>Status</span>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {expiredPromos.map((p) => (
+                    <div key={p.id} className="p-3 flex justify-between items-center text-gray-600">
+                      <div>
+                        <strong>{p.vendorName}</strong>
+                        <span className="text-[10px] text-gray-400 block font-mono">₦{p.amountNaira.toLocaleString()}</span>
+                      </div>
+                      <span className="text-[11px]">{p.promoTitle}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${p.status === 'approved' ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-700'}`}>
+                        {p.status === 'approved' ? 'Expired' : 'Rejected'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* TAB 3: All Vendors Management */}
+      {/* TAB 3: All Directory Merchants Management */}
       {adminTab === 'all-vendors' && (
         <div className="space-y-4">
-          <h3 className="text-base font-black text-emerald-950 font-display">
-            All Registered Storefronts ({vendors.length})
-          </h3>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-black text-emerald-950 font-display">
+                Registered Directory Storefronts ({vendors.length})
+              </h3>
+              <p className="text-xs text-gray-500">
+                Filter, inspect metrics, approve, suspend, reactivate, or permanently delete local business profiles.
+              </p>
+            </div>
+
+            {/* Controls: Search & Filters */}
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              {/* Search Box */}
+              <div className="relative flex-1 md:w-56">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={vendorSearch}
+                  onChange={(e) => setVendorSearch(e.target.value)}
+                  placeholder="Search vendor name or email..."
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-600"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <select
+                value={vendorStatusFilter}
+                onChange={(e: any) => setVendorStatusFilter(e.target.value)}
+                className="py-2 px-3 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-600 bg-white font-bold"
+              >
+                <option value="all">All Statuses</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
+                <option value="rejected">Rejected</option>
+              </select>
+
+              {/* Category Filter */}
+              <select
+                value={vendorCategoryFilter}
+                onChange={(e) => setVendorCategoryFilter(e.target.value)}
+                className="py-2 px-3 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-600 bg-white font-bold"
+              >
+                <option value="All">All Categories</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           <div className="bg-white rounded-3xl border border-gray-150 overflow-hidden shadow-sm">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase">
-                <tr>
-                  <th className="p-4">Storefront</th>
-                  <th className="p-4">Category</th>
-                  <th className="p-4">Area</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Badges</th>
-                  <th className="p-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {vendors.map((v) => (
-                  <tr key={v.id} className="hover:bg-gray-50/80 transition-colors">
-                    <td className="p-4 flex items-center gap-3">
-                      <img src={v.logoUrl} alt={v.businessName} className="w-10 h-10 rounded-xl object-cover" />
-                      <div>
-                        <strong className="font-bold text-emerald-950 block">{v.businessName}</strong>
-                        <span className="text-[10px] text-gray-400">{v.ownerEmail}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 font-semibold text-gray-700">{v.category}</td>
-                    <td className="p-4 font-bold text-emerald-800">{v.area}</td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          v.status === 'approved'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : v.status === 'pending'
-                            ? 'bg-amber-100 text-amber-900'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {v.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="p-4 space-x-1">
-                      {v.isVerified && <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded">Verified</span>}
-                      {v.isFeatured && <span className="px-2 py-0.5 bg-amber-400 text-emerald-950 text-[10px] font-bold rounded">Featured</span>}
-                    </td>
-                    <td className="p-4 space-x-1">
-                      <button
-                        onClick={() => toggleVerifyVendor(v.id)}
-                        className="px-2 py-1 bg-emerald-100 text-emerald-950 font-bold text-[10px] rounded hover:bg-emerald-200"
-                      >
-                        Toggle Verify
-                      </button>
-                      <button
-                        onClick={() => toggleFeatureVendor(v.id)}
-                        className="px-2 py-1 bg-amber-100 text-amber-950 font-bold text-[10px] rounded hover:bg-amber-200"
-                      >
-                        Toggle Feature
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase">
+                  <tr>
+                    <th className="p-4">Storefront</th>
+                    <th className="p-4">Owner Info</th>
+                    <th className="p-4">Area & Category</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Engagement Stats</th>
+                    <th className="p-4 text-right">Management Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredVendors.map((v) => {
+                    const vendorProds = products.filter((p) => p.vendorId === v.id);
+                    const vendorEnqs = enquiries.filter((e) => e.vendorId === v.id);
+                    const vendorRevs = reviews.filter((r) => r.vendorId === v.id);
+
+                    return (
+                      <tr key={v.id} className="hover:bg-gray-50/80 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <img src={v.logoUrl} alt={v.businessName} className="w-10 h-10 rounded-xl object-cover border" />
+                            <div>
+                              <strong className="font-bold text-emerald-950 block">{v.businessName}</strong>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {v.isVerified && <span className="px-1.5 py-0.2 bg-emerald-600 text-white text-[9px] font-bold rounded">Verified</span>}
+                                {v.isFeatured && <span className="px-1.5 py-0.2 bg-amber-400 text-emerald-950 text-[9px] font-bold rounded">Featured</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="p-4">
+                          <span className="font-semibold text-gray-800 block">{v.ownerName}</span>
+                          <span className="text-[10px] text-gray-500 font-mono">{v.ownerEmail}</span>
+                        </td>
+
+                        <td className="p-4">
+                          <strong className="text-emerald-800 block font-bold">{v.area}</strong>
+                          <span className="text-[10px] text-gray-500">{v.category}</span>
+                        </td>
+
+                        <td className="p-4">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              v.status === 'approved'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : v.status === 'pending'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                                : v.status === 'suspended'
+                                ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                                : 'bg-red-100 text-red-800 border border-red-200'
+                            }`}
+                          >
+                            {v.status}
+                          </span>
+                        </td>
+
+                        <td className="p-4">
+                          <div className="flex items-center gap-3 text-[11px] text-gray-600">
+                            <span title="Products Listed" className="font-mono font-bold text-emerald-900">
+                              {vendorProds.length} Prods
+                            </span>
+                            <span title="Enquiries" className="font-mono text-gray-500">
+                              {vendorEnqs.length} Enq
+                            </span>
+                            <span title="WhatsApp Clicks" className="font-mono text-emerald-700">
+                              {v.whatsappClicks || 0} WA
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            <button
+                              onClick={() => setSelectedVendorDetail(v)}
+                              className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-[10px] rounded-lg flex items-center gap-1"
+                              title="Inspect Details"
+                            >
+                              <Eye className="w-3 h-3 text-emerald-700" />
+                              <span>Details</span>
+                            </button>
+
+                            {v.status === 'pending' && (
+                              <button
+                                onClick={() => approveVendor(v.id)}
+                                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[10px] rounded-lg"
+                              >
+                                Approve
+                              </button>
+                            )}
+
+                            {v.status === 'approved' && (
+                              <button
+                                onClick={() => suspendVendor(v.id)}
+                                className="px-2.5 py-1 bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold text-[10px] rounded-lg"
+                              >
+                                Suspend
+                              </button>
+                            )}
+
+                            {(v.status === 'suspended' || v.status === 'rejected') && (
+                              <button
+                                onClick={() => reactivateVendor(v.id)}
+                                className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-[10px] rounded-lg flex items-center gap-1"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                <span>Reactivate</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => setVendorToDelete(v)}
+                              className="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[10px] rounded-lg flex items-center gap-1"
+                              title="Delete Vendor Permanently"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -413,7 +795,311 @@ export const AdminPortalView: React.FC = () => {
         </div>
       )}
 
-      {/* Proof Preview Modal */}
+      {/* MODAL 1: Slot Assignment Modal */}
+      {assignSlotModalReq && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-base font-black text-emerald-950 font-display flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                <span>Configure Promotion Placement Slot</span>
+              </h3>
+              <button
+                onClick={() => setAssignSlotModalReq(null)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSlotApproval} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Target Merchant / Vendor
+                </label>
+                <div className="p-3 bg-gray-50 rounded-xl border font-bold text-emerald-950">
+                  {assignSlotModalReq.vendorName} (Ref: {assignSlotModalReq.txnRef})
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Assign Promotion Slot Type
+                </label>
+                <select
+                  value={assignedSlot}
+                  onChange={(e: any) => setAssignedSlot(e.target.value)}
+                  className="w-full p-2.5 border rounded-xl font-bold bg-white focus:outline-none focus:border-emerald-600"
+                >
+                  <option value="homepage_banner">Homepage Main Hero Banner Slot</option>
+                  <option value="featured_product">Featured Products Grid Slot</option>
+                  <option value="sponsored_vendor">Sponsored Vendor Directory Slot</option>
+                  <option value="category_top">Category Top Placement Spot</option>
+                </select>
+              </div>
+
+              {assignedSlot === 'homepage_banner' && (
+                <div className="space-y-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <div>
+                    <label className="block font-bold text-amber-950 mb-0.5">Banner Heading</label>
+                    <input
+                      type="text"
+                      value={bannerHeading}
+                      onChange={(e) => setBannerHeading(e.target.value)}
+                      className="w-full p-2 border rounded-lg bg-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-amber-950 mb-0.5">Banner Subtext</label>
+                    <input
+                      type="text"
+                      value={bannerSubtext}
+                      onChange={(e) => setBannerSubtext(e.target.value)}
+                      className="w-full p-2 border rounded-lg bg-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-amber-950 mb-0.5">Banner Background Image URL</label>
+                    <input
+                      type="url"
+                      value={bannerImageUrl}
+                      onChange={(e) => setBannerImageUrl(e.target.value)}
+                      className="w-full p-2 border rounded-lg bg-white"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              {assignedSlot === 'featured_product' && (
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    Select Specific Product to Feature
+                  </label>
+                  <select
+                    value={assignedTargetId}
+                    onChange={(e) => setAssignedTargetId(e.target.value)}
+                    className="w-full p-2.5 border rounded-xl bg-white font-semibold"
+                  >
+                    {products
+                      .filter((p) => p.vendorId === assignSlotModalReq.vendorId)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} (₦{p.price.toLocaleString()})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-full p-2.5 border rounded-xl bg-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Duration (Weeks)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={52}
+                    value={customDurationWeeks}
+                    onChange={(e) => setCustomDurationWeeks(Number(e.target.value))}
+                    className="w-full p-2.5 border rounded-xl bg-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAssignSlotModalReq(null)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-800 text-amber-300 font-bold rounded-xl shadow"
+                >
+                  Approve & Launch Promotion
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: Vendor Details Drawer/Modal */}
+      {selectedVendorDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={selectedVendorDetail.logoUrl}
+                  alt={selectedVendorDetail.businessName}
+                  className="w-12 h-12 rounded-2xl object-cover border"
+                />
+                <div>
+                  <h3 className="text-base font-black text-emerald-950 font-display">
+                    {selectedVendorDetail.businessName}
+                  </h3>
+                  <span className="text-xs text-gray-500 font-mono">
+                    Owner: {selectedVendorDetail.ownerName} ({selectedVendorDetail.ownerEmail})
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedVendorDetail(null)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-gray-700">
+              <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-2xl">
+                <div>
+                  <strong>Location Area:</strong> {selectedVendorDetail.area}, Ikorodu
+                </div>
+                <div>
+                  <strong>Category:</strong> {selectedVendorDetail.category}
+                </div>
+                <div>
+                  <strong>WhatsApp:</strong> +{selectedVendorDetail.whatsapp}
+                </div>
+                <div>
+                  <strong>Phone:</strong> {selectedVendorDetail.phone}
+                </div>
+              </div>
+
+              <div>
+                <strong>Full Address:</strong> {selectedVendorDetail.address}
+              </div>
+
+              <div>
+                <strong>Business Description:</strong> {selectedVendorDetail.description}
+              </div>
+
+              <div className="pt-2 border-t space-y-2">
+                <h4 className="font-bold text-emerald-950">Verification Documents</h4>
+                <div className="flex flex-wrap gap-3">
+                  {selectedVendorDetail.cacCertificateUrl ? (
+                    <a
+                      href={selectedVendorDetail.cacCertificateUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-emerald-50 text-emerald-800 font-bold rounded-lg border border-emerald-200 inline-flex items-center gap-1"
+                    >
+                      <span>CAC Certificate</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">No CAC Uploaded</span>
+                  )}
+
+                  {selectedVendorDetail.ninDocumentUrl ? (
+                    <a
+                      href={selectedVendorDetail.ninDocumentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-emerald-50 text-emerald-800 font-bold rounded-lg border border-emerald-200 inline-flex items-center gap-1"
+                    >
+                      <span>NIN Document</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">No NIN Uploaded</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t">
+                <h4 className="font-bold text-emerald-950 mb-2">Analytics & Engagement</h4>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 bg-gray-50 rounded-xl border">
+                    <span className="block text-[10px] text-gray-500">Products</span>
+                    <strong className="font-mono text-sm text-emerald-900">
+                      {products.filter((p) => p.vendorId === selectedVendorDetail.id).length}
+                    </strong>
+                  </div>
+                  <div className="p-2 bg-gray-50 rounded-xl border">
+                    <span className="block text-[10px] text-gray-500">Enquiries</span>
+                    <strong className="font-mono text-sm text-emerald-900">
+                      {enquiries.filter((e) => e.vendorId === selectedVendorDetail.id).length}
+                    </strong>
+                  </div>
+                  <div className="p-2 bg-gray-50 rounded-xl border">
+                    <span className="block text-[10px] text-gray-500">WhatsApp Clicks</span>
+                    <strong className="font-mono text-sm text-emerald-900">
+                      {selectedVendorDetail.whatsappClicks || 0}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t flex justify-end">
+              <button
+                onClick={() => setSelectedVendorDetail(null)}
+                className="px-5 py-2 bg-emerald-950 text-white font-bold text-xs rounded-xl"
+              >
+                Close Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Delete Vendor Confirmation Modal */}
+      {vendorToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-red-200 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-black text-slate-900">
+              Permanently Delete Vendor?
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to permanently delete <strong>"{vendorToDelete.businessName}"</strong>? This will remove the vendor storefront, all listed products, promotion requests, reviews, and enquiries.
+            </p>
+            <p className="text-[11px] text-red-600 font-bold bg-red-50 p-2 rounded-xl border border-red-200">
+              This action cannot be undone. System audit log will record this deletion.
+            </p>
+            <div className="flex justify-center gap-3 pt-2">
+              <button
+                onClick={() => setVendorToDelete(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteVendorPermanently(vendorToDelete.id);
+                  setVendorToDelete(null);
+                }}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow"
+              >
+                Confirm Permanent Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Proof Screenshot Modal */}
       {previewProofUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 text-center">
