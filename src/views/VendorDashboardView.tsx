@@ -715,7 +715,7 @@ export const VendorDashboardView: React.FC = () => {
       {/* Add Product Modal */}
       {addProductModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-black text-emerald-950 font-display">
               Add New Product / Service
             </h3>

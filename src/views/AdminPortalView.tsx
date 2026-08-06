@@ -497,7 +497,8 @@ export const AdminPortalView: React.FC = () => {
               </div>
             ) : (
               <div className="bg-white rounded-3xl border border-gray-150 overflow-hidden shadow-sm">
-                <table className="w-full text-left text-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
                   <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase">
                     <tr>
                       <th className="p-4">Vendor</th>
@@ -545,7 +546,8 @@ export const AdminPortalView: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
+          )}
           </div>
 
           {/* Expired / Past Promotions History */}
@@ -798,7 +800,7 @@ export const AdminPortalView: React.FC = () => {
       {/* MODAL 1: Slot Assignment Modal */}
       {assignSlotModalReq && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-slate-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="text-base font-black text-emerald-950 font-display flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-500" />
