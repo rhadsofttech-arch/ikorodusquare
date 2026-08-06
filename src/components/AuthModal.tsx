@@ -66,23 +66,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       const { data, error } = await signInWithSupabase(email, password);
       if (error) {
-        const lowerEmail = email.toLowerCase().trim();
-        if (lowerEmail.includes('admin')) {
-          setRole('admin');
-          setSuccessMessage('Successfully signed in as Administrator.');
-        } else if (lowerEmail.includes('vendor')) {
-          setRole('vendor');
-          setSuccessMessage('Successfully signed in to Vendor Account.');
-        } else {
-          setRole('customer');
-          setSuccessMessage('Successfully signed in as Customer.');
-        }
+        setErrorMessage(error.message || 'Authentication failed. Please check your credentials.');
       } else if (data?.user) {
         setSuccessMessage('Successfully authenticated!');
+        setTimeout(() => {
+          onClose();
+        }, 800);
       }
-      setTimeout(() => {
-        onClose();
-      }, 800);
     } catch (err: any) {
       setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
     } finally {

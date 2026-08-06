@@ -525,8 +525,58 @@ export async function saveAuditLogToSupabase(log: AuditLog): Promise<boolean> {
 }
 
 // ==========================================
-// AUTH HELPERS (SUPABASE AUTH)
+// AUTH & PROFILES HELPERS (SUPABASE AUTH)
 // ==========================================
+
+export async function createProfileInSupabase(profile: {
+  id: string;
+  email: string;
+  role: 'customer' | 'vendor' | 'admin';
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  area?: string;
+}): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const row = {
+      id: profile.id,
+      email: profile.email,
+      role: profile.role,
+      first_name: profile.firstName || '',
+      last_name: profile.lastName || '',
+      phone: profile.phone || '',
+      area: profile.area || 'Sabo',
+      created_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('profiles').upsert(row);
+    if (error) {
+      console.warn('Supabase profile creation error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Error creating profile in Supabase:', err);
+    return false;
+  }
+}
+
+export async function fetchProfileFromSupabase(userId: string) {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return data;
+  } catch (err) {
+    console.error('Error fetching profile from Supabase:', err);
+    return null;
+  }
+}
 
 export async function supabaseSignUp(email: string, password: string, userData: Partial<User>) {
   if (!isSupabaseConfigured()) {
@@ -547,6 +597,21 @@ export async function supabaseSignUp(email: string, password: string, userData: 
   });
 
   if (error) throw error;
+  if (!data.user) {
+    throw new Error('Supabase Auth user creation failed.');
+  }
+
+  // Create matching record in public.profiles table using user's UUID
+  await createProfileInSupabase({
+    id: data.user.id,
+    email: email,
+    role: (userData.role as any) || 'customer',
+    firstName: userData.firstName,
+    lastName: userData.lastName,
+    phone: userData.phone,
+    area: userData.area,
+  });
+
   return data;
 }
 

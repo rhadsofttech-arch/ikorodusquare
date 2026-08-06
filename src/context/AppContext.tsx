@@ -41,6 +41,8 @@ import {
   saveNotificationToSupabase,
   fetchAuditLogsFromSupabase,
   saveAuditLogToSupabase,
+  fetchProfileFromSupabase,
+  createProfileInSupabase,
   supabaseSignUp,
   supabaseSignIn,
   supabaseSignOut,
@@ -81,6 +83,7 @@ interface AppContextType {
   // Actions
   addVendorRegistration: (vendorData: Partial<Vendor>) => Vendor;
   registerCustomer: (customerData: {
+    id?: string;
     firstName: string;
     lastName: string;
     email: string;
@@ -264,20 +267,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     })();
 
     // Listen to Supabase Auth Changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const u = session.user;
+        const profile = await fetchProfileFromSupabase(u.id);
         const meta = u.user_metadata || {};
-        const role = (meta.role as UserRole) || 'customer';
+        const role = (profile?.role || meta.role as UserRole) || 'customer';
         setRoleState(role);
         setCurrentUser({
           id: u.id,
           email: u.email || '',
-          firstName: meta.firstName || 'User',
-          lastName: meta.lastName || '',
-          phone: meta.phone || '',
+          firstName: profile?.first_name || meta.firstName || 'User',
+          lastName: profile?.last_name || meta.lastName || '',
+          phone: profile?.phone || meta.phone || '',
           role: role,
-          area: meta.area || 'Sabo',
+          area: profile?.area || meta.area || 'Sabo',
           isVerified: true,
           createdAt: u.created_at || new Date().toISOString(),
         });
@@ -361,7 +365,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Vendor actions
   const addVendorRegistration = (vendorData: Partial<Vendor>): Vendor => {
     const newVendor: Vendor = {
-      id: `v-${Date.now()}`,
+      id: vendorData.id || `v-${Date.now()}`,
       businessName: vendorData.businessName || 'New Business',
       slug: (vendorData.businessName || 'new-business').toLowerCase().replace(/\s+/g, '-'),
       category: vendorData.category || 'General Services',
@@ -442,6 +446,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const registerCustomer = (customerData: {
+    id?: string;
     firstName: string;
     lastName: string;
     email: string;
@@ -449,7 +454,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     area: IkoroduArea;
   }): User => {
     const newUser: User = {
-      id: `usr-${Date.now()}`,
+      id: customerData.id || `usr-${Date.now()}`,
       email: customerData.email,
       firstName: customerData.firstName,
       lastName: customerData.lastName,

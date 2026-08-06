@@ -28,10 +28,14 @@ import { IkoroduArea, Vendor, User as CustomerUser } from '../types';
 type AccountType = 'vendor' | 'customer';
 
 export const VendorRegisterView: React.FC = () => {
-  const { addVendorRegistration, registerCustomer, categories, setActiveTab, setRole } = useApp();
+  const { addVendorRegistration, registerCustomer, categories, setActiveTab, setRole, signUpWithSupabase } = useApp();
 
   // Mode Switch: Vendor or Customer Registration
   const [accountType, setAccountType] = useState<AccountType>('vendor');
+
+  // Registration loading and error states
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [regError, setRegError] = useState<string>('');
 
   // Shared OTP State
   const [otpModalOpen, setOtpModalOpen] = useState<boolean>(false);
@@ -144,32 +148,53 @@ export const VendorRegisterView: React.FC = () => {
     }
   };
 
-  const handleVendorSubmitRegistration = () => {
-    const newVendor = addVendorRegistration({
-      businessName: vBusinessName,
-      category: vCategory,
-      subcategory: vSubcategory,
-      description: vDescription,
-      address: vAddress,
-      lga: vLga,
-      area: vArea,
-      state: vState,
-      country: vCountry,
-      whatsapp: vWhatsapp || '2348156655091',
-      phone: vPhone || '+234 815 665 5091',
-      yearsInBusiness: vYearsInBusiness,
-      ownerName: vOwnerName || 'Business Owner',
-      ownerEmail: vEmail,
-      ownerPhone: vOwnerPhone || vPhone,
-      logoUrl: vLogoUrl,
-      coverImageUrl: vCoverImageUrl,
-      galleryUrls: vGalleryUrls,
-      cacCertificateUrl: vCacDocName ? 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5' : undefined,
-      ninDocUrl: vNinDocName ? 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5' : undefined,
-    });
+  const handleVendorSubmitRegistration = async () => {
+    setSubmitting(true);
+    setRegError('');
+    try {
+      // 1. Create real Supabase Auth user (automatically creates public.profiles record)
+      const authResult = await signUpWithSupabase(vEmail, vPassword, {
+        firstName: vOwnerName,
+        phone: vPhone || vOwnerPhone,
+        role: 'vendor',
+        area: vArea,
+      });
 
-    setSubmittedVendor(newVendor);
-    setVendorStep(6); // Success screen
+      const userId = authResult?.user?.id || `v-user-${Date.now()}`;
+
+      // 2. Register vendor in database and app state
+      const newVendor = addVendorRegistration({
+        id: userId,
+        businessName: vBusinessName,
+        category: vCategory,
+        subcategory: vSubcategory,
+        description: vDescription,
+        address: vAddress,
+        lga: vLga,
+        area: vArea,
+        state: vState,
+        country: vCountry,
+        whatsapp: vWhatsapp || '2348156655091',
+        phone: vPhone || '+234 815 665 5091',
+        yearsInBusiness: vYearsInBusiness,
+        ownerName: vOwnerName || 'Business Owner',
+        ownerEmail: vEmail,
+        ownerPhone: vOwnerPhone || vPhone,
+        logoUrl: vLogoUrl,
+        coverImageUrl: vCoverImageUrl,
+        galleryUrls: vGalleryUrls,
+        cacCertificateUrl: vCacDocName ? 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5' : undefined,
+        ninDocUrl: vNinDocName ? 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5' : undefined,
+      });
+
+      setSubmittedVendor(newVendor);
+      setVendorStep(6); // Success screen
+    } catch (err: any) {
+      console.error('Vendor auth registration error:', err);
+      setRegError(err.message || 'Failed to create user in Supabase Authentication. Registration cannot proceed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ---------------- CUSTOMER HANDLERS ----------------
@@ -185,7 +210,7 @@ export const VendorRegisterView: React.FC = () => {
     setCustomerStep(2);
   };
 
-  const handleCustomerSubmitRegistration = (e: React.FormEvent) => {
+  const handleCustomerSubmitRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cFirstName.trim() || !cLastName.trim() || !cPhone.trim()) {
       alert('Please complete all required fields.');
@@ -201,17 +226,39 @@ export const VendorRegisterView: React.FC = () => {
     }
 
     setCPasswordError('');
+    setRegError('');
+    setSubmitting(true);
 
-    const newCustomer = registerCustomer({
-      firstName: cFirstName,
-      lastName: cLastName,
-      email: cEmail,
-      phone: cPhone,
-      area: cArea,
-    });
+    try {
+      // 1. Create real Supabase Auth user (automatically creates public.profiles record)
+      const authResult = await signUpWithSupabase(cEmail, cPassword, {
+        firstName: cFirstName,
+        lastName: cLastName,
+        phone: cPhone,
+        role: 'customer',
+        area: cArea,
+      });
 
-    setRegisteredCustomer(newCustomer);
-    setCustomerStep(3); // Success Screen (Auto Logged In)
+      const userId = authResult?.user?.id || `usr-${Date.now()}`;
+
+      // 2. Register customer in state/profiles
+      const newCustomer = registerCustomer({
+        id: userId,
+        firstName: cFirstName,
+        lastName: cLastName,
+        email: cEmail,
+        phone: cPhone,
+        area: cArea,
+      });
+
+      setRegisteredCustomer(newCustomer);
+      setCustomerStep(3); // Success Screen (Auto Logged In)
+    } catch (err: any) {
+      console.error('Customer auth registration error:', err);
+      setRegError(err.message || 'Failed to create user in Supabase Authentication. Registration cannot proceed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -781,6 +828,16 @@ export const VendorRegisterView: React.FC = () => {
                 </div>
               </div>
 
+              {regError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 text-xs text-red-800">
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Registration Failed</p>
+                    <p>{regError}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-xs text-amber-950">
                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <p>
@@ -792,6 +849,7 @@ export const VendorRegisterView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setVendorStep(4)}
+                  disabled={submitting}
                   className="px-5 py-2.5 bg-gray-100 font-bold text-xs text-gray-700 rounded-xl"
                 >
                   ← Edit Media
@@ -799,10 +857,11 @@ export const VendorRegisterView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleVendorSubmitRegistration}
-                  className="px-8 py-3.5 bg-gradient-to-r from-emerald-800 to-teal-800 text-amber-300 font-bold text-xs rounded-xl shadow-lg hover:from-emerald-900 hover:to-teal-900 transition-all flex items-center gap-2"
+                  disabled={submitting}
+                  className="px-8 py-3.5 bg-gradient-to-r from-emerald-800 to-teal-800 text-amber-300 font-bold text-xs rounded-xl shadow-lg hover:from-emerald-900 hover:to-teal-900 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4 text-amber-300" />
-                  <span>Submit Application Now</span>
+                  <span>{submitting ? 'Creating Supabase Account...' : 'Submit Application Now'}</span>
                 </button>
               </div>
             </div>
@@ -1001,6 +1060,16 @@ export const VendorRegisterView: React.FC = () => {
                   </p>
                 )}
 
+                {regError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 text-xs text-red-800">
+                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Registration Failed</p>
+                      <p>{regError}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 pt-2">
                   <input
                     type="checkbox"
@@ -1018,16 +1087,18 @@ export const VendorRegisterView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setCustomerStep(1)}
+                    disabled={submitting}
                     className="px-5 py-2.5 bg-gray-100 font-bold text-xs text-gray-700 rounded-xl"
                   >
                     ← Back
                   </button>
                   <button
                     type="submit"
-                    className="px-8 py-3.5 bg-gradient-to-r from-emerald-800 to-teal-800 text-amber-300 font-bold text-xs rounded-xl shadow-lg hover:from-emerald-900 hover:to-teal-900 transition-all flex items-center gap-2"
+                    disabled={submitting}
+                    className="px-8 py-3.5 bg-gradient-to-r from-emerald-800 to-teal-800 text-amber-300 font-bold text-xs rounded-xl shadow-lg hover:from-emerald-900 hover:to-teal-900 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
                     <UserCheck className="w-4 h-4 text-amber-300" />
-                    <span>Create Account & Auto Log In</span>
+                    <span>{submitting ? 'Creating Supabase Account...' : 'Create Account & Auto Log In'}</span>
                   </button>
                 </div>
               </form>
