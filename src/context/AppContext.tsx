@@ -23,8 +23,33 @@ import {
   INITIAL_AUDIT_LOGS,
   CATEGORIES,
 } from '../data/mockData';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import {
+  fetchVendorsFromSupabase,
+  saveVendorToSupabase,
+  updateVendorInSupabase,
+  fetchProductsFromSupabase,
+  saveProductToSupabase,
+  deleteProductFromSupabase,
+  fetchReviewsFromSupabase,
+  saveReviewToSupabase,
+  fetchEnquiriesFromSupabase,
+  saveEnquiryToSupabase,
+  fetchPromotionsFromSupabase,
+  savePromotionToSupabase,
+  fetchNotificationsFromSupabase,
+  saveNotificationToSupabase,
+  fetchAuditLogsFromSupabase,
+  saveAuditLogToSupabase,
+  supabaseSignUp,
+  supabaseSignIn,
+  supabaseSignOut,
+} from '../lib/supabaseDb';
 
 interface AppContextType {
+  // Supabase status
+  isSupabaseConnected: boolean;
+
   // Role & Auth
   currentRole: UserRole;
   setRole: (role: UserRole) => void;
@@ -97,6 +122,11 @@ interface AppContextType {
   // Track engagement clicks
   trackVendorWhatsAppClick: (vendorId: string) => void;
   trackVendorPhoneClick: (vendorId: string) => void;
+
+  // Supabase Auth Methods
+  signInWithSupabase: (e: string, p: string) => Promise<any>;
+  signUpWithSupabase: (e: string, p: string, data: Partial<User>) => Promise<any>;
+  signOutSupabase: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -104,6 +134,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const LOCAL_STORAGE_KEY = 'ikorodu_square_state_v1';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const isSupabaseConnected = isSupabaseConfigured();
+
   // Default user is Guest or Customer
   const [currentRole, setRoleState] = useState<UserRole>('guest');
   const [activeTab, setActiveTab] = useState<string>('home');
@@ -161,6 +193,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedArea, setSelectedArea] = useState<IkoroduArea | 'All'>('All');
+
+  // Supabase Initial Load & Auth Sync
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    // Load initial data from Supabase
+    (async () => {
+      const sbVendors = await fetchVendorsFromSupabase();
+      if (sbVendors && sbVendors.length > 0) setVendors(sbVendors);
+
+      const sbProducts = await fetchProductsFromSupabase();
+      if (sbProducts && sbProducts.length > 0) setProducts(sbProducts);
+
+      const sbReviews = await fetchReviewsFromSupabase();
+      if (sbReviews && sbReviews.length > 0) setReviews(sbReviews);
+
+      const sbEnquiries = await fetchEnquiriesFromSupabase();
+      if (sbEnquiries && sbEnquiries.length > 0) setEnquiries(sbEnquiries);
+
+      const sbPromos = await fetchPromotionsFromSupabase();
+      if (sbPromos && sbPromos.length > 0) setPromotionRequests(sbPromos);
+
+      const sbNotifs = await fetchNotificationsFromSupabase();
+      if (sbNotifs && sbNotifs.length > 0) setNotifications(sbNotifs);
+
+      const sbLogs = await fetchAuditLogsFromSupabase();
+      if (sbLogs && sbLogs.length > 0) setAuditLogs(sbLogs);
+    })();
+
+    // Listen to Supabase Auth Changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const u = session.user;
+        const meta = u.user_metadata || {};
+        const role = (meta.role as UserRole) || 'customer';
+        setRoleState(role);
+        setCurrentUser({
+          id: u.id,
+          email: u.email || '',
+          firstName: meta.firstName || 'User',
+          lastName: meta.lastName || '',
+          phone: meta.phone || '',
+          role: role,
+          area: meta.area || 'Sabo',
+          isVerified: true,
+          createdAt: u.created_at || new Date().toISOString(),
+        });
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   // Persistence Effects
   useEffect(() => {
@@ -283,6 +369,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setVendors((prev) => [newVendor, ...prev]);
+    saveVendorToSupabase(newVendor);
 
     // Add admin notification
     const newNotif: NotificationItem = {
@@ -296,19 +383,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
     setNotifications((prev) => [newNotif, ...prev]);
+    saveNotificationToSupabase(newNotif);
 
     // Audit log
-    setAuditLogs((prev) => [
-      {
-        id: `log-${Date.now()}`,
-        action: 'VENDOR_REGISTERED',
-        performedBy: newVendor.ownerName,
-        role: 'vendor',
-        details: `Registered ${newVendor.businessName} in ${newVendor.area}`,
-        timestamp: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VENDOR_REGISTERED',
+      performedBy: newVendor.ownerName,
+      role: 'vendor',
+      details: `Registered ${newVendor.businessName} in ${newVendor.area}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
 
     return newVendor;
   };
@@ -335,32 +422,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRole('customer');
 
     // Add notification
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        userId: newUser.id,
-        targetRole: 'customer',
-        title: 'Welcome to IkoroduSquare!',
-        message: `Hi ${customerData.firstName}, your customer account is active. Discover local businesses and shop products.`,
-        type: 'system',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
+    const notif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      userId: newUser.id,
+      targetRole: 'customer',
+      title: 'Welcome to IkoroduSquare!',
+      message: `Hi ${customerData.firstName}, your customer account is active. Discover local businesses and shop products.`,
+      type: 'system',
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications((prev) => [notif, ...prev]);
+    saveNotificationToSupabase(notif);
 
     // Audit log
-    setAuditLogs((prev) => [
-      {
-        id: `log-${Date.now()}`,
-        action: 'CUSTOMER_REGISTERED',
-        performedBy: `${customerData.firstName} ${customerData.lastName}`,
-        role: 'customer',
-        details: `Registered customer account (${customerData.email}) in ${customerData.area}`,
-        timestamp: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'CUSTOMER_REGISTERED',
+      performedBy: `${customerData.firstName} ${customerData.lastName}`,
+      role: 'customer',
+      details: `Registered customer account (${customerData.email}) in ${customerData.area}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
 
     return newUser;
   };
@@ -369,53 +454,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setVendors((prev) =>
       prev.map((v) => (v.id === vendorId ? { ...v, status: 'approved', isVerified: true } : v))
     );
+    updateVendorInSupabase(vendorId, { status: 'approved', isVerified: true });
+
     // Add audit
-    setAuditLogs((prev) => [
-      {
-        id: `log-${Date.now()}`,
-        action: 'VENDOR_APPROVED',
-        performedBy: 'Admin',
-        role: 'admin',
-        details: `Approved vendor ID: ${vendorId}`,
-        timestamp: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VENDOR_APPROVED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Approved vendor ID: ${vendorId}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
   };
 
   const rejectVendor = (vendorId: string, reason?: string) => {
     setVendors((prev) =>
       prev.map((v) => (v.id === vendorId ? { ...v, status: 'rejected' } : v))
     );
-    setAuditLogs((prev) => [
-      {
-        id: `log-${Date.now()}`,
-        action: 'VENDOR_REJECTED',
-        performedBy: 'Admin',
-        role: 'admin',
-        details: `Rejected vendor ID: ${vendorId}. Reason: ${reason || 'N/A'}`,
-        timestamp: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
+    updateVendorInSupabase(vendorId, { status: 'rejected' });
+
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VENDOR_REJECTED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Rejected vendor ID: ${vendorId}. Reason: ${reason || 'N/A'}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
   };
 
   const suspendVendor = (vendorId: string) => {
     setVendors((prev) =>
       prev.map((v) => (v.id === vendorId ? { ...v, status: 'suspended' } : v))
     );
+    updateVendorInSupabase(vendorId, { status: 'suspended' });
   };
 
   const toggleVerifyVendor = (vendorId: string) => {
+    const target = vendors.find((v) => v.id === vendorId);
+    if (!target) return;
+    const nextVal = !target.isVerified;
     setVendors((prev) =>
-      prev.map((v) => (v.id === vendorId ? { ...v, isVerified: !v.isVerified } : v))
+      prev.map((v) => (v.id === vendorId ? { ...v, isVerified: nextVal } : v))
     );
+    updateVendorInSupabase(vendorId, { isVerified: nextVal });
   };
 
   const toggleFeatureVendor = (vendorId: string) => {
+    const target = vendors.find((v) => v.id === vendorId);
+    if (!target) return;
+    const nextVal = !target.isFeatured;
     setVendors((prev) =>
-      prev.map((v) => (v.id === vendorId ? { ...v, isFeatured: !v.isFeatured } : v))
+      prev.map((v) => (v.id === vendorId ? { ...v, isFeatured: nextVal } : v))
     );
+    updateVendorInSupabase(vendorId, { isFeatured: nextVal });
   };
 
   // Product Actions
@@ -448,22 +544,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setProducts((prev) => [newProduct, ...prev]);
+    saveProductToSupabase(newProduct);
     return newProduct;
   };
 
   const updateProduct = (productId: string, productData: Partial<Product>) => {
     setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, ...productData } : p))
+      prev.map((p) => {
+        if (p.id === productId) {
+          const updated = { ...p, ...productData };
+          saveProductToSupabase(updated);
+          return updated;
+        }
+        return p;
+      })
     );
   };
 
   const deleteProduct = (productId: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== productId));
+    deleteProductFromSupabase(productId);
   };
 
   const approveProduct = (productId: string) => {
     setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, status: 'approved' } : p))
+      prev.map((p) => {
+        if (p.id === productId) {
+          const updated = { ...p, status: 'approved' as const };
+          saveProductToSupabase(updated);
+          return updated;
+        }
+        return p;
+      })
     );
   };
 
@@ -475,6 +587,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
     setReviews((prev) => [newReview, ...prev]);
+    saveReviewToSupabase(newReview);
 
     // Recalculate vendor rating
     const vendorReviews = [...reviews.filter((r) => r.vendorId === reviewData.vendorId), newReview];
@@ -482,21 +595,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const avgRating = Number((totalRating / vendorReviews.length).toFixed(1));
 
     setVendors((prev) =>
-      prev.map((v) =>
-        v.id === reviewData.vendorId
-          ? { ...v, rating: avgRating, reviewCount: vendorReviews.length }
-          : v
-      )
+      prev.map((v) => {
+        if (v.id === reviewData.vendorId) {
+          const updated = { ...v, rating: avgRating, reviewCount: vendorReviews.length };
+          updateVendorInSupabase(v.id, { rating: avgRating, reviewCount: vendorReviews.length });
+          return updated;
+        }
+        return v;
+      })
     );
   };
 
   const replyReview = (reviewId: string, replyText: string) => {
     setReviews((prev) =>
-      prev.map((r) =>
-        r.id === reviewId
-          ? { ...r, vendorReply: replyText, vendorRepliedAt: new Date().toISOString() }
-          : r
-      )
+      prev.map((r) => {
+        if (r.id === reviewId) {
+          const updated = { ...r, vendorReply: replyText, vendorRepliedAt: new Date().toISOString() };
+          saveReviewToSupabase(updated);
+          return updated;
+        }
+        return r;
+      })
     );
   };
 
@@ -509,6 +628,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
     setEnquiries((prev) => [newEnquiry, ...prev]);
+    saveEnquiryToSupabase(newEnquiry);
 
     // Notify vendor
     const newNotif: NotificationItem = {
@@ -522,15 +642,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
     setNotifications((prev) => [newNotif, ...prev]);
+    saveNotificationToSupabase(newNotif);
   };
 
   const replyEnquiry = (enquiryId: string, replyText: string) => {
     setEnquiries((prev) =>
-      prev.map((e) =>
-        e.id === enquiryId
-          ? { ...e, status: 'replied', replyText, repliedAt: new Date().toISOString() }
-          : e
-      )
+      prev.map((e) => {
+        if (e.id === enquiryId) {
+          const updated = {
+            ...e,
+            status: 'replied' as const,
+            replyText,
+            repliedAt: new Date().toISOString(),
+          };
+          saveEnquiryToSupabase(updated);
+          return updated;
+        }
+        return e;
+      })
     );
   };
 
@@ -545,6 +674,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       requestedAt: new Date().toISOString(),
     };
     setPromotionRequests((prev) => [newReq, ...prev]);
+    savePromotionToSupabase(newReq);
 
     // Notify Admin
     const notif: NotificationItem = {
@@ -558,6 +688,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
     setNotifications((prev) => [notif, ...prev]);
+    saveNotificationToSupabase(notif);
 
     return newReq;
   };
@@ -569,13 +700,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (req.id === requestId) {
           const expires = new Date();
           expires.setDate(now.getDate() + req.durationWeeks * 7);
-          return {
+          const updated = {
             ...req,
-            status: 'approved',
+            status: 'approved' as const,
             adminNote: adminNote || 'Verified FCMB Bank Transfer.',
             approvedAt: now.toISOString(),
             expiresAt: expires.toISOString(),
           };
+          savePromotionToSupabase(updated);
+          return updated;
         }
         return req;
       })
@@ -586,48 +719,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (targetReq) {
       if (targetReq.promoType === 'sponsored_vendor' || targetReq.promoType === 'category_top') {
         setVendors((prev) =>
-          prev.map((v) => (v.id === targetReq.vendorId ? { ...v, isFeatured: true } : v))
+          prev.map((v) => {
+            if (v.id === targetReq.vendorId) {
+              updateVendorInSupabase(v.id, { isFeatured: true });
+              return { ...v, isFeatured: true };
+            }
+            return v;
+          })
         );
       } else if (targetReq.promoType === 'premium_subscription') {
         setVendors((prev) =>
-          prev.map((v) => (v.id === targetReq.vendorId ? { ...v, isPremium: true, isVerified: true } : v))
+          prev.map((v) => {
+            if (v.id === targetReq.vendorId) {
+              updateVendorInSupabase(v.id, { isPremium: true, isVerified: true });
+              return { ...v, isPremium: true, isVerified: true };
+            }
+            return v;
+          })
         );
       }
     }
 
-    setAuditLogs((prev) => [
-      {
-        id: `log-${Date.now()}`,
-        action: 'PROMOTION_APPROVED',
-        performedBy: 'Admin',
-        role: 'admin',
-        details: `Approved promotion ID ${requestId}`,
-        timestamp: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'PROMOTION_APPROVED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Approved promotion ID ${requestId}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
   };
 
   const rejectPromotionRequest = (requestId: string, adminNote?: string) => {
     setPromotionRequests((prev) =>
-      prev.map((req) =>
-        req.id === requestId
-          ? { ...req, status: 'rejected', adminNote: adminNote || 'Payment verification failed.' }
-          : req
-      )
+      prev.map((req) => {
+        if (req.id === requestId) {
+          const updated = {
+            ...req,
+            status: 'rejected' as const,
+            adminNote: adminNote || 'Payment verification failed.',
+          };
+          savePromotionToSupabase(updated);
+          return updated;
+        }
+        return req;
+      })
     );
   };
 
   // Engagement tracking
   const trackVendorWhatsAppClick = (vendorId: string) => {
     setVendors((prev) =>
-      prev.map((v) => (v.id === vendorId ? { ...v, whatsappClicks: v.whatsappClicks + 1 } : v))
+      prev.map((v) => {
+        if (v.id === vendorId) {
+          const clicks = v.whatsappClicks + 1;
+          updateVendorInSupabase(vendorId, { whatsappClicks: clicks });
+          return { ...v, whatsappClicks: clicks };
+        }
+        return v;
+      })
     );
   };
 
   const trackVendorPhoneClick = (vendorId: string) => {
     setVendors((prev) =>
-      prev.map((v) => (v.id === vendorId ? { ...v, phoneClicks: v.phoneClicks + 1 } : v))
+      prev.map((v) => {
+        if (v.id === vendorId) {
+          const clicks = v.phoneClicks + 1;
+          updateVendorInSupabase(vendorId, { phoneClicks: clicks });
+          return { ...v, phoneClicks: clicks };
+        }
+        return v;
+      })
     );
   };
 
@@ -646,13 +811,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markNotificationRead = (id: string) => {
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      prev.map((n) => {
+        if (n.id === id) {
+          saveNotificationToSupabase({ ...n, isRead: true });
+          return { ...n, isRead: true };
+        }
+        return n;
+      })
     );
+  };
+
+  // Supabase Auth Methods
+  const signInWithSupabase = async (email: string, pass: string) => {
+    return await supabaseSignIn(email, pass);
+  };
+
+  const signUpWithSupabase = async (email: string, pass: string, data: Partial<User>) => {
+    return await supabaseSignUp(email, pass, data);
+  };
+
+  const signOutSupabase = async () => {
+    await supabaseSignOut();
+    setRole('guest');
   };
 
   return (
     <AppContext.Provider
       value={{
+        isSupabaseConnected,
         currentRole,
         setRole,
         currentUser,
@@ -702,6 +888,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedProductId,
         trackVendorWhatsAppClick,
         trackVendorPhoneClick,
+        signInWithSupabase,
+        signUpWithSupabase,
+        signOutSupabase,
       }}
     >
       {children}
