@@ -83,6 +83,7 @@ interface AppContextType {
 
   // Actions
   addVendorRegistration: (vendorData: Partial<Vendor>) => Vendor;
+  updateVendorProfile: (vendorId: string, updatedData: Partial<Vendor>) => void;
   registerCustomer: (customerData: {
     id?: string;
     firstName: string;
@@ -514,9 +515,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const approveVendor = (vendorId: string) => {
     setVendors((prev) =>
-      prev.map((v) => (v.id === vendorId ? { ...v, status: 'approved', isVerified: true } : v))
+      prev.map((v) => (v.id === vendorId ? { ...v, status: 'approved' } : v))
     );
-    updateVendorInSupabase(vendorId, { status: 'approved', isVerified: true });
+    updateVendorInSupabase(vendorId, { status: 'approved' });
 
     // Add audit
     const log: AuditLog = {
@@ -525,6 +526,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       performedBy: 'Admin',
       role: 'admin',
       details: `Approved vendor ID: ${vendorId}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+  };
+
+  const updateVendorProfile = (vendorId: string, updatedData: Partial<Vendor>) => {
+    setVendors((prev) =>
+      prev.map((v) => (v.id === vendorId ? { ...v, ...updatedData } : v))
+    );
+    updateVendorInSupabase(vendorId, updatedData);
+
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VENDOR_PROFILE_UPDATED',
+      performedBy: updatedData.businessName || 'Vendor',
+      role: 'vendor',
+      details: `Updated vendor profile details for vendor ID: ${vendorId}`,
       timestamp: new Date().toISOString(),
     };
     setAuditLogs((prev) => [log, ...prev]);
@@ -1031,6 +1050,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedArea,
         setSelectedArea,
         addVendorRegistration,
+        updateVendorProfile,
         registerCustomer,
         approveVendor,
         rejectVendor,

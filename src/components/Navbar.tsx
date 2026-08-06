@@ -48,10 +48,23 @@ export const Navbar: React.FC = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const isVendor = currentUser?.role === 'vendor' || currentRole === 'vendor';
   const isAdmin = currentUser?.role === 'admin' || currentRole === 'admin';
+
+  const loggedVendor = vendors.find(
+    (v) =>
+      (currentUser?.email && v.ownerEmail?.toLowerCase() === currentUser.email.toLowerCase()) ||
+      (currentUser?.id && v.userId === currentUser.id)
+  );
+
+  const vendorDisplayName = loggedVendor
+    ? loggedVendor.businessName
+    : currentUser?.firstName
+    ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim()
+    : 'Vendor';
 
   const ikoroduAreas: (IkoroduArea | 'All')[] = [
     'All',
@@ -208,29 +221,97 @@ export const Navbar: React.FC = () => {
               )}
             </div>
 
-            {/* Authentication / Sign In Button or User Badge */}
+            {/* Authentication / Account Menu */}
             {currentUser ? (
-              <div className="flex items-center gap-2">
+              <div className="relative">
                 <button
-                  onClick={() => {
-                    if (currentUser.role === 'customer') handleNavClick('customer-portal');
-                    else if (currentUser.role === 'vendor') handleNavClick('vendor-portal');
-                  }}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-200 transition-colors"
+                  onClick={() => setAccountMenuOpen(!accountMenuOpen)}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-200 transition-all shadow-2xs"
                 >
-                  <User className="w-3.5 h-3.5 text-emerald-700" />
-                  <span className="hidden sm:inline">
-                    {currentUser.firstName} ({currentUser.role === 'vendor' ? 'Vendor' : currentUser.role === 'admin' ? 'Admin' : 'Account'})
+                  <User className="w-4 h-4 text-emerald-700" />
+                  <span className="max-w-[140px] truncate font-display">
+                    {isVendor ? vendorDisplayName : currentUser.firstName}
                   </span>
-                  <span className="sm:hidden">{currentUser.firstName}</span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md font-extrabold uppercase">
+                    {currentUser.role}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
                 </button>
-                <button
-                  onClick={() => setRole('guest')}
-                  className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+
+                {accountMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 text-xs animate-in fade-in slide-in-from-top-1">
+                    <div className="px-3.5 py-2 border-b border-slate-100">
+                      <p className="font-black text-slate-900 truncate">
+                        {isVendor ? vendorDisplayName : `${currentUser.firstName} ${currentUser.lastName || ''}`}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">{currentUser.email}</p>
+                    </div>
+
+                    {isVendor && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setAccountMenuOpen(false);
+                            handleNavClick('vendor-portal');
+                          }}
+                          className="w-full text-left px-3.5 py-2 hover:bg-emerald-50 text-emerald-900 font-bold flex items-center gap-2"
+                        >
+                          <Store className="w-4 h-4 text-emerald-600" />
+                          <span>Vendor Dashboard</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAccountMenuOpen(false);
+                            handleNavClick('marketplace');
+                          }}
+                          className="w-full text-left px-3.5 py-2 hover:bg-slate-50 text-slate-800 font-semibold flex items-center gap-2"
+                        >
+                          <ShoppingBag className="w-4 h-4 text-amber-500" />
+                          <span>Back to Marketplace</span>
+                        </button>
+                      </>
+                    )}
+
+                    {currentUser.role === 'customer' && (
+                      <button
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          handleNavClick('customer-portal');
+                        }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-emerald-50 text-emerald-900 font-bold flex items-center gap-2"
+                      >
+                        <User className="w-4 h-4 text-emerald-600" />
+                        <span>Customer Account</span>
+                      </button>
+                    )}
+
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          handleNavClick('admin-portal');
+                        }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-amber-50 text-amber-950 font-bold flex items-center gap-2"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-amber-600" />
+                        <span>Admin Portal</span>
+                      </button>
+                    )}
+
+                    <div className="border-t border-slate-100 mt-1 pt-1">
+                      <button
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          setRole('guest');
+                        }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 font-bold flex items-center gap-2"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <button
@@ -242,15 +323,17 @@ export const Navbar: React.FC = () => {
               </button>
             )}
 
-            {/* Register Business CTA */}
-            <button
-              onClick={() => handleNavClick('register-vendor')}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-900 hover:to-teal-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all hover:shadow-md"
-            >
-              <PlusCircle className="w-4 h-4 text-amber-300" />
-              <span className="hidden sm:inline">Register Business</span>
-              <span className="sm:hidden">Register</span>
-            </button>
+            {/* Register Business CTA - HIDDEN WHEN LOGGED IN AS VENDOR */}
+            {!isVendor && (
+              <button
+                onClick={() => handleNavClick('register-vendor')}
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-900 hover:to-teal-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all hover:shadow-md"
+              >
+                <PlusCircle className="w-4 h-4 text-amber-300" />
+                <span className="hidden sm:inline">Register Business</span>
+                <span className="sm:hidden">Register</span>
+              </button>
+            )}
 
             {/* Mobile Hamburger Toggle */}
             <button

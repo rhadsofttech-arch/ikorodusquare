@@ -133,6 +133,28 @@ export async function updateVendorInSupabase(
   if (!isSupabaseConfigured()) return false;
   try {
     const snakeUpdates: Record<string, any> = {};
+    if (updates.businessName !== undefined) snakeUpdates.business_name = updates.businessName;
+    if (updates.slug !== undefined) snakeUpdates.slug = updates.slug;
+    if (updates.category !== undefined) snakeUpdates.category = updates.category;
+    if (updates.subcategory !== undefined) snakeUpdates.subcategory = updates.subcategory;
+    if (updates.description !== undefined) snakeUpdates.description = updates.description;
+    if (updates.address !== undefined) snakeUpdates.address = updates.address;
+    if (updates.area !== undefined) snakeUpdates.area = updates.area;
+    if (updates.phone !== undefined) snakeUpdates.phone = updates.phone;
+    if (updates.whatsapp !== undefined) snakeUpdates.whatsapp = updates.whatsapp;
+    if (updates.website !== undefined) snakeUpdates.website = updates.website;
+    if (updates.instagram !== undefined) snakeUpdates.instagram = updates.instagram;
+    if (updates.facebook !== undefined) snakeUpdates.facebook = updates.facebook;
+    if (updates.tiktok !== undefined) snakeUpdates.tiktok = updates.tiktok;
+    if (updates.yearsInBusiness !== undefined) snakeUpdates.years_in_business = updates.yearsInBusiness;
+    if (updates.logoUrl !== undefined) snakeUpdates.logo_url = updates.logoUrl;
+    if (updates.coverImageUrl !== undefined) snakeUpdates.cover_image_url = updates.coverImageUrl;
+    if (updates.galleryUrls !== undefined) snakeUpdates.gallery_urls = updates.galleryUrls;
+    if (updates.ownerName !== undefined) snakeUpdates.owner_name = updates.ownerName;
+    if (updates.ownerEmail !== undefined) snakeUpdates.owner_email = updates.ownerEmail;
+    if (updates.ownerPhone !== undefined) snakeUpdates.owner_phone = updates.ownerPhone;
+    if (updates.businessHours !== undefined) snakeUpdates.business_hours = updates.businessHours;
+    if (updates.deliveryAreas !== undefined) snakeUpdates.delivery_areas = updates.deliveryAreas;
     if (updates.status !== undefined) snakeUpdates.status = updates.status;
     if (updates.isVerified !== undefined) snakeUpdates.is_verified = updates.isVerified;
     if (updates.isFeatured !== undefined) snakeUpdates.is_featured = updates.isFeatured;
@@ -151,6 +173,28 @@ export async function updateVendorInSupabase(
   } catch (err) {
     console.error('Error updating vendor in Supabase:', err);
     return false;
+  }
+}
+
+export async function uploadFileToSupabaseStorage(
+  bucketName: string,
+  filePath: string,
+  file: File
+): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
+      upsert: true,
+    });
+    if (error) {
+      console.warn('Supabase storage upload error:', error.message);
+      return null;
+    }
+    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    console.error('Error uploading file to Supabase storage:', err);
+    return null;
   }
 }
 
