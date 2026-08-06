@@ -213,3 +213,20 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Audit logs viewable by everyone" ON public.audit_logs FOR SELECT USING (true);
 CREATE POLICY "Anyone can create audit log" ON public.audit_logs FOR INSERT WITH CHECK (true);
+
+-- 9. OTP CODES TABLE
+CREATE TABLE IF NOT EXISTS public.otp_codes (
+  email TEXT PRIMARY KEY,
+  code TEXT NOT NULL,
+  expires_at BIGINT NOT NULL,
+  last_sent_at BIGINT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.otp_codes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "OTP codes viewable by everyone" ON public.otp_codes FOR SELECT USING (true);
+CREATE POLICY "Anyone can upsert OTP code" ON public.otp_codes FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update OTP code" ON public.otp_codes FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete OTP code" ON public.otp_codes FOR DELETE USING (true);
+
