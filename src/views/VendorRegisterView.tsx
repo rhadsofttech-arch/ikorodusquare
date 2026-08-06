@@ -294,7 +294,7 @@ export const VendorRegisterView: React.FC = () => {
         )}
       </div>
 
-      {/* Shared Resend OTP Modal */}
+      {/* Shared OTP Modal */}
       <OtpModal
         email={accountType === 'vendor' ? vEmail : cEmail}
         isOpen={otpModalOpen}
@@ -318,7 +318,7 @@ export const VendorRegisterView: React.FC = () => {
                   Step 1: Enter Business Email Address
                 </h2>
                 <p className="text-xs text-gray-600">
-                  We will immediately send an OTP verification code using the Resend Email API.
+                  Enter your business email address. We'll send you a verification code to continue.
                 </p>
               </div>
 
@@ -343,7 +343,7 @@ export const VendorRegisterView: React.FC = () => {
                 <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3 text-xs text-emerald-900">
                   <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
                   <p>
-                    <strong>Security Verification:</strong> Resend API sends a 6-digit verification code to confirm ownership of this email before allowing business submission.
+                    <strong>Security Verification:</strong> We will send a 6-digit verification code to verify that you own this email address before continuing registration.
                   </p>
                 </div>
 
@@ -351,7 +351,7 @@ export const VendorRegisterView: React.FC = () => {
                   type="submit"
                   className="w-full py-3.5 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
                 >
-                  <span>Send OTP via Resend Email API</span>
+                  <span>Send Verification Code</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
@@ -867,7 +867,7 @@ export const VendorRegisterView: React.FC = () => {
                   Step 1: Enter Email Address
                 </h2>
                 <p className="text-xs text-gray-600">
-                  We will immediately send an OTP verification code using the Resend Email API.
+                  Enter your email address. We'll send you a verification code to continue.
                 </p>
               </div>
 
@@ -892,7 +892,7 @@ export const VendorRegisterView: React.FC = () => {
                 <div className="p-4 bg-teal-50 border border-teal-200 rounded-2xl flex items-start gap-3 text-xs text-teal-900">
                   <ShieldCheck className="w-5 h-5 text-teal-700 shrink-0 mt-0.5" />
                   <p>
-                    <strong>Instant Resend Email OTP:</strong> Verify your email address to unlock saved wishlists, direct vendor enquiries, and deal alerts.
+                    <strong>Security Verification:</strong> We will send a 6-digit verification code to verify that you own this email address before continuing registration.
                   </p>
                 </div>
 
@@ -900,7 +900,7 @@ export const VendorRegisterView: React.FC = () => {
                   type="submit"
                   className="w-full py-3.5 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
                 >
-                  <span>Send OTP via Resend Email API</span>
+                  <span>Send Verification Code</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </form>

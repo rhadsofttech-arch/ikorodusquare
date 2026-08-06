@@ -8,23 +8,25 @@ export interface OtpRecord {
   lastSentAt: number;
 }
 
-// Memory fallback cache
+// In-memory fallback if Supabase is unavailable in current process
 const memoryOtpStore = new Map<string, OtpRecord>();
 
 function getSupabaseServerClient() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+    process.env.SUPABASE_ANON_KEY;
 
   if (url && key) {
     try {
       return createClient(url, key);
     } catch (err) {
+      console.error('❌ [OTP SUPABASE INIT EXCEPTION]:', err);
       return null;
     }
   }
+  console.warn('⚠️ [OTP SUPABASE INIT WARN]: Supabase environment variables missing or incomplete.');
   return null;
 }
 
@@ -38,35 +40,54 @@ async function getOtpRecord(email: string): Promise<OtpRecord | null> {
         .eq('email', email)
         .maybeSingle();
 
-      if (!error && data) {
+      if (error) {
+        console.error('❌ [OTP DB LOOKUP ERROR in send.ts]:', error.message, error.details);
+      } else if (data) {
+        console.log(`ℹ️ [OTP DB LOOKUP SUCCESS in send.ts] Found existing record for ${email}`);
         return {
           code: data.code,
           expiresAt: Number(data.expires_at),
           lastSentAt: Number(data.last_sent_at),
         };
+      } else {
+        console.log(`ℹ️ [OTP DB LOOKUP EMPTY in send.ts] No prior record found for ${email}`);
       }
-    } catch (e) {
-      // Fallback to memory
+    } catch (e: any) {
+      console.error('❌ [OTP DB EXCEPTION in send.ts]:', e?.message || e);
     }
+  } else {
+    console.warn('⚠️ [OTP MEMORY LOOKUP in send.ts] Supabase client not active, checking memory fallback');
   }
   return memoryOtpStore.get(email) || null;
 }
 
 async function setOtpRecord(email: string, record: OtpRecord): Promise<void> {
+  // Always set memory cache in case of same-process quick verify
   memoryOtpStore.set(email, record);
 
   const supabase = getSupabaseServerClient();
   if (supabase) {
     try {
-      await supabase.from('otp_codes').upsert({
-        email,
-        code: record.code,
-        expires_at: record.expiresAt,
-        last_sent_at: record.lastSentAt,
-      });
-    } catch (e) {
-      // Fallback active
+      const { error } = await supabase.from('otp_codes').upsert(
+        {
+          email,
+          code: record.code,
+          expires_at: record.expiresAt,
+          last_sent_at: record.lastSentAt,
+        },
+        { onConflict: 'email' }
+      );
+
+      if (error) {
+        console.error('❌ [OTP DB SAVE ERROR]: Failed to upsert OTP code into Supabase:', error.message, error.details, error.hint);
+      } else {
+        console.log(`✅ [OTP DB SAVE SUCCESS]: Saved OTP ${record.code} for ${email} in Supabase (Expires at: ${new Date(record.expiresAt).toISOString()})`);
+      }
+    } catch (e: any) {
+      console.error('❌ [OTP DB SAVE EXCEPTION]:', e?.message || e);
     }
+  } else {
+    console.warn(`⚠️ [OTP MEMORY SAVE ONLY]: Supabase client unavailable. Saved OTP in memory store for ${email}`);
   }
 }
 
@@ -94,12 +115,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    console.log(`📧 [OTP SEND REQUEST]: Initiating OTP process for ${normalizedEmail}`);
+
     const existingRecord = await getOtpRecord(normalizedEmail);
     const now = Date.now();
 
     // Rate Limiting: 60 seconds minimum interval
     if (existingRecord && now - existingRecord.lastSentAt < 60000) {
       const waitSeconds = Math.ceil((60000 - (now - existingRecord.lastSentAt)) / 1000);
+      console.warn(`⚠️ [OTP RATE LIMITED]: ${normalizedEmail} must wait ${waitSeconds}s before requesting a new code.`);
       return res.status(429).json({
         success: false,
         error: `Please wait ${waitSeconds} seconds before requesting another verification code.`,
@@ -111,6 +135,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = now + 5 * 60 * 1000; // 5 minutes validity
 
+    console.log(`🔑 [OTP GENERATED]: Code ${code} generated for ${normalizedEmail}`);
+
     await setOtpRecord(normalizedEmail, {
       code,
       expiresAt,
@@ -120,11 +146,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const resend = getResendClient();
 
     if (!resend) {
-      // RESEND_API_KEY is missing
-      console.warn('⚠️ RESEND_API_KEY is missing. Operating in dev fallback mode.');
+      console.warn('⚠️ [OTP RESEND MISSING]: RESEND_API_KEY is missing. Operating in dev preview mode.');
       return res.status(200).json({
         success: true,
-        message: 'Verification code generated (Dev Mode: RESEND_API_KEY not configured).',
+        message: 'Verification code generated.',
         devMode: true,
         devCode: code,
         expiresInSeconds: 300,
@@ -133,6 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Send email using Resend SDK
+    console.log(`📤 [OTP RESEND SENDING]: Dispatching email to ${normalizedEmail} from ${SENDER_EMAIL}`);
     const emailResult = await resend.emails.send({
       from: `IkoroduSquare Verification <${SENDER_EMAIL}>`,
       to: [normalizedEmail],
@@ -159,10 +185,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (emailResult.error) {
-      console.error('Resend API Error:', emailResult.error);
+      console.error('❌ [OTP RESEND ERROR]: Resend dispatch failed:', emailResult.error.message);
       return res.status(200).json({
         success: true,
-        warning: `Resend dispatch failed (${emailResult.error.message}). Code generated for verification.`,
+        warning: `Verification email send failed (${emailResult.error.message}). Verification code is available below.`,
         devMode: true,
         devCode: code,
         expiresInSeconds: 300,
@@ -170,14 +196,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    console.log(`✅ [OTP RESEND SUCCESS]: Email dispatched successfully to ${normalizedEmail}`);
     return res.status(200).json({
       success: true,
-      message: `Verification code sent to ${normalizedEmail} via Resend.`,
+      message: `Verification code sent to ${normalizedEmail}.`,
       expiresInSeconds: 300,
       senderEmail: SENDER_EMAIL,
     });
   } catch (err: any) {
-    console.error('Error in /api/otp/send:', err);
+    console.error('❌ [OTP SEND UNHANDLED FATAL ERROR]:', err);
     return res.status(500).json({
       success: false,
       error: err.message || 'Failed to send verification email. Please try again.',

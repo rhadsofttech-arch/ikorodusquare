@@ -62,7 +62,7 @@ export const OtpModal: React.FC<OtpModalProps> = ({ email, isOpen, onVerified, o
           setDevCode(data.devCode);
           setInfoMessage(data.warning || 'OTP sent! (Dev Mode preview code available)');
         } else {
-          setInfoMessage(data.message || `Verification code sent to ${email} via Resend.`);
+          setInfoMessage(data.message || `Verification code sent to ${email}.`);
         }
       }
     } catch (err: any) {
@@ -129,7 +129,7 @@ export const OtpModal: React.FC<OtpModalProps> = ({ email, isOpen, onVerified, o
             Verify Your Email
           </h3>
           <p className="text-xs text-gray-600 max-w-xs mx-auto">
-            We sent a 6-digit verification code to <strong className="text-emerald-900">{email}</strong> via <strong className="text-emerald-700">Resend Email API</strong>.
+            We sent a 6-digit verification code to <strong className="text-emerald-900">{email}</strong>.
           </p>
 
           {/* Dev Code / Auto-fill Helper Banner when applicable */}
