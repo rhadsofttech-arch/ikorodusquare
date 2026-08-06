@@ -1,5 +1,68 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getOtpRecord, deleteOtpRecord } from './_otpStore';
+import { createClient } from '@supabase/supabase-js';
+
+export interface OtpRecord {
+  code: string;
+  expiresAt: number;
+  lastSentAt: number;
+}
+
+// Memory fallback cache
+const memoryOtpStore = new Map<string, OtpRecord>();
+
+function getSupabaseServerClient() {
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key =
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (url && key) {
+    try {
+      return createClient(url, key);
+    } catch (err) {
+      return null;
+    }
+  }
+  return null;
+}
+
+async function getOtpRecord(email: string): Promise<OtpRecord | null> {
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('otp_codes')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (!error && data) {
+        return {
+          code: data.code,
+          expiresAt: Number(data.expires_at),
+          lastSentAt: Number(data.last_sent_at),
+        };
+      }
+    } catch (e) {
+      // Fallback to memory
+    }
+  }
+  return memoryOtpStore.get(email) || null;
+}
+
+async function deleteOtpRecord(email: string): Promise<void> {
+  memoryOtpStore.delete(email);
+
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      await supabase.from('otp_codes').delete().eq('email', email);
+    } catch (e) {
+      // Fallback active
+    }
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

@@ -1,6 +1,74 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Resend } from 'resend';
-import { getOtpRecord, setOtpRecord } from './_otpStore';
+import { createClient } from '@supabase/supabase-js';
+
+export interface OtpRecord {
+  code: string;
+  expiresAt: number;
+  lastSentAt: number;
+}
+
+// Memory fallback cache
+const memoryOtpStore = new Map<string, OtpRecord>();
+
+function getSupabaseServerClient() {
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key =
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (url && key) {
+    try {
+      return createClient(url, key);
+    } catch (err) {
+      return null;
+    }
+  }
+  return null;
+}
+
+async function getOtpRecord(email: string): Promise<OtpRecord | null> {
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('otp_codes')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (!error && data) {
+        return {
+          code: data.code,
+          expiresAt: Number(data.expires_at),
+          lastSentAt: Number(data.last_sent_at),
+        };
+      }
+    } catch (e) {
+      // Fallback to memory
+    }
+  }
+  return memoryOtpStore.get(email) || null;
+}
+
+async function setOtpRecord(email: string, record: OtpRecord): Promise<void> {
+  memoryOtpStore.set(email, record);
+
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      await supabase.from('otp_codes').upsert({
+        email,
+        code: record.code,
+        expires_at: record.expiresAt,
+        last_sent_at: record.lastSentAt,
+      });
+    } catch (e) {
+      // Fallback active
+    }
+  }
+}
 
 let resendClient: Resend | null = null;
 function getResendClient(): Resend | null {
