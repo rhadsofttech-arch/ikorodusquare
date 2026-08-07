@@ -45,12 +45,14 @@ export const Navbar: React.FC = () => {
     promotionRequests,
     setSelectedVendorId,
     setSelectedProductId,
+    isAuthModalOpen,
+    openAuthModal,
+    closeAuthModal,
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const isVendor = currentUser ? currentUser.role === 'vendor' : false;
   const isAdmin = currentUser ? currentUser.role === 'admin' : false;
@@ -322,7 +324,7 @@ export const Navbar: React.FC = () => {
               </div>
             ) : (
               <button
-                onClick={() => setAuthModalOpen(true)}
+                onClick={() => openAuthModal()}
                 className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 hover:border-emerald-600 text-slate-800 hover:text-emerald-950 text-xs font-bold rounded-xl transition-all hover:bg-slate-50"
               >
                 <LogIn className="w-3.5 h-3.5 text-emerald-700" />
@@ -521,7 +523,7 @@ export const Navbar: React.FC = () => {
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
-                setAuthModalOpen(true);
+                openAuthModal();
               }}
               className="w-full py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl flex items-center justify-center gap-2"
             >
@@ -551,7 +553,7 @@ export const Navbar: React.FC = () => {
       )}
 
       {/* Auth Modal Component */}
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
     </header>
   );
 };

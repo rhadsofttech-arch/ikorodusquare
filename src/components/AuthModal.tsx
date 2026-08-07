@@ -20,13 +20,20 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { setRole, signInWithSupabase, setActiveTab } = useApp();
+  const { currentUser, setRole, signInWithSupabase, setActiveTab } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [forgotPasswordMessage, setForgotPasswordMessage] = useState('');
+
+  // Automatically close modal immediately whenever currentUser is authenticated
+  useEffect(() => {
+    if (currentUser && isOpen) {
+      onClose();
+    }
+  }, [currentUser, isOpen, onClose]);
 
   // Lock background scrolling and handle Escape key press while modal is open
   useEffect(() => {
@@ -67,11 +74,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       const { data, error } = await signInWithSupabase(email, password);
       if (error) {
         setErrorMessage(error.message || 'Authentication failed. Please check your credentials.');
-      } else if (data?.user) {
-        setSuccessMessage('Successfully authenticated!');
-        setTimeout(() => {
-          onClose();
-        }, 800);
+      } else if (data?.user || data?.session) {
+        // Immediately close the modal and reset fields
+        onClose();
+        setEmail('');
+        setPassword('');
+        setErrorMessage('');
+        setSuccessMessage('');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');

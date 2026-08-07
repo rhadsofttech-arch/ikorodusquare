@@ -158,6 +158,11 @@ interface AppContextType {
   trackVendorWhatsAppClick: (vendorId: string) => void;
   trackVendorPhoneClick: (vendorId: string) => void;
 
+  // Auth Modal state
+  isAuthModalOpen: boolean;
+  openAuthModal: () => void;
+  closeAuthModal: () => void;
+
   // Supabase Auth Methods
   signInWithSupabase: (e: string, p: string) => Promise<any>;
   signUpWithSupabase: (e: string, p: string, data: Partial<User>) => Promise<any>;
@@ -178,6 +183,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Auth Modal State (single source of truth)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const openAuthModal = () => setIsAuthModalOpen(true);
+  const closeAuthModal = () => setIsAuthModalOpen(false);
 
   // Initial URL Route Sync & Popstate listener
   useEffect(() => {
@@ -336,6 +346,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setCurrentUser(userObj);
     setRoleState(role);
+    setIsAuthModalOpen(false);
     return userObj;
   };
 
@@ -380,6 +391,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRoleState('guest');
         setSelectedVendorId(null);
         setSelectedProductId(null);
+        setIsAuthModalOpen(false);
         localStorage.removeItem(`${LOCAL_STORAGE_KEY}_user`);
         localStorage.removeItem(`${LOCAL_STORAGE_KEY}_profile`);
         localStorage.removeItem(`${LOCAL_STORAGE_KEY}_vendor`);
@@ -391,6 +403,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } else {
         await syncSessionUser(session);
+        setIsAuthModalOpen(false);
       }
     });
 
@@ -1170,6 +1183,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Supabase Auth Methods
   const signInWithSupabase = async (email: string, pass: string) => {
     const data = await supabaseSignIn(email, pass);
+    setIsAuthModalOpen(false);
     if (data?.user) {
       const userObj = await syncSessionUser(data.session || { user: data.user });
       const role = userObj?.role || 'customer';
@@ -1178,7 +1192,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (role === 'admin') {
         setActiveTab('admin-portal');
       } else {
-        setActiveTab('home');
+        setActiveTab('customer-portal');
       }
     }
     return data;
@@ -1186,6 +1200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const signUpWithSupabase = async (email: string, pass: string, data: Partial<User>) => {
     const res = await supabaseSignUp(email, pass, data);
+    setIsAuthModalOpen(false);
     const authUser = res?.user || res?.session?.user;
     if (authUser) {
       const userObj = await syncSessionUser(res.session || { user: authUser });
@@ -1208,6 +1223,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRoleState('guest');
     setSelectedVendorId(null);
     setSelectedProductId(null);
+    setIsAuthModalOpen(false);
 
     // Remove any related localStorage/sessionStorage values
     localStorage.removeItem(`${LOCAL_STORAGE_KEY}_user`);
@@ -1281,6 +1297,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedProductId,
         trackVendorWhatsAppClick,
         trackVendorPhoneClick,
+        isAuthModalOpen,
+        openAuthModal,
+        closeAuthModal,
         signInWithSupabase,
         signUpWithSupabase,
         signOutSupabase,
