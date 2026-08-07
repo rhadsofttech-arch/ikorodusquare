@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IkoroduArea } from '../types';
+import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 
 export const DirectoryView: React.FC = () => {
   const {
@@ -328,18 +329,14 @@ export const DirectoryView: React.FC = () => {
                 >
                   View Storefront
                 </button>
-                <a
-                  href={`https://wa.me/${vendor.whatsapp}?text=Hi%20${encodeURIComponent(
-                    vendor.businessName
-                  )},%20I%20found%20your%20store%20on%20IkoroduSquare.`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackVendorWhatsAppClick(vendor.id)}
-                  className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-amber-300" />
-                  <span>WhatsApp</span>
-                </a>
+                <WhatsAppChatButton
+                  whatsappNumber={vendor.whatsapp}
+                  businessName={vendor.businessName}
+                  type="business"
+                  vendorId={vendor.id}
+                  variant="primary"
+                  label="Direct WhatsApp Chat"
+                />
               </div>
             </div>
           ))}
@@ -388,16 +385,14 @@ export const DirectoryView: React.FC = () => {
                   >
                     View Store
                   </button>
-                  <a
-                    href={`https://wa.me/${vendor.whatsapp}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => trackVendorWhatsAppClick(vendor.id)}
-                    className="px-4 py-2 bg-emerald-700 text-white font-bold text-xs rounded-xl hover:bg-emerald-800 flex items-center gap-1"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-amber-300" />
-                    WhatsApp
-                  </a>
+                  <WhatsAppChatButton
+                    whatsappNumber={vendor.whatsapp}
+                    businessName={vendor.businessName}
+                    type="business"
+                    vendorId={vendor.id}
+                    variant="primary"
+                    label="Direct WhatsApp Chat"
+                  />
                 </div>
               </div>
             </div>

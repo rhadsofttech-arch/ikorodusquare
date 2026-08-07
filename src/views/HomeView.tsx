@@ -32,6 +32,7 @@ import { useApp } from '../context/AppContext';
 import { IkoroduArea, PromotionOption } from '../types';
 import { PROMOTION_OPTIONS, MANUAL_PAYMENT_INFO } from '../data/mockData';
 import { IkoroduMapExplorer } from '../components/IkoroduMapExplorer';
+import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 
 export const HomeView: React.FC = () => {
   const {
@@ -552,6 +553,9 @@ export const HomeView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
           {recommendedProducts.slice(0, 8).map((product, idx) => {
             const isSaved = wishlist.includes(product.id);
+            const vendor = vendors.find(
+              (v) => v.id === product.vendorId || v.businessName === product.vendorName
+            );
             const badges = [
               '🔥 Trending in Sabo',
               '⚡ Fast WhatsApp Reply',
@@ -624,12 +628,23 @@ export const HomeView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-4 pt-0">
+                <div className="p-4 pt-0 flex flex-col gap-2">
+                  <WhatsAppChatButton
+                    whatsappNumber={vendor?.whatsapp}
+                    businessName={product.vendorName}
+                    type="product"
+                    productTitle={product.name}
+                    productPrice={product.price}
+                    vendorId={product.vendorId}
+                    variant="primary"
+                    className="w-full text-xs"
+                    label="Direct WhatsApp Chat"
+                  />
                   <button
                     onClick={() => handleProductClick(product.id)}
-                    className="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                    className="w-full py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl text-xs font-bold transition-colors"
                   >
-                    View Details & Connect
+                    View Details
                   </button>
                 </div>
               </div>
@@ -705,6 +720,9 @@ export const HomeView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
           {featuredProducts.slice(0, 8).map((product) => {
             const isSaved = wishlist.includes(product.id);
+            const vendor = vendors.find(
+              (v) => v.id === product.vendorId || v.businessName === product.vendorName
+            );
             return (
               <div
                 key={product.id}
@@ -764,10 +782,21 @@ export const HomeView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-4 pt-0">
+                <div className="p-4 pt-0 flex flex-col gap-2">
+                  <WhatsAppChatButton
+                    whatsappNumber={vendor?.whatsapp}
+                    businessName={product.vendorName}
+                    type="product"
+                    productTitle={product.name}
+                    productPrice={product.price}
+                    vendorId={product.vendorId}
+                    variant="primary"
+                    className="w-full text-xs"
+                    label="Direct WhatsApp Chat"
+                  />
                   <button
                     onClick={() => handleProductClick(product.id)}
-                    className="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                    className="w-full py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl text-xs font-bold transition-colors"
                   >
                     View Details
                   </button>
@@ -880,18 +909,14 @@ export const HomeView: React.FC = () => {
                 >
                   View Storefront
                 </button>
-                <a
-                  href={`https://wa.me/${vendor.whatsapp}?text=Hi%20${encodeURIComponent(
-                    vendor.businessName
-                  )},%20I%20found%20your%20store%20on%20IkoroduSquare.`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackVendorWhatsAppClick(vendor.id)}
-                  className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-colors shadow-xs"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-amber-300" />
-                  <span>WhatsApp</span>
-                </a>
+                <WhatsAppChatButton
+                  whatsappNumber={vendor.whatsapp}
+                  businessName={vendor.businessName}
+                  type="business"
+                  vendorId={vendor.id}
+                  variant="primary"
+                  label="Direct WhatsApp Chat"
+                />
               </div>
             </div>
           ))}

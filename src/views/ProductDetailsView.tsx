@@ -14,6 +14,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 
 export const ProductDetailsView: React.FC = () => {
   const {
@@ -143,16 +144,17 @@ export const ProductDetailsView: React.FC = () => {
 
             {/* WhatsApp Buyer CTA */}
             <div className="pt-4 border-t border-gray-100 space-y-2">
-              <a
-                href={`https://wa.me/${vendor.whatsapp}?text=${whatsappMessage}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackVendorWhatsAppClick(vendor.id)}
-                className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg transition-all"
-              >
-                <MessageSquare className="w-5 h-5 text-amber-300" />
-                <span>Buy via WhatsApp with Seller ({vendor.businessName})</span>
-              </a>
+              <WhatsAppChatButton
+                whatsappNumber={vendor.whatsapp}
+                businessName={vendor.businessName}
+                type="product"
+                productTitle={product.name}
+                productPrice={product.price}
+                vendorId={vendor.id}
+                variant="primary"
+                className="w-full py-3.5 text-xs sm:text-sm"
+                label={`Direct WhatsApp Chat (${vendor.businessName})`}
+              />
               <p className="text-[11px] text-gray-500 text-center">
                 Direct buyer-to-seller communication. No middleman markup!
               </p>

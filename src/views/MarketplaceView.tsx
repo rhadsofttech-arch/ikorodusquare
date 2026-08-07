@@ -15,10 +15,12 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IkoroduArea } from '../types';
+import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 
 export const MarketplaceView: React.FC = () => {
   const {
     products,
+    vendors,
     categories,
     searchQuery,
     setSearchQuery,
@@ -226,6 +228,9 @@ export const MarketplaceView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredProducts.map((product) => {
             const isSaved = wishlist.includes(product.id);
+            const vendor = vendors.find(
+              (v) => v.id === product.vendorId || v.businessName === product.vendorName
+            );
             return (
               <div
                 key={product.id}
@@ -291,10 +296,21 @@ export const MarketplaceView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-3 pt-0">
+                <div className="p-3 pt-0 flex flex-col gap-2">
+                  <WhatsAppChatButton
+                    whatsappNumber={vendor?.whatsapp}
+                    businessName={product.vendorName}
+                    type="product"
+                    productTitle={product.name}
+                    productPrice={product.price}
+                    vendorId={product.vendorId}
+                    variant="primary"
+                    className="w-full text-xs"
+                    label="Direct WhatsApp Chat"
+                  />
                   <button
                     onClick={() => handleProductClick(product.id)}
-                    className="w-full py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors"
+                    className="w-full py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl text-xs font-bold transition-colors"
                   >
                     View Details
                   </button>
@@ -306,44 +322,61 @@ export const MarketplaceView: React.FC = () => {
       ) : (
         /* List View */
         <div className="space-y-4">
-          {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              className="bg-white rounded-2xl border border-gray-150 p-4 flex flex-col sm:flex-row items-center gap-4 shadow-sm hover:shadow-md transition-all"
-            >
-              <img
-                src={product.images[0]}
-                alt={product.name}
-                className="w-24 h-24 rounded-xl object-cover shrink-0 cursor-pointer"
-                onClick={() => handleProductClick(product.id)}
-              />
-              <div className="flex-1 min-w-0 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-emerald-700">
-                  {product.category} • {product.vendorArea}
-                </span>
-                <h4
+          {filteredProducts.map((product) => {
+            const vendor = vendors.find(
+              (v) => v.id === product.vendorId || v.businessName === product.vendorName
+            );
+            return (
+              <div
+                key={product.id}
+                className="bg-white rounded-2xl border border-gray-150 p-4 flex flex-col sm:flex-row items-center gap-4 shadow-sm hover:shadow-md transition-all"
+              >
+                <img
+                  src={product.images[0]}
+                  alt={product.name}
+                  className="w-24 h-24 rounded-xl object-cover shrink-0 cursor-pointer"
                   onClick={() => handleProductClick(product.id)}
-                  className="text-sm font-bold text-emerald-950 hover:text-emerald-700 cursor-pointer"
-                >
-                  {product.name}
-                </h4>
-                <p className="text-xs text-gray-500 line-clamp-1">{product.description}</p>
-                <p className="text-xs text-emerald-800 font-medium">Sold by {product.vendorName}</p>
-              </div>
+                />
+                <div className="flex-1 min-w-0 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-emerald-700">
+                    {product.category} • {product.vendorArea}
+                  </span>
+                  <h4
+                    onClick={() => handleProductClick(product.id)}
+                    className="text-sm font-bold text-emerald-950 hover:text-emerald-700 cursor-pointer"
+                  >
+                    {product.name}
+                  </h4>
+                  <p className="text-xs text-gray-500 line-clamp-1">{product.description}</p>
+                  <p className="text-xs text-emerald-800 font-medium">Sold by {product.vendorName}</p>
+                </div>
 
-              <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
-                <span className="text-base font-black text-emerald-950 font-mono">
-                  ₦{product.price.toLocaleString()}
-                </span>
-                <button
-                  onClick={() => handleProductClick(product.id)}
-                  className="px-4 py-2 bg-emerald-800 text-white rounded-xl text-xs font-bold hover:bg-emerald-900"
-                >
-                  View Item
-                </button>
+                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
+                  <span className="text-base font-black text-emerald-950 font-mono">
+                    ₦{product.price.toLocaleString()}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleProductClick(product.id)}
+                      className="px-3 py-2 bg-emerald-100 text-emerald-950 rounded-xl text-xs font-bold hover:bg-emerald-200"
+                    >
+                      View
+                    </button>
+                    <WhatsAppChatButton
+                      whatsappNumber={vendor?.whatsapp}
+                      businessName={product.vendorName}
+                      type="product"
+                      productTitle={product.name}
+                      productPrice={product.price}
+                      vendorId={product.vendorId}
+                      variant="primary"
+                      label="Direct WhatsApp Chat"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

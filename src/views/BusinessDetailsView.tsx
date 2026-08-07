@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Review } from '../types';
+import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 
 export const BusinessDetailsView: React.FC = () => {
   const {
@@ -173,18 +174,14 @@ export const BusinessDetailsView: React.FC = () => {
 
             {/* Quick Contact Buttons */}
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <a
-                href={`https://wa.me/${vendor.whatsapp}?text=Hi%20${encodeURIComponent(
-                  vendor.businessName
-                )},%20I%20am%20contacting%20you%20from%20IkoroduSquare.`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackVendorWhatsAppClick(vendor.id)}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-colors"
-              >
-                <MessageSquare className="w-4 h-4 text-amber-300" />
-                <span>WhatsApp Vendor</span>
-              </a>
+              <WhatsAppChatButton
+                whatsappNumber={vendor.whatsapp}
+                businessName={vendor.businessName}
+                type="business"
+                vendorId={vendor.id}
+                variant="primary"
+                label="Direct WhatsApp Chat"
+              />
 
               <a
                 href={`tel:${vendor.phone}`}
@@ -389,26 +386,43 @@ export const BusinessDetailsView: React.FC = () => {
               {vendorProducts.map((product) => (
                 <div
                   key={product.id}
-                  onClick={() => {
-                    setSelectedProductId(product.id);
-                    setActiveTab('product-details');
-                  }}
-                  className="bg-white rounded-2xl border border-gray-150 overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-pointer group"
+                  className="bg-white rounded-2xl border border-gray-150 overflow-hidden shadow-sm hover:shadow-lg transition-all flex flex-col justify-between group"
                 >
-                  <div className="h-40 bg-gray-100 overflow-hidden">
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
+                  <div
+                    onClick={() => {
+                      setSelectedProductId(product.id);
+                      setActiveTab('product-details');
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <div className="h-40 bg-gray-100 overflow-hidden">
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    </div>
+                    <div className="p-3 space-y-1">
+                      <h4 className="text-xs font-bold text-emerald-950 line-clamp-2">
+                        {product.name}
+                      </h4>
+                      <span className="text-sm font-black text-emerald-900 font-mono">
+                        ₦{product.price.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="p-3 space-y-1">
-                    <h4 className="text-xs font-bold text-emerald-950 line-clamp-2">
-                      {product.name}
-                    </h4>
-                    <span className="text-sm font-black text-emerald-900 font-mono">
-                      ₦{product.price.toLocaleString()}
-                    </span>
+                  <div className="p-3 pt-0">
+                    <WhatsAppChatButton
+                      whatsappNumber={vendor.whatsapp}
+                      businessName={vendor.businessName}
+                      type="product"
+                      productTitle={product.name}
+                      productPrice={product.price}
+                      vendorId={vendor.id}
+                      variant="primary"
+                      className="w-full text-xs"
+                      label="Direct WhatsApp Chat"
+                    />
                   </div>
                 </div>
               ))}

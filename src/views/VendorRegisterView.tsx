@@ -188,7 +188,7 @@ export const VendorRegisterView: React.FC = () => {
       });
 
       setSubmittedVendor(newVendor);
-      setVendorStep(6); // Success screen
+      setVendorStep(5); // Success screen
     } catch (err: any) {
       console.error('Vendor auth registration error:', err);
       setRegError(err.message || 'Failed to create user in Supabase Authentication. Registration cannot proceed.');
@@ -313,9 +313,9 @@ export const VendorRegisterView: React.FC = () => {
         </div>
 
         {/* Progress bar for Vendor */}
-        {accountType === 'vendor' && vendorStep < 6 && (
+        {accountType === 'vendor' && vendorStep < 5 && (
           <div className="pt-2 flex items-center justify-center gap-2 max-w-md mx-auto">
-            {[1, 2, 3, 4, 5].map((s) => (
+            {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
                 className={`h-2 flex-1 rounded-full transition-all ${
@@ -359,7 +359,7 @@ export const VendorRegisterView: React.FC = () => {
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-150 shadow-sm space-y-6">
               <div className="space-y-1">
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg inline-block mb-1">
-                  Step 1 of 5
+                  Step 1 of 4
                 </span>
                 <h2 className="text-xl font-black text-emerald-950 font-display">
                   Step 1: Enter Business Email Address
@@ -416,7 +416,7 @@ export const VendorRegisterView: React.FC = () => {
                   <p className="text-xs text-gray-600">Enter detailed information about your business storefront</p>
                 </div>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                  Step 2 of 5
+                  Step 2 of 4
                 </span>
               </div>
 
@@ -598,7 +598,7 @@ export const VendorRegisterView: React.FC = () => {
                   <p className="text-xs text-gray-600">Verification details for the business account holder</p>
                 </div>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                  Step 3 of 5
+                  Step 3 of 4
                 </span>
               </div>
 
@@ -671,128 +671,6 @@ export const VendorRegisterView: React.FC = () => {
                     onClick={handleVendorStep3Next}
                     className="px-6 py-3 bg-emerald-800 text-amber-300 font-bold text-xs rounded-xl shadow flex items-center gap-2"
                   >
-                    <span>Continue to Business Media</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* VENDOR STEP 4: Business Media */}
-          {vendorStep === 4 && (
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-150 shadow-sm space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-black text-emerald-950 font-display">
-                    Step 4: Business Media & Verification Docs
-                  </h2>
-                  <p className="text-xs text-gray-600">Upload store logo, cover image, gallery, and verification files</p>
-                </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                  Step 4 of 5
-                </span>
-              </div>
-
-              <div className="space-y-4">
-                {/* Logo */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Business Logo Image URL</label>
-                  <div className="flex items-center gap-3">
-                    <img src={vLogoUrl} alt="Logo Preview" className="w-12 h-12 rounded-xl object-cover border" />
-                    <input
-                      type="text"
-                      value={vLogoUrl}
-                      onChange={(e) => setVLogoUrl(e.target.value)}
-                      className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Cover Image */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Cover Image Header URL</label>
-                  <div className="space-y-2">
-                    <img src={vCoverImageUrl} alt="Cover Preview" className="w-full h-24 rounded-xl object-cover border" />
-                    <input
-                      type="text"
-                      value={vCoverImageUrl}
-                      onChange={(e) => setVCoverImageUrl(e.target.value)}
-                      className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Gallery Images */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-gray-700">Gallery Images</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {vGalleryUrls.map((url, idx) => (
-                      <img key={idx} src={url} alt={`Gallery ${idx}`} className="w-full h-16 rounded-lg object-cover border" />
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Paste Image URL to add to gallery..."
-                      value={vNewGalleryUrl}
-                      onChange={(e) => setVNewGalleryUrl(e.target.value)}
-                      className="flex-1 p-2 bg-gray-50 border rounded-xl text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddGalleryUrl}
-                      className="px-3 py-1.5 bg-emerald-800 text-white rounded-xl text-xs font-bold"
-                    >
-                      Add Image
-                    </button>
-                  </div>
-                </div>
-
-                {/* Verification Documents (Optional) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div className="p-4 border-2 border-dashed border-emerald-300 bg-emerald-50/50 rounded-2xl text-center space-y-2">
-                    <Upload className="w-6 h-6 text-emerald-700 mx-auto" />
-                    <div className="text-xs font-bold text-emerald-950">
-                      {vCacDocName ? `Uploaded: ${vCacDocName}` : 'CAC Certificate (Optional)'}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setVCacDocName('CAC_REG_IKORODU_2025.pdf')}
-                      className="px-3 py-1 bg-emerald-700 text-white rounded-lg text-[11px] font-bold"
-                    >
-                      Attach CAC Document
-                    </button>
-                  </div>
-
-                  <div className="p-4 border-2 border-dashed border-teal-300 bg-teal-50/50 rounded-2xl text-center space-y-2">
-                    <Upload className="w-6 h-6 text-teal-700 mx-auto" />
-                    <div className="text-xs font-bold text-teal-950">
-                      {vNinDocName ? `Uploaded: ${vNinDocName}` : 'NIN Document (Optional)'}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setVNinDocName('NIN_SLIP_VERIFIED.pdf')}
-                      className="px-3 py-1 bg-teal-700 text-white rounded-lg text-[11px] font-bold"
-                    >
-                      Attach NIN Slip
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-between pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setVendorStep(3)}
-                    className="px-5 py-2.5 bg-gray-100 font-bold text-xs text-gray-700 rounded-xl"
-                  >
-                    ← Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVendorStep(5)}
-                    className="px-6 py-3 bg-emerald-800 text-amber-300 font-bold text-xs rounded-xl shadow flex items-center gap-2"
-                  >
                     <span>Review Application</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
@@ -801,15 +679,15 @@ export const VendorRegisterView: React.FC = () => {
             </div>
           )}
 
-          {/* VENDOR STEP 5: Review & Final Submission */}
-          {vendorStep === 5 && (
+          {/* VENDOR STEP 4: Review & Final Submission */}
+          {vendorStep === 4 && (
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-150 shadow-sm space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-black text-emerald-950 font-display">
-                  Step 5: Review & Submit Application
+                  Step 4: Review & Submit Application
                 </h2>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                  Step 5 of 5
+                  Step 4 of 4
                 </span>
               </div>
 
@@ -823,8 +701,6 @@ export const VendorRegisterView: React.FC = () => {
                   <p><strong>Phone:</strong> {vPhone}</p>
                   <p><strong>Owner Name:</strong> {vOwnerName}</p>
                   <p><strong>Owner Email:</strong> {vEmail}</p>
-                  <p><strong>CAC Certificate:</strong> {vCacDocName ? 'Attached' : 'Not attached'}</p>
-                  <p><strong>NIN Document:</strong> {vNinDocName ? 'Attached' : 'Not attached'}</p>
                 </div>
               </div>
 
@@ -841,18 +717,18 @@ export const VendorRegisterView: React.FC = () => {
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-xs text-amber-950">
                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <p>
-                  Upon submission, your application will enter <strong>Pending Admin Approval</strong>. You can immediately access your Vendor Dashboard to upload products and select promotional plans.
+                  Upon submission, your application will enter <strong>Pending Admin Approval</strong>. You can immediately access your Vendor Dashboard to upload products, customize media, and select promotional plans.
                 </p>
               </div>
 
               <div className="flex justify-between pt-2">
                 <button
                   type="button"
-                  onClick={() => setVendorStep(4)}
+                  onClick={() => setVendorStep(3)}
                   disabled={submitting}
                   className="px-5 py-2.5 bg-gray-100 font-bold text-xs text-gray-700 rounded-xl"
                 >
-                  ← Edit Media
+                  ← Back to Owner Info
                 </button>
                 <button
                   type="button"
@@ -867,8 +743,8 @@ export const VendorRegisterView: React.FC = () => {
             </div>
           )}
 
-          {/* VENDOR STEP 6: Submission Success Screen */}
-          {vendorStep === 6 && submittedVendor && (
+          {/* VENDOR STEP 5: Submission Success Screen */}
+          {vendorStep === 5 && submittedVendor && (
             <div className="bg-white p-8 rounded-3xl border border-gray-150 shadow-xl text-center space-y-4">
               <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto shadow-inner">
                 <ShieldCheck className="w-10 h-10 text-emerald-700" />
