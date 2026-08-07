@@ -16,6 +16,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { IkoroduArea } from '../types';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { useSEO } from '../hooks/useSEO';
 
 export const MarketplaceView: React.FC = () => {
   const {
@@ -38,6 +39,14 @@ export const MarketplaceView: React.FC = () => {
 
   const [selectedCondition, setSelectedCondition] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<number>(2000000);
+
+  useSEO({
+    title: selectedCategory !== 'All' 
+      ? `Buy ${selectedCategory} Products in Ikorodu, Lagos` 
+      : 'Ikorodu Local Product Marketplace - Buy Direct from Vendors',
+    description: `Discover and buy verified ${selectedCategory !== 'All' ? selectedCategory : 'local'} products directly from top rated merchants in Sabo, Ebute, Agric, and Ikorodu Central, Lagos State.`,
+    keywords: `Ikorodu marketplace, buy products Ikorodu, ${selectedCategory} products, Sabo market, Lagos online shopping`,
+  });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const ikoroduAreas: (IkoroduArea | 'All')[] = [

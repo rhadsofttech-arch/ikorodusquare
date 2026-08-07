@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { useSEO } from '../hooks/useSEO';
 
 export const ProductDetailsView: React.FC = () => {
   const {
@@ -30,6 +31,14 @@ export const ProductDetailsView: React.FC = () => {
 
   const product = products.find((p) => p.id === selectedProductId) || products[0];
   const vendor = vendors.find((v) => v.id === product.vendorId) || vendors[0];
+
+  useSEO({
+    title: product ? `${product.name} (₦${product.price.toLocaleString()}) - ${vendor?.businessName || 'Ikorodu Vendor'}` : 'Product Details',
+    description: product ? `${product.name} available for ₦${product.price.toLocaleString()} from ${vendor?.businessName} in ${product.vendorArea}, Ikorodu. ${product.description.slice(0, 150)}...` : 'Product listing on IkoroduSquare.',
+    keywords: product ? `${product.name}, ${product.category}, buy ${product.name} Ikorodu, ${vendor?.businessName}, ${product.vendorArea} shopping` : undefined,
+    ogImage: product?.images?.[0] || vendor?.logoUrl,
+    ogType: 'product',
+  });
 
   const [activeImageIdx, setActiveImageIdx] = useState(0);
 

@@ -18,6 +18,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { IkoroduArea } from '../types';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { useSEO } from '../hooks/useSEO';
 
 export const DirectoryView: React.FC = () => {
   const {
@@ -38,6 +39,14 @@ export const DirectoryView: React.FC = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
   const [onlyVerified, setOnlyVerified] = useState<boolean>(false);
   const [onlyFeatured, setOnlyFeatured] = useState<boolean>(false);
+
+  useSEO({
+    title: selectedCategory !== 'All' 
+      ? `${selectedCategory} Businesses in Ikorodu, Lagos` 
+      : 'Ikorodu Business Directory & Local Vendors',
+    description: `Browse verified ${selectedCategory !== 'All' ? selectedCategory : 'local'} businesses, stores, and service providers across Sabo, Ebute, Agric, and Ikorodu Central, Lagos State.`,
+    keywords: `Ikorodu business directory, ${selectedCategory} Ikorodu, Sabo shops, Ebute businesses, local vendors Ikorodu`,
+  });
   const [minRating, setMinRating] = useState<number>(0);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 

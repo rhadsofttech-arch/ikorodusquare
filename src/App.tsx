@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
+import { Breadcrumb } from './components/Breadcrumb';
 import { Footer } from './components/Footer';
 import { AdminAccessGuard } from './components/AdminAccessGuard';
 
@@ -44,6 +45,7 @@ export default function App() {
     <AppProvider>
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col justify-between selection:bg-amber-300 selection:text-emerald-950 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px]">
         <Navbar />
+        <Breadcrumb />
         <MainContent />
         <Footer />
       </div>

@@ -24,6 +24,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { Review } from '../types';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { useSEO } from '../hooks/useSEO';
 
 export const BusinessDetailsView: React.FC = () => {
   const {
@@ -57,6 +58,13 @@ export const BusinessDetailsView: React.FC = () => {
   const vendorReviews = reviews.filter((r) => r.vendorId === vendor.id);
 
   const isFollowing = followingVendors.includes(vendor.id);
+
+  useSEO({
+    title: vendor ? `${vendor.businessName} - ${vendor.category} in ${vendor.area}, Ikorodu` : 'Business Details',
+    description: vendor ? (vendor.description || `${vendor.businessName} is a verified ${vendor.category} business operating in ${vendor.area}, Ikorodu, Lagos State. Contact them directly on IkoroduSquare.`) : 'Business details on IkoroduSquare.',
+    keywords: vendor ? `${vendor.businessName}, ${vendor.category} Ikorodu, ${vendor.area} shops, vendors in ${vendor.area}` : undefined,
+    ogImage: vendor?.logoUrl || vendor?.coverImageUrl,
+  });
 
   // Determine open/closed status
   const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });

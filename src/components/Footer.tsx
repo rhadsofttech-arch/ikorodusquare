@@ -120,10 +120,6 @@ export const Footer: React.FC = () => {
         <div className="pt-4 border-t border-emerald-900/60 flex flex-col sm:flex-row items-center justify-between text-[11px] text-emerald-400 gap-2 font-medium">
           <p>© {new Date().getFullYear()} IkoroduSquare. Powered by <strong className="text-amber-400 font-bold">Rhadsoft Tech</strong>. Built for Lagos, Nigeria.</p>
           <div className="flex items-center gap-4">
-            <span className="px-2 py-0.5 rounded-md bg-emerald-900/80 border border-emerald-700 text-amber-300 font-mono text-[10px] flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Supabase Backend Enabled
-            </span>
             <span className="hover:underline cursor-pointer">Privacy Policy</span>
             <span className="hover:underline cursor-pointer">Terms of Service</span>
           </div>
