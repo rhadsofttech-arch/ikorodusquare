@@ -104,7 +104,6 @@ export const PromotionsPricingView: React.FC = () => {
 
             <button
               onClick={() => {
-                setRole('vendor');
                 setActiveTab('vendor-portal');
               }}
               className="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow"

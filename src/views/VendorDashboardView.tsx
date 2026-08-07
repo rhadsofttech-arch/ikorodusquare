@@ -80,37 +80,38 @@ export const VendorDashboardView: React.FC = () => {
   const [promoNotes, setPromoNotes] = useState('');
   const [promoSuccessMsg, setPromoSuccessMsg] = useState(false);
 
-  // Active vendor (match currentUser vendor or fallback to actual matching email or first vendor)
+  // Active vendor (match currentUser vendor strictly without falling back to other users' stores)
   const userVendor = vendors.find(
     (v) =>
       (currentUser?.email && v.ownerEmail?.toLowerCase() === currentUser.email.toLowerCase()) ||
-      (currentUser?.id && v.userId === currentUser.id)
+      (currentUser?.id && v.userId === currentUser.id) ||
+      (currentUser?.id && v.id === currentUser.id)
   );
 
-  const vendor = userVendor || vendors[0] || {
-    id: `v-user-${currentUser?.id || 'guest'}`,
+  const vendor = userVendor || {
+    id: currentUser?.id ? `v-${currentUser.id}` : `v-guest-${Date.now()}`,
     userId: currentUser?.id,
-    businessName: currentUser?.firstName ? `${currentUser.firstName}'s Store` : 'My Business Store',
+    businessName: currentUser?.firstName ? `${currentUser.firstName}'s Store` : 'My Store',
     slug: (currentUser?.firstName || 'my-store').toLowerCase().replace(/\s+/g, '-'),
-    category: 'Fashion & Apparel',
+    category: 'General Services',
     subcategory: 'General',
     description: 'Welcome to our verified storefront in Ikorodu.',
-    address: 'Sabo Market, Ikorodu, Lagos State',
+    address: 'Ikorodu, Lagos State',
     area: (currentUser?.area as any) || 'Sabo',
     lga: 'Ikorodu',
     state: 'Lagos State',
     country: 'Nigeria',
-    phone: currentUser?.phone || '+234 800 000 0000',
-    whatsapp: currentUser?.phone ? currentUser.phone.replace(/\D/g, '') : '2348000000000',
-    yearsInBusiness: 2,
-    logoUrl: currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?auto=format&fit=crop&q=80&w=300',
-    coverImageUrl: 'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?auto=format&fit=crop&q=80&w=1200',
+    phone: currentUser?.phone || '',
+    whatsapp: currentUser?.phone ? currentUser.phone.replace(/\D/g, '') : '',
+    yearsInBusiness: 1,
+    logoUrl: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=300',
+    coverImageUrl: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1200',
     galleryUrls: [],
-    ownerName: currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : 'Business Owner',
-    ownerEmail: currentUser?.email || 'vendor@ikorodusquare.ng',
-    ownerPhone: currentUser?.phone || '+234 800 000 0000',
+    ownerName: currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : 'Store Owner',
+    ownerEmail: currentUser?.email || '',
+    ownerPhone: currentUser?.phone || '',
     status: 'approved' as const,
-    isVerified: false,
+    isVerified: true,
     isFeatured: false,
     isPremium: false,
     rating: 5.0,
@@ -122,9 +123,9 @@ export const VendorDashboardView: React.FC = () => {
       { day: 'Thursday', openTime: '08:00', closeTime: '18:00', isClosed: false },
       { day: 'Friday', openTime: '08:00', closeTime: '18:00', isClosed: false },
       { day: 'Saturday', openTime: '09:00', closeTime: '17:00', isClosed: false },
-      { day: 'Sunday', openTime: '12:00', closeTime: '16:00', isClosed: true },
+      { day: 'Sunday', openTime: '00:00', closeTime: '00:00', isClosed: true },
     ],
-    deliveryAreas: ['Sabo', 'Garage', 'Agric', 'Ebute'],
+    deliveryAreas: ['Sabo', 'Garage', 'Agric'],
     viewsCount: 0,
     whatsappClicks: 0,
     phoneClicks: 0,
@@ -134,7 +135,7 @@ export const VendorDashboardView: React.FC = () => {
   // Vendor Profile Edit State
   const [profileData, setProfileData] = useState({
     businessName: vendor.businessName || '',
-    category: vendor.category || 'Fashion & Apparel',
+    category: vendor.category || 'General Services',
     subcategory: vendor.subcategory || '',
     description: vendor.description || '',
     address: vendor.address || '',
@@ -153,21 +154,36 @@ export const VendorDashboardView: React.FC = () => {
     ownerPhone: vendor.ownerPhone || '',
   });
 
-  const [profileHours, setProfileHours] = useState<BusinessHours[]>(
-    vendor.businessHours || [
-      { day: 'Monday', openTime: '08:00', closeTime: '18:00', isClosed: false },
-      { day: 'Tuesday', openTime: '08:00', closeTime: '18:00', isClosed: false },
-      { day: 'Wednesday', openTime: '08:00', closeTime: '18:00', isClosed: false },
-      { day: 'Thursday', openTime: '08:00', closeTime: '18:00', isClosed: false },
-      { day: 'Friday', openTime: '08:00', closeTime: '18:00', isClosed: false },
-      { day: 'Saturday', openTime: '09:00', closeTime: '17:00', isClosed: false },
-      { day: 'Sunday', openTime: '12:00', closeTime: '16:00', isClosed: true },
-    ]
-  );
-
+  const [profileHours, setProfileHours] = useState<BusinessHours[]>(vendor.businessHours || []);
   const [profileGallery, setProfileGallery] = useState<string[]>(vendor.galleryUrls || []);
   const [profileDeliveryAreas, setProfileDeliveryAreas] = useState<string[]>(vendor.deliveryAreas || []);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  useEffect(() => {
+    setProfileData({
+      businessName: vendor.businessName || '',
+      category: vendor.category || 'General Services',
+      subcategory: vendor.subcategory || '',
+      description: vendor.description || '',
+      address: vendor.address || '',
+      area: vendor.area || 'Sabo',
+      phone: vendor.phone || '',
+      whatsapp: vendor.whatsapp || '',
+      website: vendor.website || '',
+      instagram: vendor.instagram || '',
+      facebook: vendor.facebook || '',
+      tiktok: vendor.tiktok || '',
+      yearsInBusiness: vendor.yearsInBusiness || 1,
+      logoUrl: vendor.logoUrl || '',
+      coverImageUrl: vendor.coverImageUrl || '',
+      ownerName: vendor.ownerName || '',
+      ownerEmail: vendor.ownerEmail || '',
+      ownerPhone: vendor.ownerPhone || '',
+    });
+    setProfileHours(vendor.businessHours || []);
+    setProfileGallery(vendor.galleryUrls || []);
+    setProfileDeliveryAreas(vendor.deliveryAreas || []);
+  }, [vendor.id, vendor.businessName, vendor.ownerEmail]);
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
 
   useEffect(() => {

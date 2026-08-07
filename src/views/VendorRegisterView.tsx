@@ -888,7 +888,6 @@ export const VendorRegisterView: React.FC = () => {
               <div className="pt-4 flex justify-center">
                 <button
                   onClick={() => {
-                    setRole('vendor');
                     setActiveTab('vendor-portal');
                   }}
                   className="px-6 py-3 bg-emerald-800 text-white font-bold text-xs rounded-xl shadow hover:bg-emerald-900"

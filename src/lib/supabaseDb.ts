@@ -591,6 +591,33 @@ export async function saveAuditLogToSupabase(log: AuditLog): Promise<boolean> {
 // AUTH & PROFILES HELPERS (SUPABASE AUTH)
 // ==========================================
 
+export async function updateProfileInSupabase(
+  userId: string,
+  updates: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    area?: string;
+    role?: 'customer' | 'vendor' | 'admin';
+  }
+): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const row: any = {};
+    if (updates.firstName !== undefined) row.first_name = updates.firstName;
+    if (updates.lastName !== undefined) row.last_name = updates.lastName;
+    if (updates.phone !== undefined) row.phone = updates.phone;
+    if (updates.area !== undefined) row.area = updates.area;
+    if (updates.role !== undefined) row.role = updates.role;
+
+    const { error } = await supabase.from('profiles').update(row).eq('id', userId);
+    return !error;
+  } catch (err) {
+    console.error('Error updating profile in Supabase:', err);
+    return false;
+  }
+}
+
 export async function createProfileInSupabase(profile: {
   id: string;
   email: string;
@@ -674,6 +701,21 @@ export async function supabaseSignUp(email: string, password: string, userData: 
     phone: userData.phone,
     area: userData.area,
   });
+
+  // If email confirmation is disabled on Supabase, attempt immediate sign-in to guarantee active session
+  if (!data.session) {
+    try {
+      const signInRes = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInRes.data?.session) {
+        return signInRes.data;
+      }
+    } catch (e) {
+      // Auto sign-in fallback ignored if confirmation is strictly required
+    }
+  }
 
   return data;
 }

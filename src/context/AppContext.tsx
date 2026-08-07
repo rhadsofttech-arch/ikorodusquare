@@ -45,6 +45,7 @@ import {
   saveAuditLogToSupabase,
   fetchProfileFromSupabase,
   createProfileInSupabase,
+  updateProfileInSupabase,
   supabaseSignUp,
   supabaseSignIn,
   supabaseSignOut,
@@ -269,6 +270,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedArea, setSelectedArea] = useState<IkoroduArea | 'All'>('All');
 
+  // Synchronize authenticated user state with Supabase session and public.profiles
+  const syncSessionUser = async (session: any) => {
+    if (!session?.user) {
+      setCurrentUser(null);
+      setRoleState('guest');
+      return null;
+    }
+    const u = session.user;
+    let profile = await fetchProfileFromSupabase(u.id);
+    if (!profile) {
+      const meta = u.user_metadata || {};
+      await createProfileInSupabase({
+        id: u.id,
+        email: u.email || '',
+        role: (meta.role as any) || 'customer',
+        firstName: meta.firstName || '',
+        lastName: meta.lastName || '',
+        phone: meta.phone || '',
+        area: meta.area || 'Sabo',
+      });
+      profile = await fetchProfileFromSupabase(u.id);
+    }
+    const meta = u.user_metadata || {};
+    const role = (profile?.role || (meta.role as UserRole)) || 'customer';
+    const userObj: User = {
+      id: u.id,
+      email: profile?.email || u.email || '',
+      firstName: profile?.first_name || meta.firstName || 'User',
+      lastName: profile?.last_name || meta.lastName || '',
+      phone: profile?.phone || meta.phone || '',
+      role: role,
+      area: profile?.area || meta.area || 'Sabo',
+      isVerified: true,
+      createdAt: u.created_at || new Date().toISOString(),
+    };
+    setCurrentUser(userObj);
+    setRoleState(role);
+    return userObj;
+  };
+
   // Supabase Initial Load & Auth Sync
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
@@ -295,28 +336,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const sbLogs = await fetchAuditLogsFromSupabase();
       if (sbLogs && sbLogs.length > 0) setAuditLogs(sbLogs);
+
+      // Check current session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      await syncSessionUser(session);
     })();
 
     // Listen to Supabase Auth Changes
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const u = session.user;
-        const profile = await fetchProfileFromSupabase(u.id);
-        const meta = u.user_metadata || {};
-        const role = (profile?.role || meta.role as UserRole) || 'customer';
-        setRoleState(role);
-        setCurrentUser({
-          id: u.id,
-          email: u.email || '',
-          firstName: profile?.first_name || meta.firstName || 'User',
-          lastName: profile?.last_name || meta.lastName || '',
-          phone: profile?.phone || meta.phone || '',
-          role: role,
-          area: profile?.area || meta.area || 'Sabo',
-          isVerified: true,
-          createdAt: u.created_at || new Date().toISOString(),
-        });
-      }
+      await syncSessionUser(session);
     });
 
     return () => {
@@ -349,47 +379,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_notifications`, JSON.stringify(notifications));
   }, [notifications]);
 
-  // Set Role handler
+  // Set Role handler (synchronizes with authenticated user profile without mock defaults)
   const setRole = (role: UserRole) => {
     setRoleState(role);
-    if (role === 'admin') {
-      setCurrentUser({
-        id: 'admin-01',
-        email: 'admin@ikorodusquare.ng',
-        firstName: 'System',
-        lastName: 'Admin',
-        phone: '+234 800 000 0000',
-        role: 'admin',
-        area: 'Sabo',
-        isVerified: true,
-        createdAt: new Date().toISOString(),
-      });
-    } else if (role === 'vendor') {
-      setCurrentUser({
-        id: 'v-3-user',
-        email: 'emeka@sparklegadgets.ng',
-        firstName: 'Emeka',
-        lastName: 'Nwosu',
-        phone: '+234 701 889 9000',
-        role: 'vendor',
-        area: 'Sabo',
-        isVerified: true,
-        createdAt: new Date().toISOString(),
-      });
-    } else if (role === 'customer') {
-      setCurrentUser({
-        id: 'c-101',
-        email: 'bisi.ogundimu@gmail.com',
-        firstName: 'Bisi',
-        lastName: 'Ogundimu',
-        phone: '+234 803 999 1111',
-        role: 'customer',
-        area: 'Agric',
-        isVerified: true,
-        createdAt: new Date().toISOString(),
-      });
+    if (currentUser) {
+      const updatedUser = { ...currentUser, role };
+      setCurrentUser(updatedUser);
+      if (role !== 'guest') {
+        updateProfileInSupabase(currentUser.id, { role });
+      }
     } else {
-      setCurrentUser(null);
+      if (role === 'guest') {
+        setCurrentUser(null);
+      }
     }
   };
 
@@ -552,10 +554,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     updateVendorInSupabase(vendorId, updatedData);
 
+    // Sync currentUser profile if this vendor belongs to currentUser
+    if (
+      currentUser &&
+      (currentUser.id === vendorId ||
+        (updatedData.ownerEmail && currentUser.email.toLowerCase() === updatedData.ownerEmail.toLowerCase()))
+    ) {
+      let fName = currentUser.firstName;
+      let lName = currentUser.lastName;
+      if (updatedData.ownerName) {
+        const parts = updatedData.ownerName.trim().split(' ');
+        fName = parts[0] || fName;
+        lName = parts.slice(1).join(' ') || lName;
+      }
+      const updatedUser: User = {
+        ...currentUser,
+        firstName: fName,
+        lastName: lName,
+        phone: updatedData.ownerPhone || currentUser.phone,
+        area: updatedData.area || currentUser.area,
+      };
+      setCurrentUser(updatedUser);
+      updateProfileInSupabase(currentUser.id, {
+        firstName: fName,
+        lastName: lName,
+        phone: updatedUser.phone,
+        area: updatedUser.area,
+      });
+    }
+
     const log: AuditLog = {
       id: `log-${Date.now()}`,
       action: 'VENDOR_PROFILE_UPDATED',
-      performedBy: updatedData.businessName || 'Vendor',
+      performedBy: updatedData.businessName || updatedData.ownerName || 'Vendor',
       role: 'vendor',
       details: `Updated vendor profile details for vendor ID: ${vendorId}`,
       timestamp: new Date().toISOString(),
@@ -1084,16 +1115,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Supabase Auth Methods
   const signInWithSupabase = async (email: string, pass: string) => {
-    return await supabaseSignIn(email, pass);
+    const data = await supabaseSignIn(email, pass);
+    if (data?.user) {
+      const userObj = await syncSessionUser(data.session || { user: data.user });
+      const role = userObj?.role || 'customer';
+      if (role === 'vendor') {
+        setActiveTab('vendor-portal');
+      } else if (role === 'admin') {
+        setActiveTab('admin-portal');
+      } else {
+        setActiveTab('home');
+      }
+    }
+    return data;
   };
 
   const signUpWithSupabase = async (email: string, pass: string, data: Partial<User>) => {
-    return await supabaseSignUp(email, pass, data);
+    const res = await supabaseSignUp(email, pass, data);
+    const authUser = res?.user || res?.session?.user;
+    if (authUser) {
+      const userObj = await syncSessionUser(res.session || { user: authUser });
+      const role = userObj?.role || data.role || 'customer';
+      if (role === 'vendor') {
+        setActiveTab('vendor-portal');
+      }
+    }
+    return res;
   };
 
   const signOutSupabase = async () => {
     await supabaseSignOut();
-    setRole('guest');
+    setCurrentUser(null);
+    setRoleState('guest');
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY}_user`);
+    sessionStorage.clear();
+    setActiveTab('home');
   };
 
   return (

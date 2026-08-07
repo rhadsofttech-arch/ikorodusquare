@@ -7,7 +7,7 @@ interface AdminAccessGuardProps {
 }
 
 export const AdminAccessGuard: React.FC<AdminAccessGuardProps> = ({ children }) => {
-  const { currentRole, currentUser, setRole, setActiveTab } = useApp();
+  const { currentRole, currentUser, signInWithSupabase, setActiveTab } = useApp();
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -18,22 +18,24 @@ export const AdminAccessGuard: React.FC<AdminAccessGuardProps> = ({ children }) 
     return <>{children}</>;
   }
 
-  const handleAdminSignIn = (e: React.FormEvent) => {
+  const handleAdminSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      // Authenticate admin credentials or allow quick admin access
+    try {
       if (!adminEmail.trim()) {
         setErrorMsg('Please enter your administrator email address.');
         setIsLoading(false);
         return;
       }
 
-      setRole('admin');
+      await signInWithSupabase(adminEmail.trim(), adminPassword);
       setIsLoading(false);
-    }, 400);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Invalid administrator credentials.');
+      setIsLoading(false);
+    }
   };
 
   return (
