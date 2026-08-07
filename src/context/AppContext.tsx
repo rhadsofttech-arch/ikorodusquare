@@ -22,6 +22,7 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_AUDIT_LOGS,
   CATEGORIES,
+  MANUAL_PAYMENT_INFO,
 } from '../data/mockData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
@@ -116,7 +117,7 @@ interface AppContextType {
     requestId: string,
     adminNote?: string,
     slotConfig?: {
-      assignedSlot?: 'homepage_banner' | 'featured_product' | 'sponsored_vendor' | 'category_top';
+      assignedSlot?: 'homepage_banner' | 'featured_product' | 'featured_vendor' | 'sponsored_vendor' | 'category_top';
       startDate?: string;
       expiresAt?: string;
       assignedTargetId?: string;
@@ -125,6 +126,19 @@ interface AppContextType {
       bannerSubtext?: string;
     }
   ) => void;
+  createDirectPromotionAssignment: (assignmentData: {
+    vendorId: string;
+    vendorName: string;
+    assignedSlot: 'homepage_banner' | 'featured_product' | 'featured_vendor' | 'sponsored_vendor' | 'category_top';
+    assignedTargetId?: string;
+    startDate: string;
+    durationWeeks: number;
+    amountNaira?: number;
+    bannerHeading?: string;
+    bannerSubtext?: string;
+    bannerImageUrl?: string;
+    adminNote?: string;
+  }) => void;
   rejectPromotionRequest: (requestId: string, adminNote?: string) => void;
   removeActivePromotion: (requestId: string) => void;
 
@@ -911,6 +925,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveAuditLogToSupabase(log);
   };
 
+  const createDirectPromotionAssignment = (assignmentData: {
+    vendorId: string;
+    vendorName: string;
+    assignedSlot: 'homepage_banner' | 'featured_product' | 'featured_vendor' | 'sponsored_vendor' | 'category_top';
+    assignedTargetId?: string;
+    startDate: string;
+    durationWeeks: number;
+    amountNaira?: number;
+    bannerHeading?: string;
+    bannerSubtext?: string;
+    bannerImageUrl?: string;
+    adminNote?: string;
+  }) => {
+    const start = new Date(assignmentData.startDate);
+    const expires = new Date(start.getTime() + assignmentData.durationWeeks * 7 * 24 * 60 * 60 * 1000);
+    const nowStr = new Date().toISOString();
+
+    const newReq: PromotionRequest = {
+      id: `pr-${Date.now()}`,
+      vendorId: assignmentData.vendorId,
+      vendorName: assignmentData.vendorName,
+      promoType: assignmentData.assignedSlot as PromoType,
+      promoTitle: `Admin Placement: ${assignmentData.assignedSlot.replace(/_/g, ' ').toUpperCase()}`,
+      amountNaira: assignmentData.amountNaira || 0,
+      durationWeeks: assignmentData.durationWeeks,
+      bankName: MANUAL_PAYMENT_INFO.bankName,
+      accountName: MANUAL_PAYMENT_INFO.accountName,
+      accountNumber: MANUAL_PAYMENT_INFO.accountNumber,
+      proofUrl: '',
+      proofFileName: 'Direct Admin Assignment',
+      txnRef: `ADMIN-ASSIGN-${Date.now().toString().slice(-6)}`,
+      status: 'approved',
+      adminNote: assignmentData.adminNote || 'Assigned directly by Admin.',
+      requestedAt: nowStr,
+      approvedAt: nowStr,
+      startDate: start.toISOString(),
+      expiresAt: expires.toISOString(),
+      assignedSlot: assignmentData.assignedSlot,
+      assignedTargetId: assignmentData.assignedTargetId || assignmentData.vendorId,
+      bannerHeading: assignmentData.bannerHeading,
+      bannerSubtext: assignmentData.bannerSubtext,
+      bannerImageUrl: assignmentData.bannerImageUrl,
+    };
+
+    setPromotionRequests((prev) => [newReq, ...prev]);
+    savePromotionToSupabase(newReq);
+
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'ADMIN_PROMOTION_ASSIGNMENT_CREATED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Assigned slot "${assignmentData.assignedSlot}" to vendor/product "${assignmentData.vendorName}" until ${expires.toLocaleDateString()}`,
+      timestamp: nowStr,
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+  };
+
   const rejectPromotionRequest = (requestId: string, adminNote?: string) => {
     setPromotionRequests((prev) =>
       prev.map((req) => {
@@ -1069,6 +1142,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         replyEnquiry,
         submitPromotionRequest,
         approvePromotionRequest,
+        createDirectPromotionAssignment,
         rejectPromotionRequest,
         removeActivePromotion,
         toggleWishlist,

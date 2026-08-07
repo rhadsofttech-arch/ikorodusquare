@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Store,
   ShoppingBag,
@@ -23,10 +23,23 @@ import {
   ArrowLeft,
   Star,
   Zap,
+  Camera,
+  Globe,
+  Instagram,
+  Facebook,
+  X,
+  FileText,
+  Check,
+  Image as ImageIcon,
+  User,
+  MapPin,
+  Building2,
+  Save,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO, PROMOTION_OPTIONS } from '../data/mockData';
-import { Product, PromoType } from '../types';
+import { Product, PromoType, BusinessHours, IkoroduArea } from '../types';
+import { uploadFileToSupabaseStorage } from '../lib/supabaseDb';
 
 export const VendorDashboardView: React.FC = () => {
   const {
@@ -40,13 +53,14 @@ export const VendorDashboardView: React.FC = () => {
     replyReview,
     replyEnquiry,
     submitPromotionRequest,
+    updateVendorProfile,
     categories,
     setActiveTab,
     setSelectedVendorId,
     currentUser,
   } = useApp();
 
-  const [vendorTab, setVendorTab] = useState<'overview' | 'products' | 'enquiries' | 'reviews' | 'promotions' | 'qrcode'>('overview');
+  const [vendorTab, setVendorTab] = useState<'overview' | 'products' | 'profile' | 'enquiries' | 'reviews' | 'promotions' | 'qrcode'>('overview');
 
   // Product Add Modal
   const [addProductModalOpen, setAddProductModalOpen] = useState(false);
@@ -56,21 +70,133 @@ export const VendorDashboardView: React.FC = () => {
   const [newProdDesc, setNewProdDesc] = useState('');
   const [newProdImage, setNewProdImage] = useState('https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800');
 
-  // Manual Promotion Upload State
+  // Manual Promotion Real Receipt State
   const [selectedPromoOption, setSelectedPromoOption] = useState(PROMOTION_OPTIONS[1]);
   const [proofFileUploaded, setProofFileUploaded] = useState(false);
   const [proofFileName, setProofFileName] = useState('');
+  const [proofFileUrl, setProofFileUrl] = useState('');
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [txnRef, setTxnRef] = useState('');
   const [promoNotes, setPromoNotes] = useState('');
   const [promoSuccessMsg, setPromoSuccessMsg] = useState(false);
 
-  // Active vendor (match currentUser vendor or default to Sparkle Electronics)
+  // Active vendor (match currentUser vendor or fallback to actual matching email or first vendor)
   const userVendor = vendors.find(
     (v) =>
       (currentUser?.email && v.ownerEmail?.toLowerCase() === currentUser.email.toLowerCase()) ||
       (currentUser?.id && v.userId === currentUser.id)
   );
-  const vendor = userVendor || vendors.find((v) => v.id === 'v-3') || vendors[0];
+
+  const vendor = userVendor || vendors[0] || {
+    id: `v-user-${currentUser?.id || 'guest'}`,
+    userId: currentUser?.id,
+    businessName: currentUser?.firstName ? `${currentUser.firstName}'s Store` : 'My Business Store',
+    slug: (currentUser?.firstName || 'my-store').toLowerCase().replace(/\s+/g, '-'),
+    category: 'Fashion & Apparel',
+    subcategory: 'General',
+    description: 'Welcome to our verified storefront in Ikorodu.',
+    address: 'Sabo Market, Ikorodu, Lagos State',
+    area: (currentUser?.area as any) || 'Sabo',
+    lga: 'Ikorodu',
+    state: 'Lagos State',
+    country: 'Nigeria',
+    phone: currentUser?.phone || '+234 800 000 0000',
+    whatsapp: currentUser?.phone ? currentUser.phone.replace(/\D/g, '') : '2348000000000',
+    yearsInBusiness: 2,
+    logoUrl: currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?auto=format&fit=crop&q=80&w=300',
+    coverImageUrl: 'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?auto=format&fit=crop&q=80&w=1200',
+    galleryUrls: [],
+    ownerName: currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : 'Business Owner',
+    ownerEmail: currentUser?.email || 'vendor@ikorodusquare.ng',
+    ownerPhone: currentUser?.phone || '+234 800 000 0000',
+    status: 'approved' as const,
+    isVerified: false,
+    isFeatured: false,
+    isPremium: false,
+    rating: 5.0,
+    reviewCount: 0,
+    businessHours: [
+      { day: 'Monday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Tuesday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Wednesday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Thursday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Friday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Saturday', openTime: '09:00', closeTime: '17:00', isClosed: false },
+      { day: 'Sunday', openTime: '12:00', closeTime: '16:00', isClosed: true },
+    ],
+    deliveryAreas: ['Sabo', 'Garage', 'Agric', 'Ebute'],
+    viewsCount: 0,
+    whatsappClicks: 0,
+    phoneClicks: 0,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Vendor Profile Edit State
+  const [profileData, setProfileData] = useState({
+    businessName: vendor.businessName || '',
+    category: vendor.category || 'Fashion & Apparel',
+    subcategory: vendor.subcategory || '',
+    description: vendor.description || '',
+    address: vendor.address || '',
+    area: vendor.area || 'Sabo',
+    phone: vendor.phone || '',
+    whatsapp: vendor.whatsapp || '',
+    website: vendor.website || '',
+    instagram: vendor.instagram || '',
+    facebook: vendor.facebook || '',
+    tiktok: vendor.tiktok || '',
+    yearsInBusiness: vendor.yearsInBusiness || 1,
+    logoUrl: vendor.logoUrl || '',
+    coverImageUrl: vendor.coverImageUrl || '',
+    ownerName: vendor.ownerName || '',
+    ownerEmail: vendor.ownerEmail || '',
+    ownerPhone: vendor.ownerPhone || '',
+  });
+
+  const [profileHours, setProfileHours] = useState<BusinessHours[]>(
+    vendor.businessHours || [
+      { day: 'Monday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Tuesday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Wednesday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Thursday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Friday', openTime: '08:00', closeTime: '18:00', isClosed: false },
+      { day: 'Saturday', openTime: '09:00', closeTime: '17:00', isClosed: false },
+      { day: 'Sunday', openTime: '12:00', closeTime: '16:00', isClosed: true },
+    ]
+  );
+
+  const [profileGallery, setProfileGallery] = useState<string[]>(vendor.galleryUrls || []);
+  const [profileDeliveryAreas, setProfileDeliveryAreas] = useState<string[]>(vendor.deliveryAreas || []);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (vendor) {
+      setProfileData({
+        businessName: vendor.businessName || '',
+        category: vendor.category || 'Fashion & Apparel',
+        subcategory: vendor.subcategory || '',
+        description: vendor.description || '',
+        address: vendor.address || '',
+        area: vendor.area || 'Sabo',
+        phone: vendor.phone || '',
+        whatsapp: vendor.whatsapp || '',
+        website: vendor.website || '',
+        instagram: vendor.instagram || '',
+        facebook: vendor.facebook || '',
+        tiktok: vendor.tiktok || '',
+        yearsInBusiness: vendor.yearsInBusiness || 1,
+        logoUrl: vendor.logoUrl || '',
+        coverImageUrl: vendor.coverImageUrl || '',
+        ownerName: vendor.ownerName || '',
+        ownerEmail: vendor.ownerEmail || '',
+        ownerPhone: vendor.ownerPhone || '',
+      });
+      if (vendor.businessHours) setProfileHours(vendor.businessHours);
+      if (vendor.galleryUrls) setProfileGallery(vendor.galleryUrls);
+      if (vendor.deliveryAreas) setProfileDeliveryAreas(vendor.deliveryAreas);
+    }
+  }, [vendor]);
   const vendorProducts = products.filter((p) => p.vendorId === vendor.id);
   const vendorEnquiries = enquiries.filter((e) => e.vendorId === vendor.id);
   const vendorReviews = reviews.filter((r) => r.vendorId === vendor.id);
@@ -98,6 +224,89 @@ export const VendorDashboardView: React.FC = () => {
     setNewProdName('');
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadFileToSupabaseStorage('vendor-logos', `logo-${vendor.id}-${Date.now()}.${file.name.split('.').pop()}`, file);
+    if (url) {
+      setProfileData((prev) => ({ ...prev, logoUrl: url }));
+    } else {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData((prev) => ({ ...prev, logoUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadFileToSupabaseStorage('vendor-covers', `cover-${vendor.id}-${Date.now()}.${file.name.split('.').pop()}`, file);
+    if (url) {
+      setProfileData((prev) => ({ ...prev, coverImageUrl: url }));
+    } else {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData((prev) => ({ ...prev, coverImageUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const url = await uploadFileToSupabaseStorage('vendor-gallery', `gal-${vendor.id}-${Date.now()}-${i}.${file.name.split('.').pop()}`, file);
+      if (url) {
+        setProfileGallery((prev) => [...prev, url]);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setProfileGallery((prev) => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  const handleReceiptFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingReceipt(true);
+    setProofFileName(file.name);
+    
+    const url = await uploadFileToSupabaseStorage('promotion-receipts', `receipt-${vendor.id}-${Date.now()}.${file.name.split('.').pop()}`, file);
+    if (url) {
+      setProofFileUrl(url);
+      setProofFileUploaded(true);
+    } else {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProofFileUrl(reader.result as string);
+        setProofFileUploaded(true);
+      };
+      reader.readAsDataURL(file);
+    }
+    setIsUploadingReceipt(false);
+  };
+
+  const handleSaveProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingProfile(true);
+    updateVendorProfile(vendor.id, {
+      ...profileData,
+      businessHours: profileHours,
+      galleryUrls: profileGallery,
+      deliveryAreas: profileDeliveryAreas,
+    });
+    setIsSavingProfile(false);
+    setProfileSaveSuccess(true);
+    setTimeout(() => setProfileSaveSuccess(false), 3000);
+  };
+
   const handlePromotionUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!txnRef.trim() || !proofFileUploaded) return;
@@ -112,7 +321,7 @@ export const VendorDashboardView: React.FC = () => {
       bankName: MANUAL_PAYMENT_INFO.bankName,
       accountName: MANUAL_PAYMENT_INFO.accountName,
       accountNumber: MANUAL_PAYMENT_INFO.accountNumber,
-      proofUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=800',
+      proofUrl: proofFileUrl || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=800',
       proofFileName: proofFileName || 'FCMB_Payment_Receipt.png',
       txnRef: txnRef.trim(),
       notes: promoNotes,
@@ -124,6 +333,8 @@ export const VendorDashboardView: React.FC = () => {
       setTxnRef('');
       setPromoNotes('');
       setProofFileUploaded(false);
+      setProofFileUrl('');
+      setProofFileName('');
     }, 2500);
   };
 
@@ -214,6 +425,17 @@ export const VendorDashboardView: React.FC = () => {
         >
           <ShoppingBag className="w-3.5 h-3.5" />
           <span>Products & Services ({vendorProducts.length})</span>
+        </button>
+        <button
+          onClick={() => setVendorTab('profile')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            vendorTab === 'profile'
+              ? 'bg-emerald-950 text-amber-300 shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+          }`}
+        >
+          <Edit className="w-3.5 h-3.5 text-amber-400" />
+          <span>Edit Business Profile</span>
         </button>
         <button
           onClick={() => setVendorTab('enquiries')}
@@ -476,6 +698,434 @@ export const VendorDashboardView: React.FC = () => {
         </div>
       )}
 
+      {/* 2b. Edit Business Profile */}
+      {vendorTab === 'profile' && (
+        <form onSubmit={handleSaveProfileSubmit} className="space-y-6">
+          {/* Top Banner & Alert */}
+          <div className="bg-white/95 backdrop-blur-md p-6 rounded-3xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-black text-slate-900 font-display flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-700" />
+                Edit Business Profile
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Manage your storefront details, logo, cover image, operating hours, and social channels. All changes save directly to Supabase.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSavingProfile}
+              className="px-6 py-3 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold rounded-2xl shadow-md transition-all flex items-center gap-2 shrink-0 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4 text-amber-300" />
+              <span>{isSavingProfile ? 'Saving Changes...' : 'Save Profile Changes'}</span>
+            </button>
+          </div>
+
+          {profileSaveSuccess && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-950 font-bold text-xs rounded-2xl flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+              <span>Business profile updated successfully in database! Your storefront is live with updated details.</span>
+            </div>
+          )}
+
+          {/* Branding Section (Logo & Cover Image Upload) */}
+          <div className="p-6 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-xs space-y-6">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+              <Camera className="w-4 h-4 text-amber-500" />
+              Storefront Branding Assets
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Logo Upload */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-700">Business Logo</label>
+                <div className="flex items-center gap-4">
+                  <div className="relative w-20 h-20 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0">
+                    {profileData.logoUrl ? (
+                      <img src={profileData.logoUrl} alt="Logo preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400">
+                        <ImageIcon className="w-8 h-8" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold cursor-pointer transition-all">
+                      <Upload className="w-4 h-4 text-emerald-700" />
+                      <span>Upload Logo</span>
+                      <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                    </label>
+                    <p className="text-[11px] text-slate-500">Square PNG, JPG, or WEBP. Max 5MB.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cover Image Upload */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-700">Cover Banner Image</label>
+                <div className="space-y-2">
+                  <div className="relative w-full h-24 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50">
+                    {profileData.coverImageUrl ? (
+                      <img src={profileData.coverImageUrl} alt="Cover preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400">
+                        <ImageIcon className="w-8 h-8" />
+                      </div>
+                    )}
+                  </div>
+                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold cursor-pointer transition-all">
+                    <Upload className="w-4 h-4 text-emerald-700" />
+                    <span>Upload Cover Image</span>
+                    <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Business Core Information */}
+          <div className="p-6 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+              <Store className="w-4 h-4 text-amber-500" />
+              Core Business Details
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Business Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={profileData.businessName}
+                  onChange={(e) => setProfileData({ ...profileData, businessName: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Business Category *</label>
+                <select
+                  value={profileData.category}
+                  onChange={(e) => setProfileData({ ...profileData, category: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Subcategory (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Men's Fashion, Phones & Accessories..."
+                  value={profileData.subcategory}
+                  onChange={(e) => setProfileData({ ...profileData, subcategory: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Years in Business</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={profileData.yearsInBusiness}
+                  onChange={(e) => setProfileData({ ...profileData, yearsInBusiness: parseInt(e.target.value) || 1 })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Business Description *</label>
+              <textarea
+                rows={4}
+                required
+                value={profileData.description}
+                onChange={(e) => setProfileData({ ...profileData, description: e.target.value })}
+                placeholder="Describe your products, quality guarantees, delivery terms..."
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs leading-relaxed"
+              />
+            </div>
+          </div>
+
+          {/* Owner & Contact Information */}
+          <div className="p-6 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+              <User className="w-4 h-4 text-amber-500" />
+              Owner & Contact Channels
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Owner Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={profileData.ownerName}
+                  onChange={(e) => setProfileData({ ...profileData, ownerName: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Owner Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={profileData.ownerEmail}
+                  onChange={(e) => setProfileData({ ...profileData, ownerEmail: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Owner Phone *</label>
+                <input
+                  type="text"
+                  required
+                  value={profileData.ownerPhone}
+                  onChange={(e) => setProfileData({ ...profileData, ownerPhone: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Store Phone Number *</label>
+                <input
+                  type="text"
+                  required
+                  value={profileData.phone}
+                  onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">WhatsApp Number (e.g. 2348012345678) *</label>
+                <input
+                  type="text"
+                  required
+                  value={profileData.whatsapp}
+                  onChange={(e) => setProfileData({ ...profileData, whatsapp: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-emerald-900"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Location & Operating Hours */}
+          <div className="p-6 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-xs space-y-6">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+              <MapPin className="w-4 h-4 text-amber-500" />
+              Address & Operating Hours
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Street Address *</label>
+                <input
+                  type="text"
+                  required
+                  value={profileData.address}
+                  onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Ikorodu Area *</label>
+                <select
+                  value={profileData.area}
+                  onChange={(e) => setProfileData({ ...profileData, area: e.target.value as IkoroduArea })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
+                >
+                  <option value="Sabo">Sabo</option>
+                  <option value="Garage">Garage</option>
+                  <option value="Agric">Agric</option>
+                  <option value="Ebute">Ebute</option>
+                  <option value="Ita-Elewa">Ita-Elewa</option>
+                  <option value="Igbogbo">Igbogbo</option>
+                  <option value="Imota">Imota</option>
+                  <option value="Ipakodo">Ipakodo</option>
+                  <option value="Laspotech/POLY">Laspotech / POLY</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Business Hours Matrix */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-slate-700">Operating Hours</label>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                {profileHours.map((h, idx) => (
+                  <div key={h.day} className="flex items-center justify-between gap-4 text-xs">
+                    <span className="w-24 font-bold text-slate-800">{h.day}</span>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={h.isClosed}
+                        onChange={(e) => {
+                          const updated = [...profileHours];
+                          updated[idx].isClosed = e.target.checked;
+                          setProfileHours(updated);
+                        }}
+                        className="rounded text-emerald-700 focus:ring-emerald-500"
+                      />
+                      <span className="text-[11px] text-slate-500">Closed</span>
+                    </label>
+                    {!h.isClosed ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="time"
+                          value={h.openTime}
+                          onChange={(e) => {
+                            const updated = [...profileHours];
+                            updated[idx].openTime = e.target.value;
+                            setProfileHours(updated);
+                          }}
+                          className="p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                        />
+                        <span className="text-slate-400">to</span>
+                        <input
+                          type="time"
+                          value={h.closeTime}
+                          onChange={(e) => {
+                            const updated = [...profileHours];
+                            updated[idx].closeTime = e.target.value;
+                            setProfileHours(updated);
+                          }}
+                          className="p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-xs text-red-500 font-bold italic">Closed All Day</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Social Links & Website */}
+          <div className="p-6 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+              <Globe className="w-4 h-4 text-amber-500" />
+              Website & Social Profiles
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-slate-500" /> Website URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://yourbusiness.com"
+                  value={profileData.website}
+                  onChange={(e) => setProfileData({ ...profileData, website: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Instagram className="w-3.5 h-3.5 text-pink-600" /> Instagram Handle / Link
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://instagram.com/yourhandle"
+                  value={profileData.instagram}
+                  onChange={(e) => setProfileData({ ...profileData, instagram: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Facebook className="w-3.5 h-3.5 text-blue-600" /> Facebook Page Link
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://facebook.com/yourpage"
+                  value={profileData.facebook}
+                  onChange={(e) => setProfileData({ ...profileData, facebook: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-slate-900" /> TikTok Profile Link
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://tiktok.com/@yourprofile"
+                  value={profileData.tiktok}
+                  onChange={(e) => setProfileData({ ...profileData, tiktok: e.target.value })}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Gallery Images Manager */}
+          <div className="p-6 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-amber-500" />
+                Storefront Gallery Photos ({profileGallery.length})
+              </h4>
+
+              <label className="px-3 py-1.5 bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-emerald-900 transition-colors">
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Photos</span>
+                <input type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
+              </label>
+            </div>
+
+            {profileGallery.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-4 text-center">
+                No gallery photos added yet. Click "Add Photos" to upload images of your shop or work.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                {profileGallery.map((imgUrl, i) => (
+                  <div key={i} className="relative group rounded-xl overflow-hidden border border-slate-200 h-24 bg-slate-100">
+                    <img src={imgUrl} alt={`Gallery photo ${i}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setProfileGallery(profileGallery.filter((_, idx) => idx !== i))}
+                      className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      title="Delete photo"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Save Action Bar */}
+          <div className="flex items-center justify-end gap-4 bg-white/90 p-4 rounded-2xl border border-slate-200">
+            <button
+              type="submit"
+              disabled={isSavingProfile}
+              className="px-8 py-3.5 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold rounded-2xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4 text-amber-300" />
+              <span>{isSavingProfile ? 'Saving Changes...' : 'Save Profile Changes'}</span>
+            </button>
+          </div>
+        </form>
+      )}
+
       {/* 3. Enquiries Inbox */}
       {vendorTab === 'enquiries' && (
         <div className="space-y-4">
@@ -607,24 +1257,40 @@ export const VendorDashboardView: React.FC = () => {
                   </div>
                 ) : (
                   <form onSubmit={handlePromotionUploadSubmit} className="space-y-4">
-                    {/* Simulated Dropzone */}
-                    <div className="p-4 border-2 border-dashed border-emerald-300 bg-emerald-50/50 rounded-2xl text-center space-y-2">
+                    {/* Real Receipt File Dropzone */}
+                    <div className="p-4 border-2 border-dashed border-emerald-300 bg-emerald-50/50 rounded-2xl text-center space-y-2 relative cursor-pointer hover:bg-emerald-100/50 transition-all">
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        onChange={handleReceiptFileSelect}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
                       <Upload className="w-8 h-8 text-emerald-700 mx-auto" />
                       <div className="text-xs font-bold text-emerald-950">
-                        {proofFileUploaded
-                          ? `Uploaded: ${proofFileName}`
-                          : 'Click to upload bank transfer screenshot / receipt PDF'}
+                        {isUploadingReceipt ? (
+                          <span className="text-emerald-700 animate-pulse">Uploading file to Supabase...</span>
+                        ) : proofFileUploaded ? (
+                          <span className="text-emerald-900 flex items-center justify-center gap-1">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Attached: {proofFileName}
+                          </span>
+                        ) : (
+                          'Click or drag & drop bank transfer receipt (JPG, PNG, PDF)'
+                        )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProofFileUploaded(true);
-                          setProofFileName(`FCMB_Receipt_${selectedPromoOption.priceNaira}Naira.png`);
-                        }}
-                        className="px-3 py-1.5 bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-xs"
-                      >
-                        Simulate Receipt Upload
-                      </button>
+                      <p className="text-[10px] text-slate-500">
+                        File will be uploaded to Supabase Storage and reviewed by Admin.
+                      </p>
+                      {proofFileUrl && (
+                        <div className="mt-2 p-2 bg-white rounded-xl border border-slate-200 inline-block">
+                          {proofFileName.endsWith('.pdf') ? (
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                              <FileText className="w-4 h-4 text-red-600" /> PDF Document Ready
+                            </div>
+                          ) : (
+                            <img src={proofFileUrl} alt="Receipt preview" className="h-16 rounded-lg object-contain mx-auto" />
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div>

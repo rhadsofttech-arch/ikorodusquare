@@ -534,13 +534,15 @@ export const Navbar: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={() => handleNavClick('register-vendor')}
-            className="w-full py-2.5 bg-emerald-800 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm"
-          >
-            <PlusCircle className="w-4 h-4 text-amber-300" />
-            Register Business
-          </button>
+          {!isVendor && (
+            <button
+              onClick={() => handleNavClick('register-vendor')}
+              className="w-full py-2.5 bg-emerald-800 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm"
+            >
+              <PlusCircle className="w-4 h-4 text-amber-300" />
+              Register Business
+            </button>
+          )}
         </div>
       )}
 

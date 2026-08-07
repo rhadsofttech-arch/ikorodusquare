@@ -102,6 +102,9 @@ export interface Vendor {
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
   isVerified: boolean;
   isFeatured: boolean;
+  isSponsored?: boolean;
+  homepageBanner?: boolean;
+  categoryTopSpot?: boolean;
   isPremium: boolean;
   rating: number;
   reviewCount: number;
@@ -206,7 +209,7 @@ export interface PromotionRequest {
   approvedAt?: string;
   startDate?: string;
   expiresAt?: string;
-  assignedSlot?: 'homepage_banner' | 'featured_product' | 'sponsored_vendor' | 'category_top';
+  assignedSlot?: 'homepage_banner' | 'featured_product' | 'featured_vendor' | 'sponsored_vendor' | 'category_top';
   assignedTargetId?: string;
   bannerImageUrl?: string;
   bannerHeading?: string;

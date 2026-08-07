@@ -46,6 +46,7 @@ export const AdminPortalView: React.FC = () => {
     toggleVerifyVendor,
     toggleFeatureVendor,
     approvePromotionRequest,
+    createDirectPromotionAssignment,
     rejectPromotionRequest,
     removeActivePromotion,
     auditLogs,
@@ -72,6 +73,18 @@ export const AdminPortalView: React.FC = () => {
   const [bannerSubtext, setBannerSubtext] = useState<string>('');
   const [customStartDate, setCustomStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [customDurationWeeks, setCustomDurationWeeks] = useState<number>(2);
+
+  // Direct Placement Creator Modal State
+  const [directPlacementModalOpen, setDirectPlacementModalOpen] = useState(false);
+  const [directVendorId, setDirectVendorId] = useState('');
+  const [directSlot, setDirectSlot] = useState<'homepage_banner' | 'featured_product' | 'featured_vendor' | 'sponsored_vendor' | 'category_top'>('featured_vendor');
+  const [directTargetId, setDirectTargetId] = useState('');
+  const [directStartDate, setDirectStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [directDurationWeeks, setDirectDurationWeeks] = useState(4);
+  const [directBannerHeading, setDirectBannerHeading] = useState('');
+  const [directBannerSubtext, setDirectBannerSubtext] = useState('');
+  const [directBannerImageUrl, setDirectBannerImageUrl] = useState('');
+  const [directAdminNote, setDirectAdminNote] = useState('');
 
   // Proof Screenshot Modal
   const [previewProofUrl, setPreviewProofUrl] = useState<string | null>(null);
@@ -130,6 +143,32 @@ export const AdminPortalView: React.FC = () => {
     setBannerSubtext('Shop verified local products & authentic services directly in Ikorodu.');
     setCustomStartDate(new Date().toISOString().split('T')[0]);
     setCustomDurationWeeks(req.durationWeeks || 2);
+  };
+
+  const handleDirectPlacementSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetVendor = vendors.find((v) => v.id === directVendorId);
+    if (!targetVendor) return;
+
+    createDirectPromotionAssignment({
+      vendorId: targetVendor.id,
+      vendorName: targetVendor.businessName,
+      assignedSlot: directSlot,
+      assignedTargetId: directTargetId || targetVendor.id,
+      startDate: directStartDate,
+      durationWeeks: directDurationWeeks,
+      bannerHeading: directBannerHeading || `Featured SME Spotlight: ${targetVendor.businessName}`,
+      bannerSubtext: directBannerSubtext || 'Shop verified local deals & authentic products in Ikorodu.',
+      bannerImageUrl: directBannerImageUrl || targetVendor.coverImageUrl || targetVendor.logoUrl,
+      adminNote: directAdminNote || 'Direct placement assigned by Admin.',
+    });
+
+    setDirectPlacementModalOpen(false);
+    setDirectVendorId('');
+    setDirectBannerHeading('');
+    setDirectBannerSubtext('');
+    setDirectBannerImageUrl('');
+    setDirectAdminNote('');
   };
 
   const handleConfirmSlotApproval = (e: React.FormEvent) => {
@@ -484,10 +523,22 @@ export const AdminPortalView: React.FC = () => {
 
           {/* Active Assigned Promotions Table */}
           <div className="space-y-4 pt-4 border-t border-gray-200">
-            <h3 className="text-base font-black text-emerald-950 font-display flex items-center justify-between">
-              <span>Active Admin-Assigned Promotions ({activePromos.length})</span>
-              <span className="text-xs font-normal text-gray-500">Live on Homepage & Search views</span>
-            </h3>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-black text-emerald-950 font-display flex items-center gap-2">
+                  <span>Active Admin-Assigned Promotions ({activePromos.length})</span>
+                </h3>
+                <p className="text-xs text-gray-500">Live on Homepage, Banners, Featured Vendors & Search results</p>
+              </div>
+
+              <button
+                onClick={() => setDirectPlacementModalOpen(true)}
+                className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-extrabold text-xs rounded-2xl shadow transition-all flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>+ Assign Vendor / Product Spot</span>
+              </button>
+            </div>
 
             {activePromos.length === 0 ? (
               <div className="bg-white p-8 rounded-3xl text-center border border-gray-200 space-y-1">
@@ -1101,20 +1152,229 @@ export const AdminPortalView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL 4: Proof Screenshot Modal */}
+      {/* MODAL 3b: Direct Promotion Assignment Creator Modal */}
+      {directPlacementModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-emerald-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-base font-black text-emerald-950 font-display flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                <span>Assign Direct Promotion Placement</span>
+              </h3>
+              <button
+                onClick={() => setDirectPlacementModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleDirectPlacementSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Select Vendor / Merchant *</label>
+                <select
+                  required
+                  value={directVendorId}
+                  onChange={(e) => {
+                    setDirectVendorId(e.target.value);
+                    const v = vendors.find((v) => v.id === e.target.value);
+                    if (v) {
+                      setDirectBannerHeading(`Special Spotlight: ${v.businessName}`);
+                      setDirectBannerSubtext(`Shop verified products & services from ${v.businessName} in Ikorodu.`);
+                      setDirectBannerImageUrl(v.coverImageUrl || v.logoUrl);
+                    }
+                  }}
+                  className="w-full p-2.5 border rounded-xl font-bold bg-white focus:outline-none focus:border-emerald-600"
+                >
+                  <option value="">-- Choose Vendor Storefront --</option>
+                  {vendors
+                    .filter((v) => v.status === 'approved')
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.businessName} ({v.ownerName} • {v.area})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Target Promotion Slot *</label>
+                <select
+                  value={directSlot}
+                  onChange={(e: any) => setDirectSlot(e.target.value)}
+                  className="w-full p-2.5 border rounded-xl font-bold bg-white focus:outline-none focus:border-emerald-600"
+                >
+                  <option value="homepage_banner">Homepage Main Hero Banner Slot</option>
+                  <option value="featured_vendor">Featured Vendors Carousel Spot</option>
+                  <option value="sponsored_vendor">Sponsored Vendor Directory Badge</option>
+                  <option value="category_top">Category Top Placement Spot</option>
+                  <option value="featured_product">Featured Product Spotlight Grid</option>
+                </select>
+              </div>
+
+              {directSlot === 'featured_product' && directVendorId && (
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Select Target Product *</label>
+                  <select
+                    value={directTargetId}
+                    onChange={(e) => setDirectTargetId(e.target.value)}
+                    className="w-full p-2.5 border rounded-xl bg-white"
+                  >
+                    <option value="">-- Feature Entire Vendor or Specific Product --</option>
+                    {products
+                      .filter((p) => p.vendorId === directVendorId)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} (₦{p.price.toLocaleString()})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {directSlot === 'homepage_banner' && (
+                <div className="space-y-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <div>
+                    <label className="block font-bold text-amber-950 mb-0.5">Banner Heading Title</label>
+                    <input
+                      type="text"
+                      value={directBannerHeading}
+                      onChange={(e) => setDirectBannerHeading(e.target.value)}
+                      className="w-full p-2 border rounded-lg bg-white"
+                      placeholder="e.g. Premium Fashion & Accessories Hub"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-amber-950 mb-0.5">Banner Subtext</label>
+                    <input
+                      type="text"
+                      value={directBannerSubtext}
+                      onChange={(e) => setDirectBannerSubtext(e.target.value)}
+                      className="w-full p-2 border rounded-lg bg-white"
+                      placeholder="e.g. 100% Authentic Quality Guaranteed in Ikorodu"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-amber-950 mb-0.5">Banner Image URL</label>
+                    <input
+                      type="url"
+                      value={directBannerImageUrl}
+                      onChange={(e) => setDirectBannerImageUrl(e.target.value)}
+                      className="w-full p-2 border rounded-lg bg-white font-mono text-[11px]"
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Start Date *</label>
+                  <input
+                    type="date"
+                    value={directStartDate}
+                    onChange={(e) => setDirectStartDate(e.target.value)}
+                    className="w-full p-2.5 border rounded-xl bg-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Duration (Weeks) *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={52}
+                    value={directDurationWeeks}
+                    onChange={(e) => setDirectDurationWeeks(Number(e.target.value))}
+                    className="w-full p-2.5 border rounded-xl bg-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Admin Internal Note (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Complimentary 1-month promo granted by Admin..."
+                  value={directAdminNote}
+                  onChange={(e) => setDirectAdminNote(e.target.value)}
+                  className="w-full p-2.5 border rounded-xl bg-white"
+                />
+              </div>
+
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDirectPlacementModalOpen(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!directVendorId}
+                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold rounded-xl shadow disabled:opacity-50"
+                >
+                  Create & Launch Placement
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Payment Receipt Proof Preview & Download Modal */}
       {previewProofUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 text-center">
-            <h3 className="text-base font-bold text-emerald-950">Payment Proof Screenshot</h3>
-            <div className="h-64 rounded-2xl overflow-hidden bg-gray-100 border">
-              <img src={previewProofUrl} alt="Bank Receipt Proof" className="w-full h-full object-contain" />
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 text-center border border-slate-200 shadow-2xl">
+            <div className="flex items-center justify-between border-b pb-3 text-left">
+              <div>
+                <h3 className="text-base font-black text-emerald-950 font-display flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-emerald-700" />
+                  Bank Transfer Payment Receipt Proof
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Uploaded file stored in Supabase Storage. Verify bank transaction details carefully.
+                </p>
+              </div>
+              <button onClick={() => setPreviewProofUrl(null)} className="text-slate-400 hover:text-slate-600 font-bold">
+                ✕
+              </button>
             </div>
-            <button
-              onClick={() => setPreviewProofUrl(null)}
-              className="px-6 py-2 bg-emerald-950 text-white font-bold text-xs rounded-xl"
-            >
-              Close Preview
-            </button>
+
+            <div className="min-h-48 max-h-80 rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 flex items-center justify-center p-2">
+              {previewProofUrl.endsWith('.pdf') || previewProofUrl.includes('application/pdf') ? (
+                <div className="space-y-3 py-6">
+                  <FileText className="w-16 h-16 text-red-600 mx-auto animate-bounce" />
+                  <p className="text-xs font-bold text-slate-800">PDF Bank Receipt Document</p>
+                  <p className="text-[11px] text-slate-500">PDF documents cannot be rendered in image inline view.</p>
+                </div>
+              ) : (
+                <img src={previewProofUrl} alt="Bank Receipt Proof" className="w-full max-h-72 object-contain rounded-xl" />
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <a
+                href={previewProofUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Download / Open Original File</span>
+              </a>
+
+              <button
+                onClick={() => setPreviewProofUrl(null)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl"
+              >
+                Close Window
+              </button>
+            </div>
           </div>
         </div>
       )}
