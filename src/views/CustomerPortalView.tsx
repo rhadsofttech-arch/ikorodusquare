@@ -29,6 +29,30 @@ export const CustomerPortalView: React.FC = () => {
 
   const [activeTabSub, setActiveTabSub] = useState<'wishlist' | 'following' | 'enquiries'>('wishlist');
 
+  if (!currentUser) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-950 flex items-center justify-center mx-auto shadow-sm">
+          <Heart className="w-8 h-8 text-emerald-800" />
+        </div>
+        <h2 className="text-2xl font-black font-display text-emerald-950">
+          Customer Portal Access
+        </h2>
+        <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+          Please sign in to view your saved wishlist items, followed vendor storefronts, and submitted enquiries.
+        </p>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => setActiveTab('home')}
+            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all"
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const savedProducts = products.filter((p) => wishlist.includes(p.id));
   const followedVendorObjs = vendors.filter((v) => followingVendors.includes(v.id));
 

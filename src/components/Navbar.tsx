@@ -31,6 +31,7 @@ export const Navbar: React.FC = () => {
     currentUser,
     currentRole,
     setRole,
+    signOutSupabase,
     activeTab,
     setActiveTab,
     notifications,
@@ -51,20 +52,29 @@ export const Navbar: React.FC = () => {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
-  const isVendor = currentUser?.role === 'vendor' || currentRole === 'vendor';
-  const isAdmin = currentUser?.role === 'admin' || currentRole === 'admin';
+  const isVendor = currentUser ? currentUser.role === 'vendor' : false;
+  const isAdmin = currentUser ? currentUser.role === 'admin' : false;
 
-  const loggedVendor = vendors.find(
-    (v) =>
-      (currentUser?.email && v.ownerEmail?.toLowerCase() === currentUser.email.toLowerCase()) ||
-      (currentUser?.id && v.userId === currentUser.id)
-  );
+  const loggedVendor = currentUser
+    ? vendors.find(
+        (v) =>
+          (currentUser.email && v.ownerEmail?.toLowerCase() === currentUser.email.toLowerCase()) ||
+          (currentUser.id && v.userId === currentUser.id)
+      )
+    : null;
 
   const vendorDisplayName = loggedVendor
     ? loggedVendor.businessName
     : currentUser?.firstName
     ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim()
     : 'Vendor';
+
+  const handleSignOut = async () => {
+    setAccountMenuOpen(false);
+    setNotifDropdownOpen(false);
+    setMobileMenuOpen(false);
+    await signOutSupabase();
+  };
 
   const ikoroduAreas: (IkoroduArea | 'All')[] = [
     'All',
@@ -300,10 +310,7 @@ export const Navbar: React.FC = () => {
 
                     <div className="border-t border-slate-100 mt-1 pt-1">
                       <button
-                        onClick={() => {
-                          setAccountMenuOpen(false);
-                          setRole('guest');
-                        }}
+                        onClick={handleSignOut}
                         className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 font-bold flex items-center gap-2"
                       >
                         <LogOut className="w-4 h-4" />
@@ -523,10 +530,7 @@ export const Navbar: React.FC = () => {
             </button>
           ) : (
             <button
-              onClick={() => {
-                setRole('guest');
-                setMobileMenuOpen(false);
-              }}
+              onClick={handleSignOut}
               className="w-full py-2.5 bg-red-50 text-red-700 text-xs font-bold rounded-xl flex items-center justify-center gap-2 border border-red-200"
             >
               <LogOut className="w-4 h-4" />

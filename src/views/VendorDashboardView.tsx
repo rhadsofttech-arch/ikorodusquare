@@ -62,6 +62,37 @@ export const VendorDashboardView: React.FC = () => {
 
   const [vendorTab, setVendorTab] = useState<'overview' | 'products' | 'profile' | 'enquiries' | 'reviews' | 'promotions' | 'qrcode'>('overview');
 
+  // Strict Vendor Access Guard
+  if (!currentUser || currentUser.role !== 'vendor') {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-950 flex items-center justify-center mx-auto shadow-sm">
+          <Store className="w-8 h-8 text-emerald-800" />
+        </div>
+        <h2 className="text-2xl font-black font-display text-emerald-950">
+          Vendor Access Required
+        </h2>
+        <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+          You must be logged in with an authenticated vendor account to access the Vendor Management Dashboard.
+        </p>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => setActiveTab('home')}
+            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all"
+          >
+            Return to Home
+          </button>
+          <button
+            onClick={() => setActiveTab('register-vendor')}
+            className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+          >
+            Register a Business
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Product Add Modal
   const [addProductModalOpen, setAddProductModalOpen] = useState(false);
   const [newProdName, setNewProdName] = useState('');

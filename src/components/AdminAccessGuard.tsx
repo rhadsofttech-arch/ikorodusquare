@@ -14,7 +14,7 @@ export const AdminAccessGuard: React.FC<AdminAccessGuardProps> = ({ children }) 
   const [isLoading, setIsLoading] = useState(false);
 
   // If already authenticated as administrator, grant access
-  if (currentUser?.role === 'admin' || currentRole === 'admin') {
+  if (currentUser && currentUser.role === 'admin') {
     return <>{children}</>;
   }
 

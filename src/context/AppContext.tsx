@@ -181,52 +181,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Initial URL Route Sync & Popstate listener
   useEffect(() => {
-    const path = window.location.pathname.toLowerCase();
-    if (path === '/admin') {
-      setActiveTabState('admin-portal');
-    } else if (path === '/marketplace') {
-      setActiveTabState('marketplace');
-    } else if (path === '/directory') {
-      setActiveTabState('directory');
-    } else if (path === '/categories') {
-      setActiveTabState('categories');
-    } else if (path === '/promotions') {
-      setActiveTabState('promotions');
-    } else if (path === '/vendor-portal') {
-      setActiveTabState('vendor-portal');
-    } else if (path === '/register') {
-      setActiveTabState('register-vendor');
-    }
-
     const handlePopState = () => {
       const p = window.location.pathname.toLowerCase();
-      if (p === '/admin') setActiveTabState('admin-portal');
-      else if (p === '/marketplace') setActiveTabState('marketplace');
+      if (p === '/admin') {
+        if (currentUser && currentUser.role === 'admin') {
+          setActiveTabState('admin-portal');
+        } else {
+          setActiveTabState('home');
+          window.history.replaceState({}, '', '/');
+        }
+      } else if (p === '/vendor-portal' || p === '/vendor') {
+        if (currentUser && currentUser.role === 'vendor') {
+          setActiveTabState('vendor-portal');
+        } else {
+          setActiveTabState('home');
+          window.history.replaceState({}, '', '/');
+        }
+      } else if (p === '/customer-portal' || p === '/customer') {
+        if (currentUser) {
+          setActiveTabState('customer-portal');
+        } else {
+          setActiveTabState('home');
+          window.history.replaceState({}, '', '/');
+        }
+      } else if (p === '/marketplace') setActiveTabState('marketplace');
       else if (p === '/directory') setActiveTabState('directory');
       else if (p === '/categories') setActiveTabState('categories');
       else if (p === '/promotions') setActiveTabState('promotions');
-      else if (p === '/vendor-portal') setActiveTabState('vendor-portal');
       else if (p === '/register') setActiveTabState('register-vendor');
       else setActiveTabState('home');
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [currentUser]);
 
-  const setActiveTab = (tab: string) => {
-    setActiveTabState(tab);
+  const setActiveTab = (tab: string, replace: boolean = false) => {
+    let targetTab = tab;
+    let shouldReplace = replace;
+
+    // Enforce Route Protection
+    if (targetTab === 'vendor-portal' || targetTab === 'vendor') {
+      if (!currentUser || currentUser.role !== 'vendor') {
+        targetTab = 'home';
+        shouldReplace = true;
+      }
+    } else if (targetTab === 'admin-portal' || targetTab === 'admin') {
+      if (!currentUser || currentUser.role !== 'admin') {
+        targetTab = 'home';
+        shouldReplace = true;
+      }
+    } else if (targetTab === 'customer-portal') {
+      if (!currentUser) {
+        targetTab = 'home';
+        shouldReplace = true;
+      }
+    }
+
+    setActiveTabState(targetTab);
+
     let urlPath = '/';
-    if (tab === 'admin-portal' || tab === 'admin') urlPath = '/admin';
-    else if (tab === 'marketplace') urlPath = '/marketplace';
-    else if (tab === 'directory') urlPath = '/directory';
-    else if (tab === 'categories') urlPath = '/categories';
-    else if (tab === 'promotions' || tab === 'promotions-pricing') urlPath = '/promotions';
-    else if (tab === 'vendor-portal') urlPath = '/vendor-portal';
-    else if (tab === 'register-vendor' || tab === 'vendor-register') urlPath = '/register';
+    if (targetTab === 'admin-portal' || targetTab === 'admin') urlPath = '/admin';
+    else if (targetTab === 'marketplace') urlPath = '/marketplace';
+    else if (targetTab === 'directory') urlPath = '/directory';
+    else if (targetTab === 'categories') urlPath = '/categories';
+    else if (targetTab === 'promotions' || targetTab === 'promotions-pricing') urlPath = '/promotions';
+    else if (targetTab === 'vendor-portal') urlPath = '/vendor-portal';
+    else if (targetTab === 'register-vendor' || targetTab === 'vendor-register') urlPath = '/register';
+    else if (targetTab === 'customer-portal') urlPath = '/customer-portal';
 
     if (window.location.pathname !== urlPath) {
-      window.history.pushState({}, '', urlPath);
+      if (shouldReplace) {
+        window.history.replaceState({}, '', urlPath);
+      } else {
+        window.history.pushState({}, '', urlPath);
+      }
     }
   };
 
@@ -345,8 +374,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     })();
 
     // Listen to Supabase Auth Changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      await syncSessionUser(session);
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        setCurrentUser(null);
+        setRoleState('guest');
+        setSelectedVendorId(null);
+        setSelectedProductId(null);
+        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_user`);
+        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_profile`);
+        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_vendor`);
+        localStorage.removeItem(`${LOCAL_STORAGE_KEY}_role`);
+        sessionStorage.clear();
+        setActiveTabState('home');
+        if (window.location.pathname !== '/') {
+          window.history.replaceState({}, '', '/');
+        }
+      } else {
+        await syncSessionUser(session);
+      }
     });
 
     return () => {
@@ -379,19 +424,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_notifications`, JSON.stringify(notifications));
   }, [notifications]);
 
+  // Route protection effect: automatically redirect if protected tab is active without valid user
+  useEffect(() => {
+    if (activeTab === 'vendor-portal' && (!currentUser || currentUser.role !== 'vendor')) {
+      setActiveTab('home', true);
+    } else if ((activeTab === 'admin-portal' || activeTab === 'admin') && (!currentUser || currentUser.role !== 'admin')) {
+      setActiveTab('home', true);
+    } else if (activeTab === 'customer-portal' && !currentUser) {
+      setActiveTab('home', true);
+    }
+  }, [currentUser, activeTab]);
+
   // Set Role handler (synchronizes with authenticated user profile without mock defaults)
   const setRole = (role: UserRole) => {
+    if (role === 'guest') {
+      signOutSupabase();
+      return;
+    }
     setRoleState(role);
     if (currentUser) {
       const updatedUser = { ...currentUser, role };
       setCurrentUser(updatedUser);
-      if (role !== 'guest') {
-        updateProfileInSupabase(currentUser.id, { role });
-      }
-    } else {
-      if (role === 'guest') {
-        setCurrentUser(null);
-      }
+      updateProfileInSupabase(currentUser.id, { role });
     }
   };
 
@@ -1144,12 +1198,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const signOutSupabase = async () => {
-    await supabaseSignOut();
+    try {
+      await supabaseSignOut();
+    } catch (err) {
+      console.error('Error signing out of Supabase:', err);
+    }
+    // Immediately clear every authentication-related state
     setCurrentUser(null);
     setRoleState('guest');
+    setSelectedVendorId(null);
+    setSelectedProductId(null);
+
+    // Remove any related localStorage/sessionStorage values
     localStorage.removeItem(`${LOCAL_STORAGE_KEY}_user`);
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY}_profile`);
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY}_vendor`);
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY}_role`);
     sessionStorage.clear();
-    setActiveTab('home');
+
+    // Redirect to home and replace history URL
+    setActiveTabState('home');
+    if (window.location.pathname !== '/') {
+      window.history.replaceState({}, '', '/');
+    }
   };
 
   return (
