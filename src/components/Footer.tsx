@@ -164,11 +164,15 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2.5 text-xs text-emerald-200 font-medium">
               <li className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>{MANUAL_PAYMENT_INFO.supportPhone}</span>
+                <a href={`tel:${MANUAL_PAYMENT_INFO.supportPhone}`} className="hover:text-amber-300 transition-colors">
+                  {MANUAL_PAYMENT_INFO.supportPhone}
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>{MANUAL_PAYMENT_INFO.supportEmail}</span>
+                <a href={`mailto:${MANUAL_PAYMENT_INFO.supportEmail}`} className="hover:text-amber-300 transition-colors break-all">
+                  {MANUAL_PAYMENT_INFO.supportEmail}
+                </a>
               </li>
               <li className="pt-2 text-[11px] text-emerald-400 font-semibold">
                 Hours: Mon - Sat (8am - 6pm)

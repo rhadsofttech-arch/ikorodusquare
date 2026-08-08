@@ -37,7 +37,7 @@ import {
   Save,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { MANUAL_PAYMENT_INFO, PROMOTION_OPTIONS } from '../data/mockData';
+import { MANUAL_PAYMENT_INFO, PROMOTION_OPTIONS, IKORODU_AREAS } from '../data/mockData';
 import { Product, PromoType, BusinessHours, IkoroduArea } from '../types';
 import { uploadFileToSupabaseStorage } from '../lib/supabaseDb';
 
@@ -993,15 +993,11 @@ export const VendorDashboardView: React.FC = () => {
                   onChange={(e) => setProfileData({ ...profileData, area: e.target.value as IkoroduArea })}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
                 >
-                  <option value="Sabo">Sabo</option>
-                  <option value="Garage">Garage</option>
-                  <option value="Agric">Agric</option>
-                  <option value="Ebute">Ebute</option>
-                  <option value="Ita-Elewa">Ita-Elewa</option>
-                  <option value="Igbogbo">Igbogbo</option>
-                  <option value="Imota">Imota</option>
-                  <option value="Ipakodo">Ipakodo</option>
-                  <option value="Laspotech/POLY">Laspotech / POLY</option>
+                  {IKORODU_AREAS.map((area) => (
+                    <option key={area} value={area}>
+                      {area}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

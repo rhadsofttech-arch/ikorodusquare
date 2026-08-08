@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { ShareButton } from '../components/ShareButton';
 import { useSEO } from '../hooks/useSEO';
 
 export const ProductDetailsView: React.FC = () => {
@@ -55,13 +56,23 @@ export const ProductDetailsView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Back Button */}
-      <button
-        onClick={() => setActiveTab('marketplace')}
-        className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 transition-colors bg-white px-3 py-1.5 rounded-xl border border-gray-200 shadow-sm"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to Product Marketplace
-      </button>
+      {/* Top Bar: Back Button & Share */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <button
+          onClick={() => setActiveTab('marketplace')}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 transition-colors bg-white px-3.5 py-2 rounded-xl border border-gray-200 shadow-2xs hover:bg-emerald-50"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Product Marketplace
+        </button>
+
+        <ShareButton
+          title={`${product.name} - ₦${product.price.toLocaleString()}`}
+          text={`Check out "${product.name}" available for ₦${product.price.toLocaleString()} from ${vendor.businessName} in ${product.vendorArea}, Ikorodu on IkoroduSquare!`}
+          variant="outline"
+          className="px-3.5 py-2 text-xs"
+          label="Share Listing"
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Product Images Gallery */}
@@ -73,14 +84,22 @@ export const ProductDetailsView: React.FC = () => {
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
-              <button
-                onClick={() => toggleWishlist(product.id)}
-                className={`absolute top-4 right-4 p-2.5 rounded-full backdrop-blur-md transition-colors ${
-                  isSaved ? 'bg-amber-400 text-emerald-950' : 'bg-white/80 text-gray-700 hover:text-red-500'
-                }`}
-              >
-                <Star className={`w-5 h-5 ${isSaved ? 'fill-emerald-950' : ''}`} />
-              </button>
+              <div className="absolute top-4 right-4 flex items-center gap-2">
+                <ShareButton
+                  title={`${product.name} - ₦${product.price.toLocaleString()}`}
+                  text={`Check out "${product.name}" from ${vendor.businessName} on IkoroduSquare!`}
+                  variant="icon"
+                />
+                <button
+                  onClick={() => toggleWishlist(product.id)}
+                  className={`p-2.5 rounded-full backdrop-blur-md transition-colors shadow-md ${
+                    isSaved ? 'bg-amber-400 text-emerald-950' : 'bg-white/90 text-gray-700 hover:text-red-500'
+                  }`}
+                  title={isSaved ? 'Remove from Saved' : 'Save Item'}
+                >
+                  <Star className={`w-5 h-5 ${isSaved ? 'fill-emerald-950' : ''}`} />
+                </button>
+              </div>
             </div>
 
             {/* Thumbnail selector */}

@@ -26,6 +26,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { Review } from '../types';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { ShareButton } from '../components/ShareButton';
 import { useSEO } from '../hooks/useSEO';
 
 export const BusinessDetailsView: React.FC = () => {
@@ -49,6 +50,12 @@ export const BusinessDetailsView: React.FC = () => {
   const [enquiryModalOpen, setEnquiryModalOpen] = useState(false);
   const [enquiryMessage, setEnquiryMessage] = useState('');
   const [enquirySuccess, setEnquirySuccess] = useState(false);
+
+  // WhatsApp Pre-filled Template Modal state
+  const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<'general' | 'product' | 'delivery' | 'wholesale'>('general');
+  const [selectedProductIdForWA, setSelectedProductIdForWA] = useState<string>('');
+  const [customWAMessage, setCustomWAMessage] = useState<string>('');
 
   // Review form state
   const [reviewRating, setReviewRating] = useState(5);
@@ -119,15 +126,66 @@ export const BusinessDetailsView: React.FC = () => {
     setTimeout(() => setReviewSubmitted(false), 5000);
   };
 
+  const getPreFilledWAMessage = () => {
+    let base = '';
+    const selectedProd = vendorProducts.find((p) => p.id === selectedProductIdForWA);
+
+    switch (selectedTemplate) {
+      case 'general':
+        base = `Hello ${vendor.businessName}, I saw your store profile on IkoroduSquare. I would like to inquire about your products and services in ${vendor.area}.`;
+        break;
+      case 'product':
+        if (selectedProd) {
+          base = `Hello ${vendor.businessName}, I am interested in inquiring about "${selectedProd.name}" (₦${selectedProd.price.toLocaleString()}) listed on IkoroduSquare. Is this item currently available?`;
+        } else {
+          base = `Hello ${vendor.businessName}, I would like to inquire about product prices and current stock availability at your ${vendor.area} store on IkoroduSquare.`;
+        }
+        break;
+      case 'delivery':
+        base = `Hello ${vendor.businessName}, I am located in Ikorodu. Do you offer delivery or dispatch services to my area, and what are your delivery fees?`;
+        break;
+      case 'wholesale':
+        base = `Hello ${vendor.businessName}, I would like to make a bulk/wholesale inquiry for my order. Please share your wholesale catalog or volume discount details.`;
+        break;
+    }
+
+    if (customWAMessage.trim()) {
+      base += `\n\nAdditional Note: ${customWAMessage.trim()}`;
+    }
+    return base;
+  };
+
+  const handleLaunchWhatsApp = () => {
+    const message = getPreFilledWAMessage();
+    trackVendorWhatsAppClick(vendor.id);
+    let cleaned = (vendor.whatsapp || '2348000000000').replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+      cleaned = '234' + cleaned.substring(1);
+    }
+    const url = `https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+    setWhatsAppModalOpen(false);
+  };
+
   return (
     <div className="space-y-6 pb-12">
-      {/* Back Button */}
-      <button
-        onClick={() => setActiveTab('directory')}
-        className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 transition-colors bg-white px-3 py-1.5 rounded-xl border border-gray-200 shadow-sm"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to Business Directory
-      </button>
+      {/* Top Bar: Back Button & Share */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <button
+          onClick={() => setActiveTab('directory')}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 transition-colors bg-white px-3.5 py-2 rounded-xl border border-gray-200 shadow-2xs hover:bg-emerald-50"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Business Directory
+        </button>
+
+        <ShareButton
+          title={`${vendor.businessName} - Local Store in ${vendor.area}, Ikorodu`}
+          text={`Explore products, services, and direct deals from ${vendor.businessName} in ${vendor.area}, Ikorodu on IkoroduSquare!`}
+          variant="outline"
+          className="px-3.5 py-2 text-xs"
+          label="Share Storefront"
+        />
+      </div>
 
       {/* Storefront Hero Card */}
       <div className="bg-white rounded-3xl border border-gray-150 overflow-hidden shadow-sm relative">
@@ -191,14 +249,22 @@ export const BusinessDetailsView: React.FC = () => {
             </div>
 
             {/* Quick Contact Buttons */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              <button
+                onClick={() => setWhatsAppModalOpen(true)}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
+              >
+                <MessageSquare className="w-4 h-4 text-amber-300" />
+                <span>Message via WhatsApp</span>
+              </button>
+
               <WhatsAppChatButton
                 whatsappNumber={vendor.whatsapp}
                 businessName={vendor.businessName}
                 type="business"
                 vendorId={vendor.id}
-                variant="primary"
-                label="Direct WhatsApp Chat"
+                variant="secondary"
+                label="Quick Chat"
               />
 
               <a
@@ -217,6 +283,14 @@ export const BusinessDetailsView: React.FC = () => {
                 <Send className="w-4 h-4" />
                 <span className="hidden sm:inline">Send Enquiry</span>
               </button>
+
+              <ShareButton
+                title={`${vendor.businessName} - Local Store in ${vendor.area}, Ikorodu`}
+                text={`Check out ${vendor.businessName} in ${vendor.area}, Ikorodu on IkoroduSquare!`}
+                variant="outline"
+                className="px-3.5 py-2.5 text-xs"
+                label="Share"
+              />
             </div>
           </div>
 
@@ -336,6 +410,66 @@ export const BusinessDetailsView: React.FC = () => {
                     {area}
                   </span>
                 ))}
+              </div>
+            </div>
+
+            {/* Quick WhatsApp Inquiry Banner Card */}
+            <div className="bg-gradient-to-r from-emerald-900 to-emerald-950 p-6 rounded-3xl text-white space-y-3 shadow-md relative overflow-hidden">
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-base font-black font-display text-white">
+                    Direct WhatsApp Inquiry with {vendor.businessName}
+                  </h3>
+                </div>
+                <span className="px-2.5 py-0.5 bg-emerald-600/60 text-amber-300 font-bold text-[10px] rounded-full border border-emerald-500/40">
+                  Fast Response
+                </span>
+              </div>
+              <p className="text-xs text-emerald-100 leading-relaxed relative z-10">
+                Need quick answers about pricing, stock availability, or delivery to your area in Ikorodu? Use our pre-configured WhatsApp message templates to send an instant structured inquiry.
+              </p>
+              <div className="pt-2 flex flex-wrap gap-2 relative z-10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTemplate('general');
+                    setWhatsAppModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-emerald-500/30"
+                >
+                  🛍️ Store Inquiry
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTemplate('product');
+                    setWhatsAppModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-emerald-500/30"
+                >
+                  📦 Product Availability
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTemplate('delivery');
+                    setWhatsAppModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-emerald-500/30"
+                >
+                  🚚 Delivery Rates
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTemplate('wholesale');
+                    setWhatsAppModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-emerald-500/30"
+                >
+                  💼 Wholesale Order
+                </button>
               </div>
             </div>
           </div>
@@ -666,6 +800,174 @@ export const BusinessDetailsView: React.FC = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Pre-filled WhatsApp Inquiry Modal */}
+      {whatsAppModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto border border-emerald-100">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-emerald-950 font-display">
+                    Message {vendor.businessName} via WhatsApp
+                  </h3>
+                  <p className="text-[11px] text-gray-500 font-medium">
+                    Select an inquiry template to pre-fill your message
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setWhatsAppModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Template Selectors */}
+              <div>
+                <label className="block font-bold text-gray-800 mb-2">
+                  Choose Inquiry Template:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTemplate('general');
+                      setSelectedProductIdForWA('');
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      selectedTemplate === 'general'
+                        ? 'bg-emerald-50 border-emerald-600 font-bold text-emerald-950 shadow-sm'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span className="block text-xs">🛍️ General Inquiry</span>
+                    <span className="text-[10px] text-gray-500 font-normal">Store location & services</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTemplate('product')}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      selectedTemplate === 'product'
+                        ? 'bg-emerald-50 border-emerald-600 font-bold text-emerald-950 shadow-sm'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span className="block text-xs">📦 Product / Price Quote</span>
+                    <span className="text-[10px] text-gray-500 font-normal">Inquire specific items</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTemplate('delivery');
+                      setSelectedProductIdForWA('');
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      selectedTemplate === 'delivery'
+                        ? 'bg-emerald-50 border-emerald-600 font-bold text-emerald-950 shadow-sm'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span className="block text-xs">🚚 Delivery & Dispatch</span>
+                    <span className="text-[10px] text-gray-500 font-normal">Fees & pickup spots</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTemplate('wholesale');
+                      setSelectedProductIdForWA('');
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      selectedTemplate === 'wholesale'
+                        ? 'bg-emerald-50 border-emerald-600 font-bold text-emerald-950 shadow-sm'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span className="block text-xs">💼 Wholesale / Bulk</span>
+                    <span className="text-[10px] text-gray-500 font-normal">Volume discounts</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Product Selector if Product Template */}
+              {selectedTemplate === 'product' && vendorProducts.length > 0 && (
+                <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 space-y-1.5">
+                  <label className="block font-bold text-amber-950 text-xs">
+                    Select Product from {vendor.businessName}'s Catalog:
+                  </label>
+                  <select
+                    value={selectedProductIdForWA}
+                    onChange={(e) => setSelectedProductIdForWA(e.target.value)}
+                    className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs font-bold text-emerald-950 focus:outline-none"
+                  >
+                    <option value="">-- Any / General Catalog Items --</option>
+                    {vendorProducts.map((prod) => (
+                      <option key={prod.id} value={prod.id}>
+                        {prod.name} - ₦{prod.price.toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Additional Custom Note Input */}
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Add Custom Note or Question (Optional):
+                </label>
+                <input
+                  type="text"
+                  value={customWAMessage}
+                  onChange={(e) => setCustomWAMessage(e.target.value)}
+                  placeholder="e.g. My preferred pickup is Agric. Do you have color blue in stock?"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+
+              {/* Live Preview Box */}
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  Message Preview (Sent directly to vendor on WhatsApp):
+                </label>
+                <div className="p-3.5 bg-emerald-950 text-emerald-100 rounded-2xl text-xs font-mono leading-relaxed border border-emerald-800 whitespace-pre-wrap">
+                  {getPreFilledWAMessage()}
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between text-[11px] text-gray-600">
+                <span>Vendor WhatsApp Number: <strong>+{vendor.whatsapp}</strong></span>
+                <span className="text-emerald-700 font-bold">Direct & Instant</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setWhatsAppModalOpen(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 font-bold text-xs rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleLaunchWhatsApp}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 active:scale-95 transition-all"
+              >
+                <MessageSquare className="w-4 h-4 text-amber-300" />
+                <span>Launch WhatsApp Chat</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

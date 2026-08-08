@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IkoroduArea } from '../types';
+import { IKORODU_AREAS } from '../data/mockData';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 import { useSEO } from '../hooks/useSEO';
 
@@ -50,18 +51,7 @@ export const DirectoryView: React.FC = () => {
   const [minRating, setMinRating] = useState<number>(0);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  const ikoroduAreas: (IkoroduArea | 'All')[] = [
-    'All',
-    'Sabo',
-    'Garage',
-    'Agric',
-    'Ebute',
-    'Ayetoro',
-    'Igbogbo',
-    'Imota',
-    'Ijede',
-    'Ipakodo',
-  ];
+  const ikoroduAreas: (IkoroduArea | 'All')[] = ['All', ...IKORODU_AREAS];
 
   // Filter approved vendors
   const approvedVendors = vendors.filter((v) => v.status === 'approved');

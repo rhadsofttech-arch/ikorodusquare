@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IkoroduArea } from '../types';
+import { IKORODU_AREAS } from '../data/mockData';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 import { useSEO } from '../hooks/useSEO';
 
@@ -49,16 +50,7 @@ export const MarketplaceView: React.FC = () => {
   });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  const ikoroduAreas: (IkoroduArea | 'All')[] = [
-    'All',
-    'Sabo',
-    'Garage',
-    'Agric',
-    'Ebute',
-    'Ayetoro',
-    'Igbogbo',
-    'Imota',
-  ];
+  const ikoroduAreas: (IkoroduArea | 'All')[] = ['All', ...IKORODU_AREAS];
 
   const approvedProducts = products.filter((p) => p.status === 'approved');
 

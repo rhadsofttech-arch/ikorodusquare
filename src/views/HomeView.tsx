@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IkoroduArea, PromotionOption } from '../types';
-import { PROMOTION_OPTIONS, MANUAL_PAYMENT_INFO } from '../data/mockData';
+import { PROMOTION_OPTIONS, MANUAL_PAYMENT_INFO, IKORODU_AREAS } from '../data/mockData';
 import { IkoroduMapExplorer } from '../components/IkoroduMapExplorer';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 
@@ -85,48 +85,7 @@ export const HomeView: React.FC = () => {
     (p) => p.status === 'approved' && (featuredProductIds.includes(p.id) || p.isFeatured || true)
   );
 
-  const ikoroduAreas: IkoroduArea[] = [
-    'Sabo',
-    'Garage',
-    'Agric',
-    'Ebute',
-    'Ayetoro',
-    'Igbogbo',
-    'Imota',
-    'Ijede',
-    'Ipakodo',
-    'Offin',
-    'Ota-Ona',
-    'Ita-Elewa',
-    'Aga',
-    'Isawo',
-    'Odogunyan',
-    'Maya',
-    'Adamo',
-    'Gberigbe',
-    'Maya-Itaoluwo',
-    'Ibeshe',
-    'Agura',
-    'Egbin',
-    'Oreta',
-    'Bayeku',
-    'Owutu',
-    'Ogijo',
-    'Ladega',
-    'Benson',
-    'Solebo',
-    'Isiu',
-    'Agbowa',
-    'Itoikin',
-    'Itamaga',
-    'Parafa',
-    'Grammar School',
-    'Gbaga',
-    'Mowokekere',
-    'Radio',
-    'Araromi',
-    'Eyita',
-  ];
+  const ikoroduAreas: IkoroduArea[] = IKORODU_AREAS;
 
   // Predictive Search Autocomplete Logic
   const matchingProducts = searchQuery.trim()

@@ -24,6 +24,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { OtpModal } from '../components/OtpModal';
 import { IkoroduArea, Vendor, User as CustomerUser } from '../types';
+import { IKORODU_AREAS } from '../data/mockData';
 
 type AccountType = 'vendor' | 'customer';
 
@@ -92,20 +93,7 @@ export const VendorRegisterView: React.FC = () => {
   const [cPasswordError, setCPasswordError] = useState('');
   const [registeredCustomer, setRegisteredCustomer] = useState<CustomerUser | null>(null);
 
-  const ikoroduAreas: IkoroduArea[] = [
-    'Sabo',
-    'Garage',
-    'Agric',
-    'Ebute',
-    'Ayetoro',
-    'Igbogbo',
-    'Imota',
-    'Ijede',
-    'Ipakodo',
-    'Offin',
-    'Ota-Ona',
-    'Ita-Elewa',
-  ];
+  const ikoroduAreas: IkoroduArea[] = IKORODU_AREAS;
 
   // ---------------- VENDOR HANDLERS ----------------
   const handleVendorStep1Email = (e: React.FormEvent) => {
