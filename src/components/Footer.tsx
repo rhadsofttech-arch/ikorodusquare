@@ -1,14 +1,75 @@
-import React from 'react';
-import { Building2, MapPin, Phone, Mail, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { Building2, MapPin, Phone, Mail, ShieldCheck, Send, CheckCircle2, Bell } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO } from '../data/mockData';
 
 export const Footer: React.FC = () => {
   const { setActiveTab } = useApp();
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+    setNewsletterSubscribed(true);
+    setNewsletterEmail('');
+    setTimeout(() => setNewsletterSubscribed(false), 5000);
+  };
 
   return (
     <footer className="bg-emerald-950 text-emerald-100 pt-12 pb-8 border-t border-emerald-900/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* Newsletter Subscription Banner */}
+        <div className="p-6 sm:p-8 bg-gradient-to-r from-emerald-900/80 via-teal-900/70 to-emerald-900/80 border border-emerald-700/60 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1 text-center md:text-left max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full text-[11px] font-bold">
+              <Bell className="w-3.5 h-3.5 text-amber-400" />
+              <span>Ikorodu Resident Marketplace Bulletin</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-black font-display text-white">
+              Stay Updated on New Ikorodu Vendors & Marketplace Arrivals
+            </h3>
+            <p className="text-xs text-emerald-200/90 leading-relaxed">
+              Get weekly alerts on newly verified local shops, price drops, Sabo market deals, and featured SME spotlights straight to your email.
+            </p>
+          </div>
+
+          <div className="w-full md:w-auto min-w-[300px] sm:min-w-[360px]">
+            {newsletterSubscribed ? (
+              <div className="p-4 bg-emerald-800/90 border border-emerald-500/50 text-white text-xs font-bold rounded-2xl flex items-center gap-3 shadow-inner">
+                <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0" />
+                <div>
+                  <p className="text-amber-300">Successfully Subscribed!</p>
+                  <p className="text-[11px] font-normal text-emerald-100 mt-0.5">
+                    Welcome! You will receive our weekly Ikorodu marketplace digest.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleNewsletterSubmit} className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Mail className="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    placeholder="Enter your email address..."
+                    required
+                    className="w-full pl-10 pr-3 py-3 bg-emerald-950/80 border border-emerald-700/80 rounded-2xl text-xs text-white placeholder-emerald-400/70 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="px-5 py-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs rounded-2xl transition-all shadow flex items-center gap-1.5 shrink-0"
+                >
+                  <span>Subscribe</span>
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           {/* Brand & Vision Bento Card */}
           <div className="lg:col-span-2 p-6 bg-emerald-900/40 border border-emerald-800/60 rounded-3xl space-y-4">

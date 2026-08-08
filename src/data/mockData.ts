@@ -760,6 +760,7 @@ export const INITIAL_REVIEWS: Review[] = [
     customerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
     rating: 5,
     comment: 'The Butter Milk Loaf is out of this world! So soft and fluffy. Ordered 4 loaves for my family in Agric and it arrived hot and fresh.',
+    status: 'approved',
     vendorReply: 'Thank you so much Mrs. Bisi! We bake fresh every morning at 6:30am. We appreciate your patronage!',
     vendorRepliedAt: '2025-02-05T14:00:00Z',
     createdAt: '2025-02-04T18:30:00Z',
@@ -772,6 +773,7 @@ export const INITIAL_REVIEWS: Review[] = [
     customerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
     rating: 5,
     comment: 'Bought a UK-Used iPhone 15 Pro Max at Sparkle Sabo. Battery health was 98%, phone looks completely new. Genuine seller!',
+    status: 'approved',
     createdAt: '2025-02-10T12:00:00Z',
   },
   {
@@ -781,6 +783,7 @@ export const INITIAL_REVIEWS: Review[] = [
     customerName: 'Kemi Adeyemi',
     rating: 5,
     comment: 'Their 7-seater velvet sofa delivered to my house in Ebute exceeded my expectations. Very durable wood and neat stitching.',
+    status: 'approved',
     createdAt: '2025-01-28T16:20:00Z',
   },
 ];

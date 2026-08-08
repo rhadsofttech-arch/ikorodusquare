@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Phone,
   Store,
+  Star,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO } from '../data/mockData';
@@ -49,13 +50,17 @@ export const AdminPortalView: React.FC = () => {
     createDirectPromotionAssignment,
     rejectPromotionRequest,
     removeActivePromotion,
+    approveReview,
+    rejectReview,
+    deleteReview,
     auditLogs,
     setActiveTab,
     setSelectedVendorId,
     categories,
   } = useApp();
 
-  const [adminTab, setAdminTab] = useState<'pending-vendors' | 'promotions-queue' | 'all-vendors' | 'audit-logs'>('pending-vendors');
+  const [adminTab, setAdminTab] = useState<'pending-vendors' | 'promotions-queue' | 'all-vendors' | 'review-moderation' | 'audit-logs'>('pending-vendors');
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
 
   // Directory Merchants Filters & Search
   const [vendorSearch, setVendorSearch] = useState('');
@@ -91,6 +96,7 @@ export const AdminPortalView: React.FC = () => {
 
   const pendingVendors = vendors.filter((v) => v.status === 'pending');
   const pendingPromos = promotionRequests.filter((pr) => pr.status === 'pending');
+  const pendingReviews = reviews.filter((r) => r.status === 'pending');
 
   const now = new Date();
   const activePromos = promotionRequests.filter((pr) => {
@@ -304,6 +310,21 @@ export const AdminPortalView: React.FC = () => {
         >
           <Store className="w-4 h-4 text-amber-400" />
           <span>Directory Merchants ({vendors.length})</span>
+        </button>
+
+        <button
+          onClick={() => setAdminTab('review-moderation')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            adminTab === 'review-moderation' ? 'bg-emerald-950 text-amber-300 shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4 text-amber-400" />
+          <span>Review Moderation ({pendingReviews.length})</span>
+          {pendingReviews.length > 0 && (
+            <span className="w-5 h-5 bg-amber-500 text-emerald-950 rounded-full text-[10px] font-bold flex items-center justify-center">
+              {pendingReviews.length}
+            </span>
+          )}
         </button>
 
         <button
@@ -822,7 +843,188 @@ export const AdminPortalView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: Audit Logs */}
+      {/* TAB 4: Customer Review Moderation Queue */}
+      {adminTab === 'review-moderation' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-gray-150 shadow-sm">
+            <div>
+              <h3 className="text-base font-black text-emerald-950 font-display flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-amber-500" />
+                Customer Review & Feedback Moderation
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Review ratings and feedback submitted by local residents before approving them for public display on vendor storefronts.
+              </p>
+            </div>
+
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl shrink-0">
+              {(['pending', 'approved', 'rejected', 'all'] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setReviewStatusFilter(st)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                    reviewStatusFilter === st
+                      ? 'bg-emerald-950 text-amber-300 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {st} {st === 'pending' ? `(${pendingReviews.length})` : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* List of Reviews */}
+          {(() => {
+            const filteredReviews = reviews.filter((r) => {
+              if (reviewStatusFilter === 'all') return true;
+              if (reviewStatusFilter === 'pending') return r.status === 'pending';
+              if (reviewStatusFilter === 'approved') return r.status === 'approved' || !r.status;
+              if (reviewStatusFilter === 'rejected') return r.status === 'rejected';
+              return true;
+            });
+
+            if (filteredReviews.length === 0) {
+              return (
+                <div className="bg-white p-12 rounded-3xl border border-gray-150 text-center space-y-3">
+                  <MessageSquare className="w-12 h-12 text-gray-300 mx-auto" />
+                  <h4 className="text-sm font-bold text-gray-700">No {reviewStatusFilter} reviews found</h4>
+                  <p className="text-xs text-gray-500">
+                    {reviewStatusFilter === 'pending'
+                      ? 'Great job! There are currently no customer reviews waiting in the moderation queue.'
+                      : 'No customer feedback matches the selected filter.'}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                {filteredReviews.map((rev) => {
+                  const targetVendor = vendors.find((v) => v.id === rev.vendorId);
+                  const isPending = rev.status === 'pending';
+                  const isApproved = rev.status === 'approved' || !rev.status;
+                  const isRejected = rev.status === 'rejected';
+
+                  return (
+                    <div
+                      key={rev.id}
+                      className={`bg-white p-6 rounded-3xl border shadow-sm transition-all space-y-4 ${
+                        isPending ? 'border-amber-300 bg-amber-50/20' : 'border-gray-150'
+                      }`}
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-950 font-black flex items-center justify-center text-sm border border-emerald-200">
+                            {rev.customerName.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm font-bold text-emerald-950">{rev.customerName}</h4>
+                              <span className="text-[10px] text-gray-400 font-mono">
+                                ({new Date(rev.createdAt).toLocaleString()})
+                              </span>
+                              {isPending && (
+                                <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-[10px] font-black flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-amber-700" /> Awaiting Admin Approval
+                                </span>
+                              )}
+                              {isApproved && (
+                                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[10px] font-black flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-700" /> Approved & Live
+                                </span>
+                              )}
+                              {isRejected && (
+                                <span className="px-2.5 py-0.5 bg-red-100 text-red-900 border border-red-300 rounded-full text-[10px] font-black flex items-center gap-1">
+                                  <XCircle className="w-3 h-3 text-red-700" /> Rejected
+                                </span>
+                              )}
+                            </div>
+                            {targetVendor ? (
+                              <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                Target Vendor Storefront:{' '}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedVendorId(targetVendor.id);
+                                    setActiveTab('business-details');
+                                  }}
+                                  className="font-bold text-emerald-800 hover:underline flex items-center gap-0.5"
+                                >
+                                  {targetVendor.businessName} ({targetVendor.area})
+                                  <ExternalLink className="w-3 h-3" />
+                                </button>
+                              </p>
+                            ) : (
+                              <p className="text-xs text-gray-400">Target Vendor ID: {rev.vendorId}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Star Rating Display */}
+                        <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
+                          <span className="text-xs font-black text-amber-950 mr-1 font-mono">{rev.rating}.0</span>
+                          <div className="flex text-amber-400">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`w-4 h-4 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Comment body */}
+                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-150">
+                        <p className="text-xs text-gray-800 leading-relaxed italic">
+                          "{rev.comment}"
+                        </p>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+                        <span className="text-[10px] text-gray-400 font-mono">Review ID: {rev.id}</span>
+
+                        <div className="flex items-center gap-2">
+                          {!isApproved && (
+                            <button
+                              onClick={() => approveReview(rev.id)}
+                              className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Approve & Publish Live
+                            </button>
+                          )}
+
+                          {!isRejected && (
+                            <button
+                              onClick={() => rejectReview(rev.id)}
+                              className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs rounded-xl border border-amber-300 flex items-center gap-1.5 transition-colors"
+                            >
+                              <XCircle className="w-3.5 h-3.5 text-amber-700" /> Reject Review
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => deleteReview(rev.id)}
+                            className="px-3 py-2 bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-700 font-bold text-xs rounded-xl border border-gray-200 flex items-center gap-1.5 transition-colors"
+                            title="Delete permanently"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* TAB 5: System Audit Logs */}
       {adminTab === 'audit-logs' && (
         <div className="space-y-4">
           <h3 className="text-base font-black text-emerald-950 font-display">

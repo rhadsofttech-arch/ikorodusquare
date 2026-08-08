@@ -151,6 +151,7 @@ export interface Review {
   customerAvatar?: string;
   rating: number;
   comment: string;
+  status?: 'pending' | 'approved' | 'rejected';
   vendorReply?: string;
   vendorRepliedAt?: string;
   createdAt: string;

@@ -20,6 +20,8 @@ import {
   Calendar,
   Truck,
   ArrowLeft,
+  AlertCircle,
+  User,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Review } from '../types';
@@ -50,12 +52,16 @@ export const BusinessDetailsView: React.FC = () => {
 
   // Review form state
   const [reviewRating, setReviewRating] = useState(5);
+  const [reviewAuthorName, setReviewAuthorName] = useState('');
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   const vendor = vendors.find((v) => v.id === selectedVendorId) || vendors[0];
   const vendorProducts = products.filter((p) => p.vendorId === vendor.id && p.status === 'approved');
-  const vendorReviews = reviews.filter((r) => r.vendorId === vendor.id);
+  // Approved reviews or user pending reviews
+  const vendorReviews = reviews.filter(
+    (r) => r.vendorId === vendor.id && (r.status === 'approved' || !r.status || r.status === 'pending')
+  );
 
   const isFollowing = followingVendors.includes(vendor.id);
 
@@ -96,17 +102,21 @@ export const BusinessDetailsView: React.FC = () => {
     e.preventDefault();
     if (!reviewComment.trim()) return;
 
+    const authorName = reviewAuthorName.trim() || (currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Ikorodu Resident');
+
     addReview({
       vendorId: vendor.id,
-      customerId: currentUser?.id || 'c-101',
-      customerName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Customer',
+      customerId: currentUser?.id || `guest-${Date.now()}`,
+      customerName: authorName,
       rating: reviewRating,
       comment: reviewComment,
+      status: 'pending',
     });
 
     setReviewSubmitted(true);
     setReviewComment('');
-    setTimeout(() => setReviewSubmitted(false), 2000);
+    setReviewAuthorName('');
+    setTimeout(() => setReviewSubmitted(false), 5000);
   };
 
   return (
@@ -460,44 +470,70 @@ export const BusinessDetailsView: React.FC = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Reviews Summary */}
-            <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm text-center space-y-2">
+            <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm text-center space-y-2 flex flex-col justify-center items-center">
               <span className="text-4xl font-black text-emerald-950 font-mono">
                 {vendor.rating > 0 ? vendor.rating : 'N/A'}
               </span>
               <div className="flex justify-center text-amber-400">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <Star key={s} className="w-5 h-5 fill-amber-400" />
+                  <Star
+                    key={s}
+                    className={`w-5 h-5 ${s <= Math.round(vendor.rating || 5) ? 'fill-amber-400' : 'text-gray-300'}`}
+                  />
                 ))}
               </div>
-              <p className="text-xs text-gray-500">Based on {vendorReviews.length} verified customer reviews</p>
+              <p className="text-xs text-gray-500">
+                Based on {vendorReviews.filter((r) => r.status === 'approved' || !r.status).length} verified approved reviews
+              </p>
             </div>
 
             {/* Write a Review Form */}
             <div className="md:col-span-2 bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-4">
-              <h3 className="text-sm font-black text-emerald-950 font-display">
-                Leave a Customer Review
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-emerald-950 font-display">
+                  Rate & Leave Feedback for {vendor.businessName}
+                </h3>
+                <span className="text-[10px] text-gray-400 font-medium">Reviews are verified by Admin</span>
+              </div>
 
               {reviewSubmitted ? (
-                <div className="p-3 bg-emerald-50 text-emerald-900 font-bold text-xs rounded-xl flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                  <span>Review submitted successfully! Thank you.</span>
+                <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-2xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-amber-950">Review Submitted for Moderation!</p>
+                    <p className="mt-0.5 text-amber-800">
+                      Your feedback has been sent to IkoroduSquare admins for verification. Once approved by our team, it will appear publicly on this vendor's storefront.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleReviewSubmit} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Star Rating</label>
-                    <div className="flex gap-1 text-amber-400">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setReviewRating(star)}
-                          className="p-1 hover:scale-110 transition-transform"
-                        >
-                          <Star className={`w-6 h-6 ${star <= reviewRating ? 'fill-amber-400' : 'text-gray-300'}`} />
-                        </button>
-                      ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Your Full Name / Alias</label>
+                      <input
+                        type="text"
+                        value={reviewAuthorName}
+                        onChange={(e) => setReviewAuthorName(e.target.value)}
+                        placeholder={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'e.g. Adebayo from Sabo'}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Star Rating</label>
+                      <div className="flex gap-1 text-amber-400 py-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewRating(star)}
+                            className="p-1 hover:scale-110 transition-transform"
+                            title={`${star} Star${star > 1 ? 's' : ''}`}
+                          >
+                            <Star className={`w-6 h-6 ${star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -507,17 +543,23 @@ export const BusinessDetailsView: React.FC = () => {
                       rows={3}
                       value={reviewComment}
                       onChange={(e) => setReviewComment(e.target.value)}
-                      placeholder="Write your honest review of their products, service, or delivery speed in Ikorodu..."
+                      placeholder="Share your honest experience with their products, customer service, or delivery in Ikorodu..."
+                      required
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     />
                   </div>
 
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl transition-colors shadow-sm"
-                  >
-                    Post Review
-                  </button>
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[10px] text-gray-400">
+                      * Submitted comments pass through admin review before public listing.
+                    </p>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl transition-colors shadow-sm flex items-center gap-1.5"
+                    >
+                      <Send className="w-3.5 h-3.5" /> Submit for Review
+                    </button>
+                  </div>
                 </form>
               )}
             </div>
@@ -525,39 +567,58 @@ export const BusinessDetailsView: React.FC = () => {
 
           {/* List of Reviews */}
           <div className="space-y-4">
-            {vendorReviews.map((rev) => (
-              <div key={rev.id} className="bg-white p-5 rounded-2xl border border-gray-150 shadow-sm space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-900 font-bold flex items-center justify-center text-xs">
-                      {rev.customerName.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-bold text-emerald-950">{rev.customerName}</h5>
-                      <span className="text-[10px] text-gray-400">
-                        {new Date(rev.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex text-amber-400">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400' : 'text-gray-300'}`} />
-                    ))}
-                  </div>
-                </div>
+            <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+              Customer Feedback & Reviews ({vendorReviews.length})
+            </h4>
 
-                <p className="text-xs text-gray-700">{rev.comment}</p>
-
-                {rev.vendorReply && (
-                  <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl mt-2 text-xs text-emerald-950 space-y-1">
-                    <span className="font-bold text-[11px] text-emerald-900 block">
-                      Vendor Response ({vendor.businessName}):
-                    </span>
-                    <p>{rev.vendorReply}</p>
-                  </div>
-                )}
+            {vendorReviews.length === 0 ? (
+              <div className="bg-white p-8 rounded-3xl border border-gray-200 text-center space-y-2">
+                <MessageSquare className="w-8 h-8 text-gray-300 mx-auto" />
+                <p className="text-xs text-gray-500 font-medium">No reviews published yet for this vendor.</p>
+                <p className="text-[11px] text-gray-400">Be the first customer to share your experience!</p>
               </div>
-            ))}
+            ) : (
+              vendorReviews.map((rev) => (
+                <div key={rev.id} className="bg-white p-5 rounded-2xl border border-gray-150 shadow-sm space-y-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-900 font-bold flex items-center justify-center text-xs border border-emerald-200">
+                        {rev.customerName.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h5 className="text-xs font-bold text-emerald-950">{rev.customerName}</h5>
+                          {rev.status === 'pending' && (
+                            <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-[10px] font-bold flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-amber-700" /> Pending Admin Moderation
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(rev.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex text-amber-400">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400' : 'text-gray-300'}`} />
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-700 leading-relaxed">{rev.comment}</p>
+
+                  {rev.vendorReply && (
+                    <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-1 mt-2">
+                      <span className="font-bold text-[11px] text-emerald-900 block">
+                        Vendor Response ({vendor.businessName}):
+                      </span>
+                      <p>{rev.vendorReply}</p>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

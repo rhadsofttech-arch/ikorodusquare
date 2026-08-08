@@ -108,6 +108,9 @@ interface AppContextType {
   approveProduct: (productId: string) => void;
 
   addReview: (reviewData: Omit<Review, 'id' | 'createdAt'>) => void;
+  approveReview: (reviewId: string) => void;
+  rejectReview: (reviewId: string) => void;
+  deleteReview: (reviewId: string) => void;
   replyReview: (reviewId: string, replyText: string) => void;
 
   sendEnquiry: (enquiryData: Omit<Enquiry, 'id' | 'createdAt' | 'status'>) => void;
@@ -816,29 +819,148 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Review Actions
   const addReview = (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
+    const targetVendor = vendors.find((v) => v.id === reviewData.vendorId);
+    const vendorName = targetVendor ? targetVendor.businessName : 'Vendor';
+
     const newReview: Review = {
       ...reviewData,
       id: `r-${Date.now()}`,
+      status: reviewData.status || 'pending', // Default pending moderation for customer reviews
       createdAt: new Date().toISOString(),
     };
     setReviews((prev) => [newReview, ...prev]);
     saveReviewToSupabase(newReview);
 
-    // Recalculate vendor rating
-    const vendorReviews = [...reviews.filter((r) => r.vendorId === reviewData.vendorId), newReview];
-    const totalRating = vendorReviews.reduce((sum, r) => sum + r.rating, 0);
-    const avgRating = Number((totalRating / vendorReviews.length).toFixed(1));
+    // Create notification for admin moderation
+    const notif: NotificationItem = {
+      id: `n-${Date.now()}`,
+      userId: 'admin',
+      targetRole: 'admin',
+      title: 'New Review Pending Moderation',
+      message: `${reviewData.customerName} submitted a ${reviewData.rating}-star review for "${vendorName}". Review requires admin moderation before appearing publicly.`,
+      type: 'review',
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications((prev) => [notif, ...prev]);
+    saveNotificationToSupabase(notif);
+
+    // If review was pre-approved (e.g. by admin), recalculate rating immediately
+    if (newReview.status === 'approved') {
+      recalculateVendorRating(reviewData.vendorId, newReview);
+    }
+  };
+
+  const recalculateVendorRating = (vendorId: string, extraReview?: Review) => {
+    let currentReviews = reviews.filter((r) => r.vendorId === vendorId && (r.status === 'approved' || !r.status));
+    if (extraReview && extraReview.status === 'approved' && !currentReviews.some((r) => r.id === extraReview.id)) {
+      currentReviews = [extraReview, ...currentReviews];
+    }
+
+    if (currentReviews.length === 0) return;
+
+    const totalRating = currentReviews.reduce((sum, r) => sum + r.rating, 0);
+    const avgRating = Number((totalRating / currentReviews.length).toFixed(1));
 
     setVendors((prev) =>
       prev.map((v) => {
-        if (v.id === reviewData.vendorId) {
-          const updated = { ...v, rating: avgRating, reviewCount: vendorReviews.length };
-          updateVendorInSupabase(v.id, { rating: avgRating, reviewCount: vendorReviews.length });
+        if (v.id === vendorId) {
+          const updated = { ...v, rating: avgRating, reviewCount: currentReviews.length };
+          updateVendorInSupabase(v.id, { rating: avgRating, reviewCount: currentReviews.length });
           return updated;
         }
         return v;
       })
     );
+  };
+
+  const approveReview = (reviewId: string) => {
+    let targetVendorId = '';
+    let ratingStars = 5;
+    let reviewerName = '';
+
+    setReviews((prev) =>
+      prev.map((r) => {
+        if (r.id === reviewId) {
+          targetVendorId = r.vendorId;
+          ratingStars = r.rating;
+          reviewerName = r.customerName;
+          const updated = { ...r, status: 'approved' as const };
+          saveReviewToSupabase(updated);
+          return updated;
+        }
+        return r;
+      })
+    );
+
+    if (targetVendorId) {
+      recalculateVendorRating(targetVendorId);
+
+      const targetVendor = vendors.find((v) => v.id === targetVendorId);
+      const vendorName = targetVendor ? targetVendor.businessName : 'your store';
+
+      // Notification for vendor
+      const notif: NotificationItem = {
+        id: `n-${Date.now()}`,
+        userId: targetVendorId,
+        title: 'New Storefront Review Approved',
+        message: `A ${ratingStars}-star review from ${reviewerName} has been approved by admin and is now live on your storefront.`,
+        type: 'review',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      };
+      setNotifications((prev) => [notif, ...prev]);
+      saveNotificationToSupabase(notif);
+
+      // Audit Log
+      const log: AuditLog = {
+        id: `log-${Date.now()}`,
+        action: 'REVIEW_APPROVED',
+        performedBy: 'Admin',
+        role: 'admin',
+        details: `Approved ${ratingStars}-star review by ${reviewerName} for vendor "${vendorName}"`,
+        timestamp: new Date().toISOString(),
+      };
+      setAuditLogs((prev) => [log, ...prev]);
+      saveAuditLogToSupabase(log);
+    }
+  };
+
+  const rejectReview = (reviewId: string) => {
+    let targetVendorId = '';
+    let reviewerName = '';
+
+    setReviews((prev) =>
+      prev.map((r) => {
+        if (r.id === reviewId) {
+          targetVendorId = r.vendorId;
+          reviewerName = r.customerName;
+          const updated = { ...r, status: 'rejected' as const };
+          saveReviewToSupabase(updated);
+          return updated;
+        }
+        return r;
+      })
+    );
+
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'REVIEW_REJECTED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Rejected review by ${reviewerName} for vendor ID ${targetVendorId}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+  };
+
+  const deleteReview = (reviewId: string) => {
+    const target = reviews.find((r) => r.id === reviewId);
+    setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    if (target) {
+      recalculateVendorRating(target.vendorId);
+    }
   };
 
   const replyReview = (reviewId: string, replyText: string) => {
@@ -1280,6 +1402,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteProduct,
         approveProduct,
         addReview,
+        approveReview,
+        rejectReview,
+        deleteReview,
         replyReview,
         sendEnquiry,
         replyEnquiry,
