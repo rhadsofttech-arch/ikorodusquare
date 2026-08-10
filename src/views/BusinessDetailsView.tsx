@@ -37,6 +37,7 @@ export const BusinessDetailsView: React.FC = () => {
     products,
     reviews,
     selectedVendorId,
+    selectedVendorSlug,
     setActiveTab,
     setSelectedProductId,
     addReview,
@@ -65,21 +66,64 @@ export const BusinessDetailsView: React.FC = () => {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
-  const vendor = vendors.find((v) => v.id === selectedVendorId) || vendors[0];
-  const vendorProducts = products.filter((p) => p.vendorId === vendor.id && p.status === 'approved');
-  // Approved reviews or user pending reviews
-  const vendorReviews = reviews.filter(
-    (r) => r.vendorId === vendor.id && (r.status === 'approved' || !r.status || r.status === 'pending')
-  );
+  // Extract slug from URL if present (e.g. /store/:slug)
+  let currentSlugFromUrl = '';
+  if (typeof window !== 'undefined' && window.location.pathname.toLowerCase().startsWith('/store/')) {
+    currentSlugFromUrl = decodeURIComponent(window.location.pathname.substring(7)).trim();
+  }
 
-  const isFollowing = followingVendors.includes(vendor.id);
+  const vendor = currentSlugFromUrl
+    ? vendors.find((v) => (v.slug && v.slug.toLowerCase() === currentSlugFromUrl.toLowerCase()) || v.id === currentSlugFromUrl)
+    : vendors.find((v) => v.id === selectedVendorId || (v.slug && selectedVendorSlug && v.slug.toLowerCase() === selectedVendorSlug.toLowerCase()));
+
+  const vendorProducts = vendor ? products.filter((p) => p.vendorId === vendor.id && p.status === 'approved') : [];
+  // Approved reviews or user pending reviews
+  const vendorReviews = vendor
+    ? reviews.filter((r) => r.vendorId === vendor.id && (r.status === 'approved' || !r.status || r.status === 'pending'))
+    : [];
+
+  const isFollowing = vendor ? followingVendors.includes(vendor.id) : false;
+
+  const shareStoreUrl = vendor
+    ? `${typeof window !== 'undefined' ? window.location.origin : 'https://www.ikorodusquare.com.ng'}/store/${vendor.slug}`
+    : undefined;
 
   useSEO({
-    title: vendor ? `${vendor.businessName} - ${vendor.category} in ${vendor.area}, Ikorodu` : 'Business Details',
+    title: vendor ? `${vendor.businessName} - ${vendor.category} in ${vendor.area}, Ikorodu` : 'Business Storefront Not Found',
     description: vendor ? (vendor.description || `${vendor.businessName} is a verified ${vendor.category} business operating in ${vendor.area}, Ikorodu, Lagos State. Contact them directly on IkoroduSquare.`) : 'Business details on IkoroduSquare.',
     keywords: vendor ? `${vendor.businessName}, ${vendor.category} Ikorodu, ${vendor.area} shops, vendors in ${vendor.area}` : undefined,
     ogImage: vendor?.logoUrl || vendor?.coverImageUrl,
   });
+
+  if (!vendor) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 bg-white rounded-3xl border border-slate-200 shadow-xs my-6">
+        <div className="w-16 h-16 bg-amber-100 text-amber-800 rounded-2xl flex items-center justify-center mb-4">
+          <Building2 className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-black text-emerald-950 font-display mb-2">
+          Business Storefront Not Found
+        </h2>
+        <p className="text-sm text-slate-600 max-w-md mb-6 leading-relaxed">
+          We couldn't find a business matching this web address in Ikorodu. The vendor may have updated their business name or the URL link might be incorrect.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={() => setActiveTab('directory')}
+            className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-extrabold text-xs rounded-xl transition-all shadow-xs"
+          >
+            Explore Business Directory
+          </button>
+          <button
+            onClick={() => setActiveTab('home')}
+            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
+          >
+            Go to Homepage
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Determine open/closed status
   const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -183,6 +227,7 @@ export const BusinessDetailsView: React.FC = () => {
         <ShareButton
           title={`${vendor.businessName} - Local Store in ${vendor.area}, Ikorodu`}
           text={`Explore products, services, and direct deals from ${vendor.businessName} in ${vendor.area}, Ikorodu on IkoroduSquare!`}
+          url={shareStoreUrl}
           variant="outline"
           className="px-3.5 py-2 text-xs"
           label="Share Storefront"
@@ -289,6 +334,7 @@ export const BusinessDetailsView: React.FC = () => {
               <ShareButton
                 title={`${vendor.businessName} - Local Store in ${vendor.area}, Ikorodu`}
                 text={`Check out ${vendor.businessName} in ${vendor.area}, Ikorodu on IkoroduSquare!`}
+                url={shareStoreUrl}
                 variant="outline"
                 className="px-3.5 py-2.5 text-xs"
                 label="Share"

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   UserRole,
   User,
@@ -158,6 +158,9 @@ interface AppContextType {
   // Selected detail view helper state
   selectedVendorId: string | null;
   setSelectedVendorId: (id: string | null) => void;
+  selectedVendorSlug: string | null;
+  setSelectedVendorSlug: (slug: string | null) => void;
+  navigateToVendor: (vendorOrIdOrSlug: Vendor | string) => void;
   selectedProductId: string | null;
   setSelectedProductId: (id: string | null) => void;
 
@@ -186,7 +189,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Default user is Guest until signed in
   const [currentRole, setRoleState] = useState<UserRole>('guest');
   const [activeTab, setActiveTabState] = useState<string>('home');
-  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [selectedVendorId, setSelectedVendorIdState] = useState<string | null>(null);
+  const [selectedVendorSlug, setSelectedVendorSlug] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -196,42 +200,105 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
 
-  // Initial URL Route Sync & Popstate listener
-  useEffect(() => {
-    const handlePopState = () => {
-      const p = window.location.pathname.toLowerCase();
-      if (p === '/admin') {
-        if (currentUser && currentUser.role === 'admin') {
-          setActiveTabState('admin-portal');
-        } else {
-          setActiveTabState('home');
-          window.history.replaceState({}, '', '/');
-        }
-      } else if (p === '/vendor-portal' || p === '/vendor') {
-        if (currentUser && currentUser.role === 'vendor') {
-          setActiveTabState('vendor-portal');
-        } else {
-          setActiveTabState('home');
-          window.history.replaceState({}, '', '/');
-        }
-      } else if (p === '/customer-portal' || p === '/customer') {
-        if (currentUser) {
-          setActiveTabState('customer-portal');
-        } else {
-          setActiveTabState('home');
-          window.history.replaceState({}, '', '/');
-        }
-      } else if (p === '/marketplace') setActiveTabState('marketplace');
-      else if (p === '/directory') setActiveTabState('directory');
-      else if (p === '/categories') setActiveTabState('categories');
-      else if (p === '/promotions') setActiveTabState('promotions');
-      else if (p === '/register') setActiveTabState('register-vendor');
-      else setActiveTabState('home');
-    };
+  // State
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
+  const [vendors, setVendors] = useState<Vendor[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_vendors`);
+    return saved ? JSON.parse(saved) : INITIAL_VENDORS;
+  });
+
+  const setSelectedVendorId = (id: string | null) => {
+    setSelectedVendorIdState(id);
+    if (id) {
+      const matched = vendors.find((v) => v.id === id);
+      if (matched && matched.slug) {
+        setSelectedVendorSlug(matched.slug);
+      }
+    } else {
+      setSelectedVendorSlug(null);
+    }
+  };
+
+  const navigateToVendor = (vendorOrIdOrSlug: Vendor | string) => {
+    let targetVendor: Vendor | undefined;
+    if (typeof vendorOrIdOrSlug === 'object') {
+      targetVendor = vendorOrIdOrSlug;
+    } else {
+      targetVendor = vendors.find(
+        (v) => v.id === vendorOrIdOrSlug || (v.slug && v.slug.toLowerCase() === vendorOrIdOrSlug.toLowerCase())
+      );
+    }
+
+    if (targetVendor) {
+      setSelectedVendorIdState(targetVendor.id);
+      setSelectedVendorSlug(targetVendor.slug);
+      setActiveTabState('vendor-details');
+      const urlPath = `/store/${targetVendor.slug}`;
+      if (window.location.pathname !== urlPath) {
+        window.history.pushState({}, '', urlPath);
+      }
+    } else if (typeof vendorOrIdOrSlug === 'string') {
+      setSelectedVendorSlug(vendorOrIdOrSlug);
+      setActiveTabState('vendor-details');
+      const urlPath = `/store/${vendorOrIdOrSlug}`;
+      if (window.location.pathname !== urlPath) {
+        window.history.pushState({}, '', urlPath);
+      }
+    }
+  };
+
+  // Initial URL Route Sync & Popstate listener
+  const handlePopState = useCallback(() => {
+    const path = window.location.pathname;
+    const p = path.toLowerCase();
+
+    if (p.startsWith('/store/')) {
+      const slug = decodeURIComponent(path.substring(7)).trim();
+      if (slug) {
+        setActiveTabState('vendor-details');
+        setSelectedVendorSlug(slug);
+        const matched = vendors.find(
+          (v) => v.slug?.toLowerCase() === slug.toLowerCase() || v.id === slug
+        );
+        if (matched) {
+          setSelectedVendorIdState(matched.id);
+        }
+      }
+    } else if (p === '/admin') {
+      if (currentUser && currentUser.role === 'admin') {
+        setActiveTabState('admin-portal');
+      } else {
+        setActiveTabState('home');
+        if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
+      }
+    } else if (p === '/vendor-portal' || p === '/vendor') {
+      if (currentUser && currentUser.role === 'vendor') {
+        setActiveTabState('vendor-portal');
+      } else {
+        setActiveTabState('home');
+        if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
+      }
+    } else if (p === '/customer-portal' || p === '/customer') {
+      if (currentUser) {
+        setActiveTabState('customer-portal');
+      } else {
+        setActiveTabState('home');
+        if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
+      }
+    } else if (p === '/marketplace') setActiveTabState('marketplace');
+    else if (p === '/directory') setActiveTabState('directory');
+    else if (p === '/categories') setActiveTabState('categories');
+    else if (p === '/promotions') setActiveTabState('promotions');
+    else if (p === '/register') setActiveTabState('register-vendor');
+    else setActiveTabState('home');
+  }, [currentUser, vendors]);
+
+  useEffect(() => {
+    handlePopState();
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [currentUser]);
+  }, [handlePopState]);
 
   const setActiveTab = (tab: string, replace: boolean = false) => {
     let targetTab = tab;
@@ -258,7 +325,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveTabState(targetTab);
 
     let urlPath = '/';
-    if (targetTab === 'admin-portal' || targetTab === 'admin') urlPath = '/admin';
+    if (targetTab === 'vendor-details') {
+      let slugToUse = selectedVendorSlug;
+      if (selectedVendorId) {
+        const v = vendors.find((item) => item.id === selectedVendorId);
+        if (v && v.slug) slugToUse = v.slug;
+      }
+      urlPath = slugToUse ? `/store/${slugToUse}` : '/directory';
+    } else if (targetTab === 'admin-portal' || targetTab === 'admin') urlPath = '/admin';
     else if (targetTab === 'marketplace') urlPath = '/marketplace';
     else if (targetTab === 'directory') urlPath = '/directory';
     else if (targetTab === 'categories') urlPath = '/categories';
@@ -275,14 +349,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
   };
-
-  // State
-  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
-
-  const [vendors, setVendors] = useState<Vendor[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_vendors`);
-    return saved ? JSON.parse(saved) : INITIAL_VENDORS;
-  });
 
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_products`);
@@ -1495,6 +1561,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markNotificationRead,
         selectedVendorId,
         setSelectedVendorId,
+        selectedVendorSlug,
+        setSelectedVendorSlug,
+        navigateToVendor,
         selectedProductId,
         setSelectedProductId,
         trackVendorWhatsAppClick,
