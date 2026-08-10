@@ -40,6 +40,7 @@ import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO, PROMOTION_OPTIONS, IKORODU_AREAS } from '../data/mockData';
 import { Product, PromoType, BusinessHours, IkoroduArea } from '../types';
 import { uploadFileToSupabaseStorage } from '../lib/supabaseDb';
+import { ProductImageUploader } from '../components/ProductImageUploader';
 
 export const VendorDashboardView: React.FC = () => {
   const {
@@ -49,6 +50,7 @@ export const VendorDashboardView: React.FC = () => {
     enquiries,
     promotionRequests,
     addProduct,
+    updateProduct,
     deleteProduct,
     replyReview,
     replyEnquiry,
@@ -93,13 +95,19 @@ export const VendorDashboardView: React.FC = () => {
     );
   }
 
-  // Product Add Modal
-  const [addProductModalOpen, setAddProductModalOpen] = useState(false);
-  const [newProdName, setNewProdName] = useState('');
-  const [newProdPrice, setNewProdPrice] = useState<number>(5000);
-  const [newProdCategory, setNewProdCategory] = useState('Fashion & Apparel');
-  const [newProdDesc, setNewProdDesc] = useState('');
-  const [newProdImage, setNewProdImage] = useState('https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800');
+  // Product Add / Edit Modal
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [prodName, setProdName] = useState('');
+  const [prodPrice, setProdPrice] = useState<number>(5000);
+  const [prodSalePrice, setProdSalePrice] = useState<number | ''>('');
+  const [prodCategory, setProdCategory] = useState('Fashion & Apparel');
+  const [prodSubcategory, setProdSubcategory] = useState('');
+  const [prodDesc, setProdDesc] = useState('');
+  const [prodStock, setProdStock] = useState<number>(10);
+  const [prodCondition, setProdCondition] = useState<'New' | 'Used - Like New' | 'Refurbished'>('New');
+  const [prodImages, setProdImages] = useState<string[]>([]);
+  const [productFormError, setProductFormError] = useState<string | null>(null);
 
   // Manual Promotion Real Receipt State
   const [selectedPromoOption, setSelectedPromoOption] = useState(PROMOTION_OPTIONS[1]);
@@ -252,23 +260,91 @@ export const VendorDashboardView: React.FC = () => {
   const pendingEnquiries = vendorEnquiries.filter((e) => e.status === 'new');
   const activePromo = vendorPromos.find((p) => p.status === 'approved');
 
-  const handleAddProductSubmit = (e: React.FormEvent) => {
+  const handleOpenAddProduct = () => {
+    setEditingProduct(null);
+    setProdName('');
+    setProdPrice(5000);
+    setProdSalePrice('');
+    setProdCategory('Fashion & Apparel');
+    setProdSubcategory('');
+    setProdDesc('');
+    setProdStock(10);
+    setProdCondition('New');
+    setProdImages([]);
+    setProductFormError(null);
+    setProductModalOpen(true);
+  };
+
+  const handleOpenEditProduct = (p: Product) => {
+    setEditingProduct(p);
+    setProdName(p.name);
+    setProdPrice(p.price);
+    setProdSalePrice(p.salePrice || '');
+    setProdCategory(p.category || 'Fashion & Apparel');
+    setProdSubcategory(p.subcategory || '');
+    setProdDesc(p.description || '');
+    setProdStock(p.stock || 0);
+    setProdCondition((p.condition as any) || 'New');
+    setProdImages(p.images || []);
+    setProductFormError(null);
+    setProductModalOpen(true);
+  };
+
+  const handleSaveProductSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProdName.trim()) return;
+    setProductFormError(null);
 
-    addProduct({
-      vendorId: vendor.id,
-      vendorName: vendor.businessName,
-      vendorArea: vendor.area,
-      name: newProdName,
-      price: newProdPrice,
-      category: newProdCategory,
-      description: newProdDesc,
-      images: [newProdImage],
-    });
+    if (!prodName.trim()) {
+      setProductFormError('Please enter a product title.');
+      return;
+    }
 
-    setAddProductModalOpen(false);
-    setNewProdName('');
+    if (prodPrice <= 0) {
+      setProductFormError('Please enter a valid price in Naira.');
+      return;
+    }
+
+    if (prodImages.length === 0) {
+      setProductFormError('Please upload at least 1 photo for your product.');
+      return;
+    }
+
+    const salePriceNum = prodSalePrice !== '' ? Number(prodSalePrice) : undefined;
+
+    try {
+      if (editingProduct) {
+        updateProduct(editingProduct.id, {
+          name: prodName.trim(),
+          price: prodPrice,
+          salePrice: salePriceNum,
+          category: prodCategory,
+          subcategory: prodSubcategory.trim(),
+          description: prodDesc.trim(),
+          stock: prodStock,
+          condition: prodCondition,
+          images: prodImages,
+        });
+      } else {
+        addProduct({
+          vendorId: vendor.id,
+          vendorName: vendor.businessName,
+          vendorArea: vendor.area,
+          name: prodName.trim(),
+          price: prodPrice,
+          salePrice: salePriceNum,
+          category: prodCategory,
+          subcategory: prodSubcategory.trim(),
+          description: prodDesc.trim(),
+          stock: prodStock,
+          condition: prodCondition,
+          images: prodImages,
+        });
+      }
+
+      setProductModalOpen(false);
+    } catch (err: any) {
+      setProductFormError(err.message || 'Failed to save product. Please try again.');
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -689,7 +765,7 @@ export const VendorDashboardView: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setAddProductModalOpen(true)}
+                onClick={handleOpenAddProduct}
                 className="flex-1 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1 shadow-xs"
               >
                 <Plus className="w-4 h-4" /> Add Item
@@ -713,7 +789,7 @@ export const VendorDashboardView: React.FC = () => {
               Manage Products & Services
             </h3>
             <button
-              onClick={() => setAddProductModalOpen(true)}
+              onClick={handleOpenAddProduct}
               className="px-4 py-2 bg-emerald-800 text-amber-300 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-xs hover:bg-emerald-900"
             >
               <Plus className="w-4 h-4" /> Add New Item
@@ -721,26 +797,67 @@ export const VendorDashboardView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {vendorProducts.map((p) => (
-              <div
-                key={p.id}
-                className="bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200/90 flex items-center gap-4 shadow-xs hover:shadow-md transition-all duration-300"
-              >
-                <img src={p.images[0]} alt={p.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
-                <div className="flex-1 min-w-0 space-y-0.5">
-                  <h4 className="text-xs font-bold text-slate-900 truncate">{p.name}</h4>
-                  <p className="text-xs font-black text-emerald-900 font-mono">₦{p.price.toLocaleString()}</p>
-                  <span className="text-[10px] text-slate-400">Stock: {p.stock}</span>
-                </div>
+            {vendorProducts.length === 0 ? (
+              <div className="col-span-full bg-white p-8 rounded-3xl border border-slate-200 text-center space-y-3">
+                <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="text-xs font-bold text-slate-700">No products or services listed yet.</p>
                 <button
-                  onClick={() => deleteProduct(p.id)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                  title="Delete Product"
+                  onClick={handleOpenAddProduct}
+                  className="px-4 py-2 bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  + Add Your First Product
                 </button>
               </div>
-            ))}
+            ) : (
+              vendorProducts.map((p) => (
+                <div
+                  key={p.id}
+                  className="bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200/90 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-xs hover:shadow-md transition-all duration-300"
+                >
+                  <img
+                    src={p.images?.[0] || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800'}
+                    alt={p.name}
+                    className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-100"
+                  />
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-xs font-bold text-slate-900 truncate">{p.name}</h4>
+                      {p.salePrice && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">
+                          Sale
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 font-mono text-xs">
+                      <span className="font-black text-emerald-950">₦{p.price.toLocaleString()}</span>
+                      {p.salePrice && (
+                        <span className="text-slate-400 line-through text-[11px]">₦{p.salePrice.toLocaleString()}</span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Category: {p.category} • Stock: {p.stock} • {p.images?.length || 0} photo(s)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <button
+                      onClick={() => handleOpenEditProduct(p)}
+                      className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 font-bold text-xs rounded-xl transition-colors flex items-center gap-1"
+                      title="Edit Product"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={() => deleteProduct(p.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                      title="Delete Product"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -1421,77 +1538,165 @@ export const VendorDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* Add Product Modal */}
-      {addProductModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-black text-emerald-950 font-display">
-              Add New Product / Service
-            </h3>
-
-            <form onSubmit={handleAddProductSubmit} className="space-y-3 text-xs">
+      {/* Add / Edit Product Modal */}
+      {productModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-7 shadow-2xl space-y-5 border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Product Title *</label>
+                <h3 className="text-base sm:text-lg font-black text-emerald-950 font-display flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5 text-emerald-800" />
+                  <span>{editingProduct ? `Edit "${editingProduct.name}"` : 'Add New Product / Service'}</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  {editingProduct
+                    ? 'Update product details and manage uploaded images.'
+                    : 'List a new item for customers in Ikorodu to discover and purchase.'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setProductModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {productFormError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <span>{productFormError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProductSubmit} className="space-y-4 text-xs">
+              {/* Product Title */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Product Title <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Fresh Butter Bread 1kg"
-                  value={newProdName}
-                  onChange={(e) => setNewProdName(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-emerald-950"
+                  placeholder="e.g. Designer Leather Bag 100% Genuine"
+                  value={prodName}
+                  onChange={(e) => setProdName(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-emerald-950 text-xs focus:ring-2 focus:ring-emerald-500 outline-hidden"
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Price in Naira (₦) *</label>
-                <input
-                  type="number"
-                  required
-                  value={newProdPrice}
-                  onChange={(e) => setNewProdPrice(Number(e.target.value))}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-mono font-bold text-emerald-950"
-                />
+              {/* Price & Sale Price */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Regular Price (₦) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    placeholder="5000"
+                    value={prodPrice || ''}
+                    onChange={(e) => setProdPrice(Number(e.target.value))}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-emerald-950 text-xs focus:ring-2 focus:ring-emerald-500 outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Sale Price (₦) <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 4500 (Discounted)"
+                    value={prodSalePrice}
+                    onChange={(e) => setProdSalePrice(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-hidden"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Category</label>
-                <select
-                  value={newProdCategory}
-                  onChange={(e) => setNewProdCategory(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold"
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+              {/* Category, Subcategory & Stock */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Category *</label>
+                  <select
+                    value={prodCategory}
+                    onChange={(e) => setProdCategory(e.target.value)}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500 outline-hidden"
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Subcategory</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Handbags"
+                    value={prodSubcategory}
+                    onChange={(e) => setProdSubcategory(e.target.value)}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Available Stock *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={prodStock}
+                    onChange={(e) => setProdStock(Number(e.target.value))}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-xs focus:ring-2 focus:ring-emerald-500 outline-hidden"
+                  />
+                </div>
               </div>
 
+              {/* Description */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Description</label>
+                <label className="block font-bold text-slate-700 mb-1">Product Description</label>
                 <textarea
                   rows={3}
-                  value={newProdDesc}
-                  onChange={(e) => setNewProdDesc(e.target.value)}
-                  placeholder="Details, ingredients, or warranty specifications..."
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                  value={prodDesc}
+                  onChange={(e) => setProdDesc(e.target.value)}
+                  placeholder="Provide specifications, warranty information, color choices, or delivery details..."
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs leading-relaxed focus:ring-2 focus:ring-emerald-500 outline-hidden"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              {/* Dedicated Image Uploader */}
+              <div className="pt-2 border-t border-slate-100">
+                <ProductImageUploader
+                  images={prodImages}
+                  onChange={setProdImages}
+                  vendorId={vendor.id}
+                  maxImages={8}
+                />
+              </div>
+
+              {/* Bottom Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setAddProductModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 font-bold text-slate-700 rounded-xl"
+                  onClick={() => setProductModalOpen(false)}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-800 text-white font-bold rounded-xl hover:bg-emerald-900 shadow-xs"
+                  className="px-6 py-2.5 bg-emerald-800 text-amber-300 font-extrabold rounded-xl hover:bg-emerald-900 shadow-md transition-all flex items-center gap-1.5"
                 >
-                  Publish Product
+                  <Save className="w-4 h-4 text-amber-400" />
+                  <span>{editingProduct ? 'Save Changes' : 'Publish Product'}</span>
                 </button>
               </div>
             </form>

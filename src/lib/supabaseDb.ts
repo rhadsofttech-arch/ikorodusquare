@@ -186,11 +186,25 @@ export async function uploadFileToSupabaseStorage(
 ): Promise<string | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    const { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
+    let { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
       upsert: true,
     });
     if (error) {
-      console.warn('Supabase storage upload error:', error.message);
+      if (error.message?.toLowerCase().includes('not found') || error.message?.toLowerCase().includes('bucket')) {
+        try {
+          await supabase.storage.createBucket(bucketName, { public: true });
+          const retry = await supabase.storage.from(bucketName).upload(filePath, file, { upsert: true });
+          if (!retry.error && retry.data) {
+            data = retry.data;
+            error = null;
+          }
+        } catch (bErr) {
+          console.warn(`Error creating bucket ${bucketName}:`, bErr);
+        }
+      }
+    }
+    if (error || !data) {
+      console.warn('Supabase storage upload error:', error?.message);
       return null;
     }
     const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
@@ -198,6 +212,74 @@ export async function uploadFileToSupabaseStorage(
   } catch (err) {
     console.error('Error uploading file to Supabase storage:', err);
     return null;
+  }
+}
+
+export async function uploadProductImageToSupabase(
+  file: File,
+  vendorId: string
+): Promise<{ url: string | null; error: string | null }> {
+  if (!isSupabaseConfigured()) {
+    return { url: null, error: 'Supabase storage is not configured.' };
+  }
+
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type.toLowerCase())) {
+    return { url: null, error: `Invalid image format (${file.type}). Allowed formats: JPG, JPEG, PNG, WEBP.` };
+  }
+
+  const maxSizeInBytes = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSizeInBytes) {
+    return { url: null, error: `File "${file.name}" exceeds 10MB limit.` };
+  }
+
+  const ext = file.name.split('.').pop() || 'jpg';
+  const cleanVendorId = vendorId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filePath = `${cleanVendorId}/prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+  const bucketName = 'product-images';
+
+  try {
+    let { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+    if (error) {
+      if (error.message?.toLowerCase().includes('not found') || error.message?.toLowerCase().includes('bucket')) {
+        try {
+          await supabase.storage.createBucket(bucketName, { public: true });
+          const retry = await supabase.storage.from(bucketName).upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+          if (!retry.error && retry.data) {
+            data = retry.data;
+            error = null;
+          }
+        } catch (createErr) {
+          console.warn('Could not auto-create product-images bucket:', createErr);
+        }
+      }
+    }
+
+    if (error || !data) {
+      // Fallback attempt to 'public' bucket
+      const fallbackPath = `products/${cleanVendorId}_${Date.now()}.${ext}`;
+      const fallbackUpload = await supabase.storage.from('public').upload(fallbackPath, file, { upsert: true });
+      if (!fallbackUpload.error && fallbackUpload.data) {
+        const { data: pubUrl } = supabase.storage.from('public').getPublicUrl(fallbackUpload.data.path);
+        return { url: pubUrl.publicUrl, error: null };
+      }
+
+      console.warn('Supabase product image upload error:', error?.message);
+      return { url: null, error: error?.message || 'Storage upload failed' };
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
+    return { url: publicUrlData.publicUrl, error: null };
+  } catch (err: any) {
+    console.error('Error in uploadProductImageToSupabase:', err);
+    return { url: null, error: err.message || 'Unexpected upload error' };
   }
 }
 
