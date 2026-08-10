@@ -21,7 +21,7 @@ const MainContent: React.FC = () => {
   const { activeTab } = useApp();
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 min-h-[75vh]">
+    <main className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-[75vh] overflow-x-hidden">
       {activeTab === 'home' && <HomeView />}
       {activeTab === 'directory' && <DirectoryView />}
       {activeTab === 'vendor-details' && <BusinessDetailsView />}
@@ -43,7 +43,7 @@ const MainContent: React.FC = () => {
 export default function App() {
   return (
     <AppProvider>
-      <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col justify-between selection:bg-amber-300 selection:text-emerald-950 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px]">
+      <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 text-slate-900 font-sans flex flex-col justify-between selection:bg-amber-300 selection:text-emerald-950 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px]">
         <Navbar />
         <Breadcrumb />
         <MainContent />
