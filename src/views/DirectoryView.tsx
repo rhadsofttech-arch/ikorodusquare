@@ -19,12 +19,16 @@ import { useApp } from '../context/AppContext';
 import { IkoroduArea } from '../types';
 import { IKORODU_AREAS } from '../data/mockData';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { VendorSkeletonCard } from '../components/VendorSkeletonCard';
+import { VendorFeatureBadge } from '../components/VendorFeatureBadge';
 import { useSEO } from '../hooks/useSEO';
+import { Vendor, VendorFeature } from '../types';
 
 export const DirectoryView: React.FC = () => {
   const {
     vendors,
     categories,
+    isLoadingData,
     searchQuery,
     setSearchQuery,
     selectedCategory,
@@ -230,8 +234,22 @@ export const DirectoryView: React.FC = () => {
         </div>
       </div>
 
-      {/* Directory Grid View */}
-      {filteredVendors.length === 0 ? (
+      {/* Directory Grid View / Skeleton Loading */}
+      {isLoadingData ? (
+        viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <VendorSkeletonCard key={idx} viewMode="grid" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <VendorSkeletonCard key={idx} viewMode="list" />
+            ))}
+          </div>
+        )
+      ) : filteredVendors.length === 0 ? (
         <div className="bg-white p-12 rounded-3xl text-center border border-gray-200 space-y-3">
           <Building2 className="w-12 h-12 text-gray-300 mx-auto" />
           <h3 className="text-lg font-bold text-emerald-950">No Businesses Found</h3>
@@ -253,136 +271,87 @@ export const DirectoryView: React.FC = () => {
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVendors.map((vendor) => (
-            <div
-              key={vendor.id}
-              className="bg-white rounded-3xl border border-gray-150 overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col justify-between group"
-            >
-              <div>
-                <div className="relative h-44 overflow-hidden bg-gray-100">
-                  <img
-                    src={vendor.coverImageUrl}
-                    alt={vendor.businessName}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          {filteredVendors.map((vendor) => {
+            const features = (vendor.features && vendor.features.length > 0)
+              ? vendor.features
+              : [
+                  ...(vendor.isVerified ? ['Verified Business' as VendorFeature] : []),
+                  ...(vendor.isPremium ? ['Premium Vendor' as VendorFeature] : []),
+                  ...(vendor.isFeatured ? ['Featured Vendor' as VendorFeature] : []),
+                ];
 
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                    {vendor.isVerified && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow">
-                        <CheckCircle2 className="w-3 h-3 text-amber-300" /> Verified
-                      </span>
-                    )}
-                    {vendor.isPremium && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-emerald-950 shadow">
-                        <Sparkles className="w-3 h-3" /> Premium
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="absolute bottom-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold rounded-lg flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-amber-400" /> {vendor.area}
-                  </span>
-                </div>
-
-                <div className="p-5 space-y-3">
-                  <div className="flex items-start gap-3">
+            return (
+              <div
+                key={vendor.id}
+                className="bg-white rounded-3xl border border-gray-150 overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="relative h-44 overflow-hidden bg-gray-100">
                     <img
-                      src={vendor.logoUrl}
+                      src={vendor.coverImageUrl}
                       alt={vendor.businessName}
-                      className="w-12 h-12 rounded-2xl object-cover border-2 border-white shadow-md -mt-8 relative z-10 bg-white"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="flex-1 min-w-0">
-                      <h3
-                        onClick={() => handleVendorClick(vendor.id)}
-                        className="font-black text-base text-emerald-950 hover:text-emerald-700 cursor-pointer transition-colors truncate font-display"
-                      >
-                        {vendor.businessName}
-                      </h3>
-                      <p className="text-xs text-emerald-800 font-medium">
-                        {vendor.category} • {vendor.subcategory}
-                      </p>
-                    </div>
-                  </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                  <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                    {vendor.description}
-                  </p>
-
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100">
-                    <div className="flex items-center gap-1 text-amber-500 font-bold">
-                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      <span>{vendor.rating > 0 ? vendor.rating : 'New'}</span>
-                      <span className="text-gray-400 font-normal">({vendor.reviewCount})</span>
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1 max-w-[80%]">
+                      {features.slice(0, 3).map((feat) => (
+                        <VendorFeatureBadge key={feat} feature={feat} size="sm" />
+                      ))}
+                      {features.length > 3 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/80 text-white backdrop-blur-xs">
+                          +{features.length - 3} more
+                        </span>
+                      )}
                     </div>
 
-                    <span className="text-[11px] text-gray-500">{vendor.yearsInBusiness} yrs in business</span>
+                    <span className="absolute bottom-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold rounded-lg flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-amber-400" /> {vendor.area}
+                    </span>
+                  </div>
+
+                  <div className="p-5 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={vendor.logoUrl}
+                        alt={vendor.businessName}
+                        className="w-12 h-12 rounded-2xl object-cover border-2 border-white shadow-md -mt-8 relative z-10 bg-white"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3
+                          onClick={() => handleVendorClick(vendor.id)}
+                          className="font-black text-base text-emerald-950 hover:text-emerald-700 cursor-pointer transition-colors truncate font-display"
+                        >
+                          {vendor.businessName}
+                        </h3>
+                        <p className="text-xs text-emerald-800 font-medium">
+                          {vendor.category} • {vendor.subcategory}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                      {vendor.description}
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100">
+                      <div className="flex items-center gap-1 text-amber-500 font-bold">
+                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                        <span>{vendor.rating > 0 ? vendor.rating : 'New'}</span>
+                        <span className="text-gray-400 font-normal">({vendor.reviewCount})</span>
+                      </div>
+
+                      <span className="text-[11px] text-gray-500">{vendor.yearsInBusiness} yrs in business</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="p-4 bg-gray-50/80 border-t border-gray-100 flex items-center gap-2">
-                <button
-                  onClick={() => handleVendorClick(vendor.id)}
-                  className="flex-1 py-2 text-xs font-bold text-emerald-950 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-colors text-center"
-                >
-                  View Storefront
-                </button>
-                <WhatsAppChatButton
-                  whatsappNumber={vendor.whatsapp}
-                  businessName={vendor.businessName}
-                  type="business"
-                  vendorId={vendor.id}
-                  variant="primary"
-                  label="Direct WhatsApp Chat"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        /* Directory List View */
-        <div className="space-y-4">
-          {filteredVendors.map((vendor) => (
-            <div
-              key={vendor.id}
-              className="bg-white rounded-3xl border border-gray-150 p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 shadow-sm hover:shadow-lg transition-all"
-            >
-              <img
-                src={vendor.logoUrl}
-                alt={vendor.businessName}
-                className="w-20 h-20 rounded-2xl object-cover border border-gray-200 shrink-0"
-              />
-              <div className="flex-1 min-w-0 space-y-1 text-center sm:text-left">
-                <div className="flex items-center justify-center sm:justify-start gap-2">
-                  <h3
-                    onClick={() => handleVendorClick(vendor.id)}
-                    className="font-black text-lg text-emerald-950 hover:text-emerald-700 cursor-pointer font-display"
-                  >
-                    {vendor.businessName}
-                  </h3>
-                  {vendor.isVerified && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
-                </div>
-
-                <p className="text-xs text-emerald-800 font-bold">
-                  {vendor.category} • <span className="text-gray-500 font-normal">{vendor.area}, Ikorodu</span>
-                </p>
-                <p className="text-xs text-gray-600 line-clamp-2">{vendor.description}</p>
-              </div>
-
-              <div className="flex flex-col sm:items-end gap-2 shrink-0 w-full sm:w-auto">
-                <div className="flex items-center gap-1 text-amber-500 font-bold justify-center">
-                  <Star className="w-4 h-4 fill-amber-400" />
-                  <span>{vendor.rating > 0 ? vendor.rating : 'New'}</span>
-                  <span className="text-gray-400 font-normal">({vendor.reviewCount} reviews)</span>
-                </div>
-
-                <div className="flex items-center gap-2">
+                <div className="p-4 bg-gray-50/80 border-t border-gray-100 flex items-center gap-2">
                   <button
                     onClick={() => handleVendorClick(vendor.id)}
-                    className="px-4 py-2 bg-emerald-100 text-emerald-950 font-bold text-xs rounded-xl hover:bg-emerald-200"
+                    className="flex-1 py-2 text-xs font-bold text-emerald-950 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-colors text-center"
                   >
-                    View Store
+                    View Storefront
                   </button>
                   <WhatsAppChatButton
                     whatsappNumber={vendor.whatsapp}
@@ -394,8 +363,79 @@ export const DirectoryView: React.FC = () => {
                   />
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+      ) : (
+        /* Directory List View */
+        <div className="space-y-4">
+          {filteredVendors.map((vendor) => {
+            const features = (vendor.features && vendor.features.length > 0)
+              ? vendor.features
+              : [
+                  ...(vendor.isVerified ? ['Verified Business' as VendorFeature] : []),
+                  ...(vendor.isPremium ? ['Premium Vendor' as VendorFeature] : []),
+                  ...(vendor.isFeatured ? ['Featured Vendor' as VendorFeature] : []),
+                ];
+
+            return (
+              <div
+                key={vendor.id}
+                className="bg-white rounded-3xl border border-gray-150 p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 shadow-sm hover:shadow-lg transition-all"
+              >
+                <img
+                  src={vendor.logoUrl}
+                  alt={vendor.businessName}
+                  className="w-20 h-20 rounded-2xl object-cover border border-gray-200 shrink-0"
+                />
+                <div className="flex-1 min-w-0 space-y-1.5 text-center sm:text-left">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                    <h3
+                      onClick={() => handleVendorClick(vendor.id)}
+                      className="font-black text-lg text-emerald-950 hover:text-emerald-700 cursor-pointer font-display"
+                    >
+                      {vendor.businessName}
+                    </h3>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {features.slice(0, 3).map((feat) => (
+                        <VendorFeatureBadge key={feat} feature={feat} size="sm" />
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-emerald-800 font-bold">
+                    {vendor.category} • <span className="text-gray-500 font-normal">{vendor.area}, Ikorodu</span>
+                  </p>
+                  <p className="text-xs text-gray-600 line-clamp-2">{vendor.description}</p>
+                </div>
+
+                <div className="flex flex-col sm:items-end gap-2 shrink-0 w-full sm:w-auto">
+                  <div className="flex items-center gap-1 text-amber-500 font-bold justify-center">
+                    <Star className="w-4 h-4 fill-amber-400" />
+                    <span>{vendor.rating > 0 ? vendor.rating : 'New'}</span>
+                    <span className="text-gray-400 font-normal">({vendor.reviewCount} reviews)</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleVendorClick(vendor.id)}
+                      className="px-4 py-2 bg-emerald-100 text-emerald-950 font-bold text-xs rounded-xl hover:bg-emerald-200"
+                    >
+                      View Store
+                    </button>
+                    <WhatsAppChatButton
+                      whatsappNumber={vendor.whatsapp}
+                      businessName={vendor.businessName}
+                      type="business"
+                      vendorId={vendor.id}
+                      variant="primary"
+                      label="Direct WhatsApp Chat"
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

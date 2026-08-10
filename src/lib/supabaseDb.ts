@@ -55,6 +55,7 @@ export async function fetchVendorsFromSupabase(): Promise<Vendor[] | null> {
       isVerified: Boolean(row.is_verified),
       isFeatured: Boolean(row.is_featured),
       isPremium: Boolean(row.is_premium),
+      features: row.features || [],
       rating: Number(row.rating) || 0,
       reviewCount: Number(row.review_count) || 0,
       businessHours: row.business_hours || [],
@@ -104,6 +105,7 @@ export async function saveVendorToSupabase(vendor: Vendor): Promise<boolean> {
       is_verified: vendor.isVerified,
       is_featured: vendor.isFeatured,
       is_premium: vendor.isPremium,
+      features: vendor.features || [],
       rating: vendor.rating,
       review_count: vendor.reviewCount,
       business_hours: vendor.businessHours,
@@ -159,6 +161,7 @@ export async function updateVendorInSupabase(
     if (updates.isVerified !== undefined) snakeUpdates.is_verified = updates.isVerified;
     if (updates.isFeatured !== undefined) snakeUpdates.is_featured = updates.isFeatured;
     if (updates.isPremium !== undefined) snakeUpdates.is_premium = updates.isPremium;
+    if (updates.features !== undefined) snakeUpdates.features = updates.features;
     if (updates.rating !== undefined) snakeUpdates.rating = updates.rating;
     if (updates.reviewCount !== undefined) snakeUpdates.review_count = updates.reviewCount;
     if (updates.whatsappClicks !== undefined) snakeUpdates.whatsapp_clicks = updates.whatsappClicks;

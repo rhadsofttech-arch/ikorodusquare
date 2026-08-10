@@ -17,6 +17,7 @@ import { useApp } from '../context/AppContext';
 import { IkoroduArea } from '../types';
 import { IKORODU_AREAS } from '../data/mockData';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { ProductSkeletonCard } from '../components/ProductSkeletonCard';
 import { useSEO } from '../hooks/useSEO';
 
 export const MarketplaceView: React.FC = () => {
@@ -24,6 +25,7 @@ export const MarketplaceView: React.FC = () => {
     products,
     vendors,
     categories,
+    isLoadingData,
     searchQuery,
     setSearchQuery,
     selectedCategory,
@@ -204,8 +206,22 @@ export const MarketplaceView: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid View */}
-      {filteredProducts.length === 0 ? (
+      {/* Grid View / Skeleton Loading */}
+      {isLoadingData ? (
+        viewMode === 'grid' ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <ProductSkeletonCard key={idx} viewMode="grid" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <ProductSkeletonCard key={idx} viewMode="list" />
+            ))}
+          </div>
+        )
+      ) : filteredProducts.length === 0 ? (
         <div className="bg-white p-12 rounded-3xl text-center border border-slate-200/90 space-y-3 shadow-xs">
           <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
           <h3 className="text-lg font-bold text-slate-900">No Products Matched</h3>

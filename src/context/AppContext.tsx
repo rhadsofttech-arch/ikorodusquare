@@ -12,6 +12,7 @@ import {
   AuditLog,
   IkoroduArea,
   PromoType,
+  VendorFeature,
 } from '../types';
 import {
   INITIAL_VENDORS,
@@ -64,6 +65,7 @@ interface AppContextType {
   setActiveTab: (tab: string) => void;
   
   // Data State
+  isLoadingData: boolean;
   vendors: Vendor[];
   products: Product[];
   categories: Category[];
@@ -101,6 +103,8 @@ interface AppContextType {
   deleteVendorPermanently: (vendorId: string) => void;
   toggleVerifyVendor: (vendorId: string) => void;
   toggleFeatureVendor: (vendorId: string) => void;
+  toggleVendorFeature: (vendorId: string, feature: VendorFeature) => void;
+  updateVendorFeatures: (vendorId: string, features: VendorFeature[]) => void;
 
   addProduct: (productData: Partial<Product>) => Product;
   updateProduct: (productId: string, productData: Partial<Product>) => void;
@@ -273,6 +277,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // State
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+
   const [vendors, setVendors] = useState<Vendor[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_vendors`);
     return saved ? JSON.parse(saved) : INITIAL_VENDORS;
@@ -355,36 +361,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Supabase Initial Load & Auth Sync
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    let isMounted = true;
+    if (!isSupabaseConfigured()) {
+      const timer = setTimeout(() => {
+        if (isMounted) setIsLoadingData(false);
+      }, 500);
+      return () => {
+        isMounted = false;
+        clearTimeout(timer);
+      };
+    }
 
     // Load initial data from Supabase
     (async () => {
-      const sbVendors = await fetchVendorsFromSupabase();
-      if (sbVendors && sbVendors.length > 0) setVendors(sbVendors);
+      setIsLoadingData(true);
+      try {
+        const sbVendors = await fetchVendorsFromSupabase();
+        if (sbVendors && sbVendors.length > 0) setVendors(sbVendors);
 
-      const sbProducts = await fetchProductsFromSupabase();
-      if (sbProducts && sbProducts.length > 0) setProducts(sbProducts);
+        const sbProducts = await fetchProductsFromSupabase();
+        if (sbProducts && sbProducts.length > 0) setProducts(sbProducts);
 
-      const sbReviews = await fetchReviewsFromSupabase();
-      if (sbReviews && sbReviews.length > 0) setReviews(sbReviews);
+        const sbReviews = await fetchReviewsFromSupabase();
+        if (sbReviews && sbReviews.length > 0) setReviews(sbReviews);
 
-      const sbEnquiries = await fetchEnquiriesFromSupabase();
-      if (sbEnquiries && sbEnquiries.length > 0) setEnquiries(sbEnquiries);
+        const sbEnquiries = await fetchEnquiriesFromSupabase();
+        if (sbEnquiries && sbEnquiries.length > 0) setEnquiries(sbEnquiries);
 
-      const sbPromos = await fetchPromotionsFromSupabase();
-      if (sbPromos && sbPromos.length > 0) setPromotionRequests(sbPromos);
+        const sbPromos = await fetchPromotionsFromSupabase();
+        if (sbPromos && sbPromos.length > 0) setPromotionRequests(sbPromos);
 
-      const sbNotifs = await fetchNotificationsFromSupabase();
-      if (sbNotifs && sbNotifs.length > 0) setNotifications(sbNotifs);
+        const sbNotifs = await fetchNotificationsFromSupabase();
+        if (sbNotifs && sbNotifs.length > 0) setNotifications(sbNotifs);
 
-      const sbLogs = await fetchAuditLogsFromSupabase();
-      if (sbLogs && sbLogs.length > 0) setAuditLogs(sbLogs);
+        const sbLogs = await fetchAuditLogsFromSupabase();
+        if (sbLogs && sbLogs.length > 0) setAuditLogs(sbLogs);
 
-      // Check current session
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      await syncSessionUser(session);
+        // Check current session
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        await syncSessionUser(session);
+      } catch (err) {
+        console.error('Error fetching initial data from Supabase:', err);
+      } finally {
+        if (isMounted) setIsLoadingData(false);
+      }
     })();
 
     // Listen to Supabase Auth Changes
@@ -750,6 +772,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((v) => (v.id === vendorId ? { ...v, isFeatured: nextVal } : v))
     );
     updateVendorInSupabase(vendorId, { isFeatured: nextVal });
+  };
+
+  const updateVendorFeatures = (vendorId: string, features: VendorFeature[]) => {
+    const target = vendors.find((v) => v.id === vendorId);
+    if (!target) return;
+
+    const isVerified = features.includes('Verified Business');
+    const isPremium = features.includes('Premium Vendor');
+    const isFeatured = features.includes('Featured Vendor');
+
+    setVendors((prev) =>
+      prev.map((v) =>
+        v.id === vendorId
+          ? {
+              ...v,
+              features,
+              isVerified,
+              isPremium,
+              isFeatured,
+            }
+          : v
+      )
+    );
+
+    updateVendorInSupabase(vendorId, {
+      features,
+      isVerified,
+      isPremium,
+      isFeatured,
+    });
+
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      performedBy: currentUser ? `${currentUser.firstName} (${currentUser.role})` : 'System Admin',
+      role: 'admin',
+      action: 'UPDATE_VENDOR_FEATURES',
+      details: `Updated features for ${target.businessName}: [${features.join(', ')}]`,
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+  };
+
+  const toggleVendorFeature = (vendorId: string, feature: VendorFeature) => {
+    const target = vendors.find((v) => v.id === vendorId);
+    if (!target) return;
+    const currentFeatures = target.features || [];
+    const hasFeature = currentFeatures.includes(feature);
+    const updatedFeatures = hasFeature
+      ? currentFeatures.filter((f) => f !== feature)
+      : [...currentFeatures, feature];
+    updateVendorFeatures(vendorId, updatedFeatures);
   };
 
   // Product Actions
@@ -1371,6 +1445,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentUser,
         activeTab,
         setActiveTab,
+        isLoadingData,
         vendors,
         products,
         categories: CATEGORIES,
@@ -1397,6 +1472,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteVendorPermanently,
         toggleVerifyVendor,
         toggleFeatureVendor,
+        toggleVendorFeature,
+        updateVendorFeatures,
         addProduct,
         updateProduct,
         deleteProduct,

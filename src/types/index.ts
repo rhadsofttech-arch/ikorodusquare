@@ -71,6 +71,14 @@ export interface BusinessHours {
   isClosed: boolean;
 }
 
+export type VendorFeature =
+  | 'Verified Business'
+  | 'Trusted Vendor'
+  | 'Premium Vendor'
+  | 'Featured Vendor'
+  | 'Official Service Provider'
+  | 'Fast Response';
+
 export interface Vendor {
   id: string;
   userId?: string;
@@ -106,6 +114,7 @@ export interface Vendor {
   homepageBanner?: boolean;
   categoryTopSpot?: boolean;
   isPremium: boolean;
+  features?: VendorFeature[];
   rating: number;
   reviewCount: number;
   businessHours: BusinessHours[];

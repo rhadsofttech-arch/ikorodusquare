@@ -27,6 +27,8 @@ import { useApp } from '../context/AppContext';
 import { Review } from '../types';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 import { ShareButton } from '../components/ShareButton';
+import { VendorFeatureBadge } from '../components/VendorFeatureBadge';
+import { VendorFeature } from '../types';
 import { useSEO } from '../hooks/useSEO';
 
 export const BusinessDetailsView: React.FC = () => {
@@ -199,17 +201,17 @@ export const BusinessDetailsView: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
           {/* Top Floating Badges */}
-          <div className="absolute top-4 left-4 flex items-center gap-2">
-            {vendor.isVerified && (
-              <span className="px-3 py-1 bg-emerald-600 text-white font-bold text-xs rounded-full shadow flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-300" /> Verified Store
-              </span>
-            )}
-            {vendor.isPremium && (
-              <span className="px-3 py-1 bg-amber-400 text-emerald-950 font-bold text-xs rounded-full shadow flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> Premium Merchant
-              </span>
-            )}
+          <div className="absolute top-4 left-4 flex items-center gap-1.5 flex-wrap max-w-[75%]">
+            {((vendor.features && vendor.features.length > 0)
+              ? vendor.features
+              : [
+                  ...(vendor.isVerified ? ['Verified Business' as VendorFeature] : []),
+                  ...(vendor.isPremium ? ['Premium Vendor' as VendorFeature] : []),
+                  ...(vendor.isFeatured ? ['Featured Vendor' as VendorFeature] : []),
+                ]
+            ).map((feat) => (
+              <VendorFeatureBadge key={feat} feature={feat} size="md" />
+            ))}
           </div>
 
           <div className="absolute top-4 right-4 flex items-center gap-2">

@@ -30,7 +30,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO } from '../data/mockData';
-import { PromotionRequest, Vendor } from '../types';
+import { PromotionRequest, Vendor, VendorFeature } from '../types';
+import { VendorFeatureBadge } from '../components/VendorFeatureBadge';
 
 export const AdminPortalView: React.FC = () => {
   const {
@@ -46,6 +47,8 @@ export const AdminPortalView: React.FC = () => {
     deleteVendorPermanently,
     toggleVerifyVendor,
     toggleFeatureVendor,
+    toggleVendorFeature,
+    updateVendorFeatures,
     approvePromotionRequest,
     createDirectPromotionAssignment,
     rejectPromotionRequest,
@@ -1318,7 +1321,7 @@ export const AdminPortalView: React.FC = () => {
                       <span className="text-[10px] text-gray-600">
                         {selectedVendorDetail.isVerified
                           ? 'Displays green verified trust badge to customers.'
-                          : 'Assign verified badge to boost buyer trust and visibility.'}
+                          : 'Assign verified status badge to boost buyer trust and visibility.'}
                       </span>
                     </div>
                   </div>
@@ -1338,6 +1341,73 @@ export const AdminPortalView: React.FC = () => {
                   >
                     {selectedVendorDetail.isVerified ? 'Remove Verified' : 'Assign Verified'}
                   </button>
+                </div>
+              </div>
+
+              {/* Vendor Features & Accreditations Management */}
+              <div className="pt-3 border-t space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-black text-emerald-950 text-xs flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>Admin-Assigned Features & Badges</span>
+                    </h4>
+                    <p className="text-[11px] text-gray-500">
+                      Assign or remove official badges to highlight vendor trust, speed, or status on storefront and directory.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(
+                    [
+                      'Verified Business',
+                      'Trusted Vendor',
+                      'Premium Vendor',
+                      'Featured Vendor',
+                      'Official Service Provider',
+                      'Fast Response',
+                    ] as VendorFeature[]
+                  ).map((feat) => {
+                    const currentFeatures = selectedVendorDetail.features || [];
+                    const isAssigned = currentFeatures.includes(feat);
+
+                    return (
+                      <div
+                        key={feat}
+                        className={`p-2.5 rounded-2xl border transition-all flex items-center justify-between gap-2 ${
+                          isAssigned
+                            ? 'bg-emerald-50/60 border-emerald-300'
+                            : 'bg-gray-50/70 border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <VendorFeatureBadge feature={feat} size="sm" />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toggleVendorFeature(selectedVendorDetail.id, feat);
+                            const updated = isAssigned
+                              ? currentFeatures.filter((f) => f !== feat)
+                              : [...currentFeatures, feat];
+                            setSelectedVendorDetail({
+                              ...selectedVendorDetail,
+                              features: updated,
+                            });
+                          }}
+                          className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all shrink-0 ${
+                            isAssigned
+                              ? 'bg-emerald-700 text-white hover:bg-red-600'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-emerald-50 hover:text-emerald-800'
+                          }`}
+                        >
+                          {isAssigned ? 'Assigned ✓' : '+ Assign'}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
