@@ -216,22 +216,22 @@ export const HomeView: React.FC = () => {
   return (
     <div className="space-y-16 pb-16">
       {/* 1. Sleek & Compact Hero Banner (Full-Width, No Side Cards) */}
-      <section className="relative bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-3xl p-6 sm:p-8 md:p-9 overflow-hidden shadow-xl border border-emerald-800/50 flex flex-col justify-between backdrop-blur-md">
+      <section className="relative bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-9 overflow-hidden shadow-xl border border-emerald-800/50 flex flex-col justify-between backdrop-blur-md w-full max-w-full">
         <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-teal-400/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none" />
 
-        <div className="relative z-10 space-y-5 max-w-4xl mx-auto text-center sm:text-left">
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-emerald-900/90 border border-emerald-700/80 rounded-full text-xs font-bold text-amber-300 shadow-xs backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span>Ikorodu's Digital Market Square</span>
+        <div className="relative z-10 space-y-4 sm:space-y-5 max-w-4xl mx-auto w-full text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 max-w-full">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-900/90 border border-emerald-700/80 rounded-full text-[11px] sm:text-xs font-bold text-amber-300 shadow-xs backdrop-blur-md max-w-full">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse shrink-0" />
+              <span className="truncate">Ikorodu's Digital Market Square</span>
             </div>
-            <span className="text-[11px] font-semibold text-emerald-200 bg-emerald-800/60 px-2.5 py-1 rounded-full border border-emerald-700/50">
-              {ikoroduAreas.length} District Communities Supported
+            <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-200 bg-emerald-800/60 px-2.5 py-1 rounded-full border border-emerald-700/50 whitespace-nowrap">
+              {ikoroduAreas.length} District Communities
             </span>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black font-display tracking-tight text-white leading-tight">
+          <h1 className="text-xl sm:text-4xl lg:text-5xl font-black font-display tracking-tight text-white leading-tight break-words">
             Ikorodu’s Hyperlocal Directory & Marketplace
           </h1>
 
@@ -240,15 +240,15 @@ export const HomeView: React.FC = () => {
           </p>
 
           {/* Prominent Compact Search Box with Predictive Autocomplete */}
-          <div className="relative pt-1 max-w-3xl">
-            <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl space-y-2">
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                <div className="sm:col-span-4 bg-white rounded-xl px-3 py-2 flex items-center gap-2 text-emerald-950 shadow-xs">
+          <div className="relative pt-1 max-w-3xl w-full">
+            <div className="p-2 sm:p-2.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl space-y-2 w-full">
+              <div className="flex flex-col sm:grid sm:grid-cols-12 gap-2 w-full">
+                <div className="sm:col-span-4 bg-white rounded-xl px-2.5 py-2 flex items-center gap-2 text-emerald-950 shadow-xs w-full">
                   <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
                   <select
                     value={selectedArea}
                     onChange={(e) => setSelectedArea(e.target.value as any)}
-                    className="w-full bg-transparent text-xs font-bold focus:outline-none cursor-pointer text-slate-900"
+                    className="w-full bg-transparent text-xs font-bold focus:outline-none cursor-pointer text-slate-900 min-w-0"
                   >
                     <option value="All">All Ikorodu Areas</option>
                     {ikoroduAreas.map((a) => (
@@ -259,7 +259,7 @@ export const HomeView: React.FC = () => {
                   </select>
                 </div>
 
-                <div className="sm:col-span-8 bg-white rounded-xl px-3 py-1.5 flex items-center gap-2 text-emerald-950 shadow-xs relative">
+                <div className="sm:col-span-8 bg-white rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 sm:gap-2 text-emerald-950 shadow-xs relative w-full min-w-0">
                   <Search className="w-4 h-4 text-slate-400 shrink-0" />
                   <input
                     type="text"
@@ -276,12 +276,12 @@ export const HomeView: React.FC = () => {
                         setActiveTab('marketplace');
                       }
                     }}
-                    className="w-full bg-transparent text-xs sm:text-sm font-medium focus:outline-none placeholder-slate-400 py-1"
+                    className="w-full min-w-0 bg-transparent text-xs sm:text-sm font-medium focus:outline-none placeholder-slate-400 py-1"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
+                      className="p-1 text-slate-400 hover:text-slate-600 rounded-full shrink-0"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -291,7 +291,7 @@ export const HomeView: React.FC = () => {
                       setShowPredictiveDropdown(false);
                       setActiveTab('marketplace');
                     }}
-                    className="px-4 py-2 bg-amber-400 text-emerald-950 font-black text-xs rounded-lg transition-colors shrink-0 shadow-sm"
+                    className="px-3 sm:px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs rounded-lg transition-colors shrink-0 shadow-sm whitespace-nowrap"
                   >
                     Search
                   </button>
@@ -299,8 +299,8 @@ export const HomeView: React.FC = () => {
               </div>
 
               {/* Quick Filter Tag Pills */}
-              <div className="flex items-center gap-2 text-xs text-emerald-200 overflow-x-auto pt-0.5">
-                <span className="text-[11px] font-bold text-amber-300 whitespace-nowrap">Popular:</span>
+              <div className="flex items-center gap-1.5 text-xs text-emerald-200 overflow-x-auto scrollbar-none pt-0.5 w-full max-w-full pb-1">
+                <span className="text-[10px] sm:text-[11px] font-bold text-amber-300 whitespace-nowrap shrink-0">Popular:</span>
                 {['Butter Bread', 'Swiss Lace', 'iPhone 15', 'Solar Inverter', 'Farm Fresh Eggs', 'Royal Sofa'].map((tag) => (
                   <button
                     key={tag}
@@ -309,7 +309,7 @@ export const HomeView: React.FC = () => {
                       setShowPredictiveDropdown(false);
                       setActiveTab('marketplace');
                     }}
-                    className="px-2.5 py-0.5 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 rounded-lg text-[11px] font-medium border border-emerald-700/60 whitespace-nowrap transition-colors"
+                    className="px-2 sm:px-2.5 py-0.5 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 rounded-lg text-[10px] sm:text-[11px] font-medium border border-emerald-700/60 whitespace-nowrap transition-colors shrink-0"
                   >
                     {tag}
                   </button>
@@ -319,7 +319,7 @@ export const HomeView: React.FC = () => {
 
             {/* PREDICTIVE SEARCH AUTOCOMPLETE DROPDOWN */}
             {searchQuery.trim() !== '' && showPredictiveDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 max-h-96 overflow-y-auto divide-y divide-slate-100">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 max-h-96 overflow-y-auto divide-y divide-slate-100 w-full max-w-full">
                 {!hasSearchResults ? (
                   <div className="p-4 text-center text-xs text-slate-500">
                     No exact matches found for "<span className="font-bold text-slate-800">{searchQuery}</span>". Try searching in all areas.
@@ -509,7 +509,7 @@ export const HomeView: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
           {recommendedProducts.slice(0, 8).map((product, idx) => {
             const isSaved = wishlist.includes(product.id);
             const vendor = vendors.find(
@@ -676,7 +676,7 @@ export const HomeView: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
           {featuredProducts.slice(0, 8).map((product) => {
             const isSaved = wishlist.includes(product.id);
             const vendor = vendors.find(
