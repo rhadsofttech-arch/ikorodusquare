@@ -39,6 +39,7 @@ export const HomeView: React.FC = () => {
     vendors,
     products,
     categories,
+    reviews,
     promotionRequests,
     searchQuery,
     setSearchQuery,
@@ -212,6 +213,135 @@ export const HomeView: React.FC = () => {
         'No! IkoroduSquare charges ₦0 commission on purchases. Buyers connect directly with verified SME vendors in Ikorodu via WhatsApp or phone call to discuss pricing, delivery, or in-person pickup.',
     },
   ];
+
+  // Generate Live Activity Feed items from real database state
+  const getRelativeTime = (isoString?: string) => {
+    if (!isoString) return 'Recently';
+    const time = new Date(isoString).getTime();
+    if (isNaN(time)) return 'Recently';
+    const diffMs = Date.now() - time;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hr${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return new Date(isoString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  };
+
+  const liveActivities: {
+    id: string;
+    title: string;
+    subtitle: string;
+    location: string;
+    badgeIcon: string;
+    badgeLabel: string;
+    timeAgo: string;
+    timestamp: number;
+    onClick: () => void;
+  }[] = [];
+
+  // 1. Approved Vendors
+  approvedVendors.forEach((v) => {
+    const t = new Date(v.createdAt).getTime();
+    liveActivities.push({
+      id: `act-v-${v.id}`,
+      title: `${v.businessName} just joined IkoroduSquare`,
+      subtitle: `${v.category} • ${v.subcategory || 'Local Store'}`,
+      location: `${v.area}, Ikorodu`,
+      badgeIcon: '🟢',
+      badgeLabel: 'New Business',
+      timeAgo: getRelativeTime(v.createdAt),
+      timestamp: isNaN(t) ? Date.now() - 3600000 : t,
+      onClick: () => {
+        setSelectedVendorId(v.id);
+        setActiveTab('vendor-details');
+      },
+    });
+
+    if (v.isVerified) {
+      liveActivities.push({
+        id: `act-ver-${v.id}`,
+        title: `${v.businessName} verified on IkoroduSquare`,
+        subtitle: `Official badge granted • ${v.category}`,
+        location: `${v.area}, Ikorodu`,
+        badgeIcon: '🏪',
+        badgeLabel: 'Verified Store',
+        timeAgo: getRelativeTime(v.createdAt),
+        timestamp: isNaN(t) ? Date.now() - 7200000 : t + 500,
+        onClick: () => {
+          setSelectedVendorId(v.id);
+          setActiveTab('vendor-details');
+        },
+      });
+    }
+  });
+
+  // 2. Approved Products
+  products
+    .filter((p) => p.status === 'approved')
+    .forEach((p) => {
+      const t = new Date(p.createdAt).getTime();
+      liveActivities.push({
+        id: `act-p-${p.id}`,
+        title: `New product added by ${p.vendorName}`,
+        subtitle: `${p.name} • ₦${p.price.toLocaleString()}`,
+        location: `${p.vendorArea}, Ikorodu`,
+        badgeIcon: '🛍️',
+        badgeLabel: 'New Product',
+        timeAgo: getRelativeTime(p.createdAt),
+        timestamp: isNaN(t) ? Date.now() - 1800000 : t,
+        onClick: () => {
+          setSelectedProductId(p.id);
+          setActiveTab('product-details');
+        },
+      });
+
+      if (p.isFeatured) {
+        liveActivities.push({
+          id: `act-feat-${p.id}`,
+          title: `Product is trending: ${p.name}`,
+          subtitle: `By ${p.vendorName} • ₦${p.price.toLocaleString()}`,
+          location: `${p.vendorArea}, Ikorodu`,
+          badgeIcon: '🔥',
+          badgeLabel: 'Trending Item',
+          timeAgo: getRelativeTime(p.createdAt),
+          timestamp: isNaN(t) ? Date.now() - 5400000 : t + 1000,
+          onClick: () => {
+            setSelectedProductId(p.id);
+            setActiveTab('product-details');
+          },
+        });
+      }
+    });
+
+  // 3. Approved Reviews
+  (reviews || [])
+    .filter((r) => r.status === 'approved' || !r.status)
+    .forEach((r) => {
+      const targetVendor = vendors.find((v) => v.id === r.vendorId);
+      if (!targetVendor) return;
+      const t = new Date(r.createdAt).getTime();
+      liveActivities.push({
+        id: `act-r-${r.id}`,
+        title: `${targetVendor.businessName} received a new review`,
+        subtitle: `⭐ ${r.rating}/5 — "${r.comment.length > 50 ? r.comment.substring(0, 50) + '...' : r.comment}"`,
+        location: `${targetVendor.area}, Ikorodu`,
+        badgeIcon: '⭐',
+        badgeLabel: 'New Review',
+        timeAgo: getRelativeTime(r.createdAt),
+        timestamp: isNaN(t) ? Date.now() - 86400000 : t,
+        onClick: () => {
+          setSelectedVendorId(targetVendor.id);
+          setActiveTab('vendor-details');
+        },
+      });
+    });
+
+  liveActivities.sort((a, b) => b.timestamp - a.timestamp);
+  const recentLiveActivities = liveActivities.slice(0, 15);
 
   return (
     <div className="space-y-16 pb-16">
@@ -436,6 +566,91 @@ export const HomeView: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* 2. Live on IkoroduSquare - Horizontal Activity Feed */}
+      <section className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-xl overflow-hidden relative border border-emerald-800/60">
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-emerald-800/60 pb-3.5">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+                </span>
+                <span className="text-[11px] font-black text-amber-300 uppercase tracking-widest font-mono">
+                  Live Activity Feed
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white font-display">
+                Live on IkoroduSquare
+              </h2>
+              <p className="text-xs sm:text-sm text-emerald-200/90 font-medium">
+                See what's happening across local businesses right now.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('directory')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-300 hover:text-amber-200 transition-colors self-start sm:self-auto group"
+            >
+              <span>View all activity →</span>
+            </button>
+          </div>
+
+          {/* Horizontally Scrollable Activity Row */}
+          {recentLiveActivities.length > 0 ? (
+            <div className="flex items-stretch gap-3.5 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-emerald-700 scrollbar-track-emerald-900/50 -mx-1 px-1">
+              {recentLiveActivities.map((act) => (
+                <div
+                  key={act.id}
+                  onClick={act.onClick}
+                  className="w-72 sm:w-80 shrink-0 bg-emerald-900/70 hover:bg-emerald-800/90 border border-emerald-700/60 rounded-2xl p-4 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl flex flex-col justify-between group"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-600/50 font-extrabold text-amber-300 text-[10px]">
+                        <span>{act.badgeIcon}</span>
+                        <span>{act.badgeLabel}</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-300/90 font-semibold flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                        {act.timeAgo}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="font-extrabold text-white text-xs sm:text-sm line-clamp-2 group-hover:text-amber-300 transition-colors leading-snug">
+                        {act.title}
+                      </h3>
+                      <p className="text-[11px] text-emerald-200/80 line-clamp-2 mt-1 font-medium">
+                        {act.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2.5 mt-3 border-t border-emerald-800/60 flex items-center justify-between text-[11px] text-emerald-300 font-semibold">
+                    <span className="flex items-center gap-1 truncate max-w-[80%]">
+                      <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span className="truncate">{act.location}</span>
+                    </span>
+                    <span className="text-amber-300 group-hover:translate-x-0.5 transition-transform font-black text-[10px] shrink-0">
+                      View →
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center bg-emerald-900/30 rounded-2xl border border-emerald-800/40 p-6">
+              <p className="text-xs text-emerald-200 font-medium">No recent live activity recorded yet.</p>
+            </div>
+          )}
         </div>
       </section>
 

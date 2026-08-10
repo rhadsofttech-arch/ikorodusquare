@@ -95,7 +95,37 @@ export const Navbar: React.FC = () => {
     'Ipakodo',
   ];
 
-  const unreadNotifs = notifications.filter((n) => !n.isRead);
+  const userRoleNotifs = notifications.filter((n) => {
+    // Admin notifications MUST ONLY appear if current user is admin
+    if (n.targetRole === 'admin') {
+      return currentUser?.role === 'admin';
+    }
+    // Vendor notifications MUST ONLY appear if current user is vendor and matches
+    if (n.targetRole === 'vendor') {
+      if (currentUser?.role !== 'vendor') return false;
+      if (n.userId && n.userId !== 'all' && n.userId !== 'vendor') {
+        return n.userId === currentUser.id || (loggedVendor && n.userId === loggedVendor.id);
+      }
+      return true;
+    }
+    // Customer notifications
+    if (n.targetRole === 'customer') {
+      if (!currentUser) return false;
+      if (n.userId && n.userId !== 'all' && n.userId !== 'customer') {
+        return n.userId === currentUser.id;
+      }
+      return true;
+    }
+    // Target userId specific match
+    if (n.userId && n.userId !== 'all') {
+      if (!currentUser) return false;
+      return n.userId === currentUser.id || (loggedVendor && n.userId === loggedVendor.id);
+    }
+    // Public/general system notifications
+    return true;
+  });
+
+  const unreadNotifs = userRoleNotifs.filter((n) => !n.isRead);
 
   const handleNavClick = (tab: string) => {
     setActiveTab(tab);
@@ -371,21 +401,6 @@ export const Navbar: React.FC = () => {
                 <Search className="w-5 h-5 text-emerald-800" />
               </button>
 
-              {/* Wishlist Button */}
-              <button
-                type="button"
-                onClick={() => handleNavClick('wishlist')}
-                className="relative p-2 sm:p-2.5 text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors"
-                title="Saved Items"
-              >
-                <Heart className="w-5 h-5" />
-                {wishlist.length > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-amber-500 text-emerald-950 font-bold text-[10px] rounded-full flex items-center justify-center">
-                    {wishlist.length}
-                  </span>
-                )}
-              </button>
-
               {/* Notifications Dropdown */}
               <div className="relative">
                 <button
@@ -406,13 +421,13 @@ export const Navbar: React.FC = () => {
                   <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-3">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
                       <span className="text-xs font-bold text-emerald-950">Notifications</span>
-                      <span className="text-[10px] text-slate-500">{notifications.length} Total</span>
+                      <span className="text-[10px] text-slate-500">{userRoleNotifs.length} Total</span>
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-2">
-                      {notifications.length === 0 ? (
+                      {userRoleNotifs.length === 0 ? (
                         <p className="text-xs text-slate-500 py-4 text-center">No notifications yet.</p>
                       ) : (
-                        notifications.map((n) => (
+                        userRoleNotifs.map((n) => (
                           <div
                             key={n.id}
                             onClick={() => markNotificationRead(n.id)}
