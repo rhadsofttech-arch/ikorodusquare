@@ -34,11 +34,63 @@ export const ProductDetailsView: React.FC = () => {
   const vendor = vendors.find((v) => v.id === product.vendorId) || vendors[0];
 
   useSEO({
-    title: product ? `${product.name} (₦${product.price.toLocaleString()}) - ${vendor?.businessName || 'Ikorodu Vendor'}` : 'Product Details',
-    description: product ? `${product.name} available for ₦${product.price.toLocaleString()} from ${vendor?.businessName} in ${product.vendorArea}, Ikorodu. ${product.description.slice(0, 150)}...` : 'Product listing on IkoroduSquare.',
-    keywords: product ? `${product.name}, ${product.category}, buy ${product.name} Ikorodu, ${vendor?.businessName}, ${product.vendorArea} shopping` : undefined,
+    title: product
+      ? `${product.name} (₦${product.price.toLocaleString()}) | ${vendor?.businessName || 'Ikorodu Vendor'} | IkoroduSquare`
+      : 'Product Details | IkoroduSquare',
+    description: product
+      ? `${product.name} available for ₦${product.price.toLocaleString()} from ${vendor?.businessName} in ${product.vendorArea}, Ikorodu. ${product.description.slice(0, 150)}`
+      : 'Product listing on IkoroduSquare.',
+    keywords: product
+      ? `${product.name}, ${product.category}, buy ${product.name} Ikorodu, ${vendor?.businessName}, ${product.vendorArea} shopping`
+      : undefined,
     ogImage: product?.images?.[0] || vendor?.logoUrl,
     ogType: 'product',
+    canonicalUrl: product && vendor ? `https://www.ikorodusquare.com.ng/store/${vendor.slug}` : undefined,
+    jsonLd: product && vendor
+      ? [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: product.name,
+            description: product.description,
+            image: product.images,
+            offers: {
+              '@type': 'Offer',
+              price: product.price,
+              priceCurrency: 'NGN',
+              availability: 'https://schema.org/InStock',
+              seller: {
+                '@type': 'Organization',
+                name: vendor.businessName,
+              },
+            },
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Home',
+                item: 'https://www.ikorodusquare.com.ng/',
+              },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: 'Marketplace',
+                item: 'https://www.ikorodusquare.com.ng/marketplace',
+              },
+              {
+                '@type': 'ListItem',
+                position: 3,
+                name: product.name,
+                item: `https://www.ikorodusquare.com.ng/store/${vendor.slug}`,
+              },
+            ],
+          },
+        ]
+      : undefined,
   });
 
   const [activeImageIdx, setActiveImageIdx] = useState(0);

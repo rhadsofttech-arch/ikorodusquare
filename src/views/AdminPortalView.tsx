@@ -32,8 +32,13 @@ import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO } from '../data/mockData';
 import { PromotionRequest, Vendor, VendorFeature } from '../types';
 import { VendorFeatureBadge } from '../components/VendorFeatureBadge';
+import { useSEO } from '../hooks/useSEO';
 
 export const AdminPortalView: React.FC = () => {
+  useSEO({
+    title: 'Admin Portal | IkoroduSquare',
+    robots: 'noindex, nofollow',
+  });
   const {
     vendors,
     products,

@@ -186,7 +186,7 @@ export type PromoType =
   | 'sponsored_vendor'
   | 'category_top'
   | 'homepage_banner'
-  | 'premium_subscription';
+  | 'store_setup';
 
 export interface PromotionOption {
   id: PromoType;
@@ -202,6 +202,10 @@ export interface PromotionRequest {
   id: string;
   vendorId: string;
   vendorName: string;
+  productId?: string;
+  productName?: string;
+  categoryId?: string;
+  categoryName?: string;
   promoType: PromoType;
   promoTitle: string;
   amountNaira: number;
@@ -213,17 +217,24 @@ export interface PromotionRequest {
   proofFileName: string;
   txnRef: string;
   notes?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'request_proof';
+  status: 'pending' | 'paid' | 'pending_assignment' | 'active' | 'approved' | 'expired' | 'cancelled' | 'rejected' | 'request_proof';
+  paymentStatus?: 'pending_verification' | 'verified' | 'rejected';
+  assignmentStatus?: 'pending_assignment' | 'assigned' | 'expired' | 'unassigned';
   adminNote?: string;
   requestedAt: string;
   approvedAt?: string;
   startDate?: string;
   expiresAt?: string;
-  assignedSlot?: 'homepage_banner' | 'featured_product' | 'featured_vendor' | 'sponsored_vendor' | 'category_top';
+  assignedSlot?: 'homepage_banner' | 'featured_product' | 'sponsored_vendor' | 'category_top';
   assignedTargetId?: string;
+  assignedCategory?: string;
   bannerImageUrl?: string;
   bannerHeading?: string;
   bannerSubtext?: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  assignedBy?: string;
+  assignedAt?: string;
 }
 
 export interface NotificationItem {

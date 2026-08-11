@@ -85,14 +85,67 @@ export const BusinessDetailsView: React.FC = () => {
   const isFollowing = vendor ? followingVendors.includes(vendor.id) : false;
 
   const shareStoreUrl = vendor
-    ? `${typeof window !== 'undefined' ? window.location.origin : 'https://www.ikorodusquare.com.ng'}/store/${vendor.slug}`
+    ? `https://www.ikorodusquare.com.ng/store/${vendor.slug}`
     : undefined;
 
+  const vendorOgImage = vendor?.coverImageUrl || vendor?.logoUrl || 'https://www.ikorodusquare.com.ng/og-image.jpg';
+
   useSEO({
-    title: vendor ? `${vendor.businessName} - ${vendor.category} in ${vendor.area}, Ikorodu` : 'Business Storefront Not Found',
-    description: vendor ? (vendor.description || `${vendor.businessName} is a verified ${vendor.category} business operating in ${vendor.area}, Ikorodu, Lagos State. Contact them directly on IkoroduSquare.`) : 'Business details on IkoroduSquare.',
-    keywords: vendor ? `${vendor.businessName}, ${vendor.category} Ikorodu, ${vendor.area} shops, vendors in ${vendor.area}` : undefined,
-    ogImage: vendor?.logoUrl || vendor?.coverImageUrl,
+    title: vendor
+      ? `${vendor.businessName} | ${vendor.category} in ${vendor.area}, Ikorodu | IkoroduSquare`
+      : 'Business Storefront Not Found | IkoroduSquare',
+    description: vendor
+      ? (vendor.description || `${vendor.businessName} is a verified ${vendor.category} business operating in ${vendor.area}, Ikorodu, Lagos State. Contact them directly on IkoroduSquare.`)
+      : 'Business details on IkoroduSquare.',
+    keywords: vendor
+      ? `${vendor.businessName}, ${vendor.category} Ikorodu, ${vendor.area} shops, vendors in ${vendor.area}`
+      : undefined,
+    ogImage: vendorOgImage,
+    ogType: 'business.business',
+    canonicalUrl: shareStoreUrl,
+    jsonLd: vendor
+      ? [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'LocalBusiness',
+            name: vendor.businessName,
+            description: vendor.description,
+            url: shareStoreUrl,
+            telephone: vendor.phone,
+            image: vendorOgImage,
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: vendor.area,
+              addressRegion: 'Lagos State',
+              addressCountry: 'NG',
+            },
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Home',
+                item: 'https://www.ikorodusquare.com.ng/',
+              },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: 'Business Directory',
+                item: 'https://www.ikorodusquare.com.ng/directory',
+              },
+              {
+                '@type': 'ListItem',
+                position: 3,
+                name: vendor.businessName,
+                item: shareStoreUrl,
+              },
+            ],
+          },
+        ]
+      : undefined,
   });
 
   if (!vendor) {

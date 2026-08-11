@@ -41,8 +41,13 @@ import { MANUAL_PAYMENT_INFO, PROMOTION_OPTIONS, IKORODU_AREAS } from '../data/m
 import { Product, PromoType, BusinessHours, IkoroduArea } from '../types';
 import { uploadFileToSupabaseStorage } from '../lib/supabaseDb';
 import { ProductImageUploader } from '../components/ProductImageUploader';
+import { useSEO } from '../hooks/useSEO';
 
 export const VendorDashboardView: React.FC = () => {
+  useSEO({
+    title: 'Vendor Dashboard | IkoroduSquare',
+    robots: 'noindex, nofollow',
+  });
   const {
     vendors,
     products,

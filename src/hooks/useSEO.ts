@@ -5,8 +5,10 @@ export interface SEOProps {
   description?: string;
   keywords?: string;
   ogImage?: string;
-  ogType?: 'website' | 'article' | 'product' | 'profile';
+  ogType?: 'website' | 'article' | 'product' | 'profile' | 'business.business';
   canonicalUrl?: string;
+  robots?: string;
+  jsonLd?: Record<string, any> | Array<Record<string, any>>;
 }
 
 export function useSEO({
@@ -16,15 +18,19 @@ export function useSEO({
   ogImage,
   ogType = 'website',
   canonicalUrl,
+  robots = 'index, follow',
+  jsonLd,
 }: SEOProps) {
   useEffect(() => {
     const siteName = 'IkoroduSquare';
-    const defaultTagline = 'Verified Business Directory & Marketplace in Ikorodu, Lagos';
+    const defaultTagline = 'Local Business Directory & Marketplace in Ikorodu';
+    const defaultOgImage = 'https://www.ikorodusquare.com.ng/og-image.jpg';
 
-    // Formulate title
-    const fullTitle = title
-      ? `${title} | ${siteName}`
-      : `${siteName} - ${defaultTagline}`;
+    // Formulate title cleanly without double siteName
+    let fullTitle = title || `${siteName} | ${defaultTagline}`;
+    if (title && !title.toLowerCase().includes('ikorodusquare')) {
+      fullTitle = `${title} | ${siteName}`;
+    }
 
     document.title = fullTitle;
 
@@ -47,13 +53,14 @@ export function useSEO({
         link.setAttribute('rel', 'canonical');
         document.head.appendChild(link);
       }
-      link.setAttribute('href', url || window.location.href);
+      const targetUrl = url || (typeof window !== 'undefined' ? window.location.href : 'https://www.ikorodusquare.com.ng/');
+      link.setAttribute('href', targetUrl);
     };
 
     // Description Meta
     const metaDescription =
       description ||
-      'IkoroduSquare is the premier business directory and verified marketplace for local stores, artisans, and service providers across Sabo, Ebute, Agric, Ipakodo, and Ikorodu Central, Lagos State.';
+      'Discover verified local businesses, products and services across Ikorodu. Shop local, find businesses and connect directly with vendors on IkoroduSquare.';
     setMetaTag('meta[name="description"]', 'name', 'description', metaDescription);
 
     // Keywords Meta
@@ -62,24 +69,42 @@ export function useSEO({
       'Ikorodu businesses, Ikorodu marketplace, Sabo Ikorodu, Ebute Ikorodu, Agric Ikorodu, local vendors Lagos, buy local Ikorodu, Ikorodu business directory';
     setMetaTag('meta[name="keywords"]', 'name', 'keywords', metaKeywords);
 
+    // Robots Meta
+    setMetaTag('meta[name="robots"]', 'name', 'robots', robots);
+
+    // Image URL resolution
+    const finalOgImage = ogImage || defaultOgImage;
+
     // Open Graph Meta Tags for Social Sharing & Search Crawlers
+    const currentUrl = canonicalUrl || (typeof window !== 'undefined' ? window.location.href : 'https://www.ikorodusquare.com.ng/');
     setMetaTag('meta[property="og:site_name"]', 'property', 'og:site_name', siteName);
     setMetaTag('meta[property="og:title"]', 'property', 'og:title', fullTitle);
     setMetaTag('meta[property="og:description"]', 'property', 'og:description', metaDescription);
     setMetaTag('meta[property="og:type"]', 'property', 'og:type', ogType);
-    setMetaTag('meta[property="og:url"]', 'property', 'og:url', canonicalUrl || window.location.href);
-
-    if (ogImage) {
-      setMetaTag('meta[property="og:image"]', 'property', 'og:image', ogImage);
-    }
+    setMetaTag('meta[property="og:url"]', 'property', 'og:url', currentUrl);
+    setMetaTag('meta[property="og:image"]', 'property', 'og:image', finalOgImage);
 
     // Twitter Meta Tags
-    setMetaTag('meta[name="twitter:card"]', 'name', 'twitter:card', ogImage ? 'summary_large_image' : 'summary');
+    setMetaTag('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
     setMetaTag('meta[name="twitter:title"]', 'name', 'twitter:title', fullTitle);
     setMetaTag('meta[name="twitter:description"]', 'name', 'twitter:description', metaDescription);
+    setMetaTag('meta[name="twitter:image"]', 'name', 'twitter:image', finalOgImage);
 
     // Canonical URL
     setCanonicalLink(canonicalUrl);
 
-  }, [title, description, keywords, ogImage, ogType, canonicalUrl]);
+    // Dynamic JSON-LD Script Tag Injection
+    let scriptElement = document.querySelector('script[id="json-ld-schema"]') as HTMLScriptElement | null;
+    if (jsonLd) {
+      if (!scriptElement) {
+        scriptElement = document.createElement('script');
+        scriptElement.setAttribute('type', 'application/ld+json');
+        scriptElement.setAttribute('id', 'json-ld-schema');
+        document.head.appendChild(scriptElement);
+      }
+      scriptElement.textContent = JSON.stringify(jsonLd);
+    } else if (scriptElement) {
+      scriptElement.remove();
+    }
+  }, [title, description, keywords, ogImage, ogType, canonicalUrl, robots, jsonLd]);
 }

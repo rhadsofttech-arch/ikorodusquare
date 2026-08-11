@@ -33,6 +33,7 @@ import { IkoroduArea, PromotionOption } from '../types';
 import { PROMOTION_OPTIONS, MANUAL_PAYMENT_INFO, IKORODU_AREAS } from '../data/mockData';
 import { IkoroduMapExplorer } from '../components/IkoroduMapExplorer';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { useSEO } from '../hooks/useSEO';
 
 export const HomeView: React.FC = () => {
   const {
@@ -58,6 +59,37 @@ export const HomeView: React.FC = () => {
   const [selectedPromoForModal, setSelectedPromoForModal] = useState<PromotionOption>(PROMOTION_OPTIONS[1]);
   const [recommendationFilter, setRecommendationFilter] = useState<'all' | 'under50k' | 'topRated' | 'artisan'>('all');
   const [showPredictiveDropdown, setShowPredictiveDropdown] = useState(true);
+
+  useSEO({
+    title: 'IkoroduSquare | Local Business Directory & Marketplace in Ikorodu',
+    description: 'Discover verified local businesses, products and services across Ikorodu. Shop local, find businesses and connect directly with vendors on IkoroduSquare.',
+    keywords: 'Ikorodu businesses, Ikorodu marketplace, Sabo Ikorodu, Ebute Ikorodu, Agric Ikorodu, local vendors Lagos, buy local Ikorodu, Ikorodu business directory',
+    ogImage: 'https://www.ikorodusquare.com.ng/og-image.jpg',
+    ogType: 'website',
+    canonicalUrl: 'https://www.ikorodusquare.com.ng/',
+    robots: 'index, follow',
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'IkoroduSquare',
+        url: 'https://www.ikorodusquare.com.ng/',
+        logo: 'https://www.ikorodusquare.com.ng/og-image.jpg',
+        description: 'Local Business Directory & Marketplace in Ikorodu, Lagos State.',
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'IkoroduSquare',
+        url: 'https://www.ikorodusquare.com.ng/',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: 'https://www.ikorodusquare.com.ng/marketplace?q={search_term_string}',
+          'query-input': 'required name=search_term_string',
+        },
+      },
+    ],
+  });
 
   // Filter Active Admin-Approved Promotions (Not Expired)
   const now = new Date();

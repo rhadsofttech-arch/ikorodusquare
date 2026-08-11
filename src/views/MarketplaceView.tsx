@@ -45,10 +45,11 @@ export const MarketplaceView: React.FC = () => {
 
   useSEO({
     title: selectedCategory !== 'All' 
-      ? `Buy ${selectedCategory} Products in Ikorodu, Lagos` 
-      : 'Ikorodu Local Product Marketplace - Buy Direct from Vendors',
+      ? `Buy ${selectedCategory} Products in Ikorodu | IkoroduSquare` 
+      : 'Ikorodu Local Product Marketplace | IkoroduSquare',
     description: `Discover and buy verified ${selectedCategory !== 'All' ? selectedCategory : 'local'} products directly from top rated merchants in Sabo, Ebute, Agric, and Ikorodu Central, Lagos State.`,
     keywords: `Ikorodu marketplace, buy products Ikorodu, ${selectedCategory} products, Sabo market, Lagos online shopping`,
+    canonicalUrl: 'https://www.ikorodusquare.com.ng/marketplace',
   });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 

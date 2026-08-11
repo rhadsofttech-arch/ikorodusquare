@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /store/
+Allow: /marketplace
+Allow: /directory
+Allow: /categories
+Disallow: /admin
+Disallow: /vendor-portal
+Disallow: /auth
+Disallow: /register
+
+Sitemap: https://www.ikorodusquare.com.ng/sitemap.xml
