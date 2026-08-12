@@ -12,6 +12,7 @@ import {
   AuditLog,
   IkoroduArea,
   PromoType,
+  PromotionSlot,
   VendorFeature,
 } from '../types';
 import {
@@ -365,10 +366,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : INITIAL_ENQUIRIES;
   });
 
-  const [promotionRequests, setPromotionRequests] = useState<PromotionRequest[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_promotions`);
-    return saved ? JSON.parse(saved) : INITIAL_PROMOTION_REQUESTS;
-  });
+  const [promotionRequests, setPromotionRequests] = useState<PromotionRequest[]>([]);
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_notifications`);
@@ -455,7 +453,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (sbEnquiries && sbEnquiries.length > 0) setEnquiries(sbEnquiries);
 
         const sbPromos = await fetchPromotionsFromSupabase();
-        if (sbPromos && sbPromos.length > 0) setPromotionRequests(sbPromos);
+        if (sbPromos !== null) setPromotionRequests(sbPromos);
 
         const sbNotifs = await fetchNotificationsFromSupabase();
         if (sbNotifs && sbNotifs.length > 0) setNotifications(sbNotifs);
@@ -1288,7 +1286,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const createDirectPromotionAssignment = (assignmentData: {
     vendorId: string;
     vendorName: string;
-    assignedSlot: 'homepage_banner' | 'featured_product' | 'featured_vendor' | 'sponsored_vendor' | 'category_top';
+    assignedSlot: PromotionSlot;
     assignedTargetId?: string;
     startDate: string;
     durationWeeks: number;

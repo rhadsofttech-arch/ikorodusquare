@@ -64,6 +64,8 @@ export const AdminPortalView: React.FC = () => {
     auditLogs,
     setActiveTab,
     setSelectedVendorId,
+    setSelectedProductId,
+    setSelectedCategory,
     categories,
   } = useApp();
 
@@ -159,12 +161,50 @@ export const AdminPortalView: React.FC = () => {
     setCustomDurationWeeks(req.durationWeeks || 2);
   };
 
+  const checkSlotLimit = (slot: string, categoryName?: string): { allowed: boolean; message: string } => {
+    const active = promotionRequests.filter((pr) => {
+      if (pr.status !== 'approved' && pr.status !== 'active') return false;
+      const expires = pr.expiresAt ? new Date(pr.expiresAt) : null;
+      return !expires || expires > new Date();
+    });
+
+    if (slot === 'homepage_banner') {
+      const count = active.filter((pr) => pr.assignedSlot === 'homepage_banner').length;
+      if (count >= 1) {
+        return { allowed: false, message: 'Slot Limit Reached: Only 1 active Homepage Banner is allowed. Expire or remove the current active banner before placing a new one.' };
+      }
+    } else if (slot === 'sponsored_vendor') {
+      const count = active.filter((pr) => pr.assignedSlot === 'sponsored_vendor').length;
+      if (count >= 3) {
+        return { allowed: false, message: 'Slot Limit Reached: Maximum 3 active Sponsored Vendors allowed. Expire or remove an active sponsored vendor first.' };
+      }
+    } else if (slot === 'featured_product') {
+      const count = active.filter((pr) => pr.assignedSlot === 'featured_product').length;
+      if (count >= 4) {
+        return { allowed: false, message: 'Slot Limit Reached: Maximum 4 active Featured Products allowed. Expire or remove an active featured product first.' };
+      }
+    } else if (slot === 'category_top') {
+      const cat = categoryName || 'All';
+      const count = active.filter((pr) => pr.assignedSlot === 'category_top' && (pr.assignedCategory === cat || pr.categoryName === cat)).length;
+      if (count >= 2) {
+        return { allowed: false, message: `Slot Limit Reached: Maximum 2 active Category Top Spots allowed for category "${cat}".` };
+      }
+    }
+    return { allowed: true, message: '' };
+  };
+
   const handleDirectPlacementSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const targetVendor = vendors.find((v) => v.id === directVendorId);
     if (!targetVendor) return;
 
-    createDirectPromotionAssignment({
+    const limitCheck = checkSlotLimit(directSlot, targetVendor.category);
+    if (!limitCheck.allowed) {
+      alert(limitCheck.message);
+      return;
+    }
+
+    const payload = {
       vendorId: targetVendor.id,
       vendorName: targetVendor.businessName,
       assignedSlot: directSlot,
@@ -175,7 +215,10 @@ export const AdminPortalView: React.FC = () => {
       bannerSubtext: directBannerSubtext || 'Shop verified local deals & authentic products in Ikorodu.',
       bannerImageUrl: directBannerImageUrl || targetVendor.coverImageUrl || targetVendor.logoUrl,
       adminNote: directAdminNote || 'Direct placement assigned by Admin.',
-    });
+    };
+
+    console.log('[PROMOTION ASSIGNMENT CREATED]', payload);
+    createDirectPromotionAssignment(payload);
 
     setDirectPlacementModalOpen(false);
     setDirectVendorId('');
@@ -189,21 +232,31 @@ export const AdminPortalView: React.FC = () => {
     e.preventDefault();
     if (!assignSlotModalReq) return;
 
+    const limitCheck = checkSlotLimit(assignedSlot, assignSlotModalReq.categoryName);
+    if (!limitCheck.allowed) {
+      alert(limitCheck.message);
+      return;
+    }
+
     const start = new Date(customStartDate);
     const expires = new Date(start.getTime() + customDurationWeeks * 7 * 24 * 60 * 60 * 1000);
+
+    const approvalData = {
+      assignedSlot,
+      assignedTargetId: assignedTargetId || assignSlotModalReq.vendorId,
+      startDate: start.toISOString(),
+      expiresAt: expires.toISOString(),
+      bannerImageUrl: assignedSlot === 'homepage_banner' ? bannerImageUrl : undefined,
+      bannerHeading: assignedSlot === 'homepage_banner' ? bannerHeading : undefined,
+      bannerSubtext: assignedSlot === 'homepage_banner' ? bannerSubtext : undefined,
+    };
+
+    console.log('[PROMOTION ASSIGNMENT CREATED - APPROVED QUEUE]', approvalData);
 
     approvePromotionRequest(
       assignSlotModalReq.id,
       'FCMB Bank Transfer verified by Administrator.',
-      {
-        assignedSlot,
-        assignedTargetId: assignedTargetId || assignSlotModalReq.vendorId,
-        startDate: start.toISOString(),
-        expiresAt: expires.toISOString(),
-        bannerImageUrl: assignedSlot === 'homepage_banner' ? bannerImageUrl : undefined,
-        bannerHeading: assignedSlot === 'homepage_banner' ? bannerHeading : undefined,
-        bannerSubtext: assignedSlot === 'homepage_banner' ? bannerSubtext : undefined,
-      }
+      approvalData
     );
 
     setAssignSlotModalReq(null);
@@ -595,11 +648,12 @@ export const AdminPortalView: React.FC = () => {
                   <table className="w-full text-left text-xs">
                   <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase">
                     <tr>
-                      <th className="p-4">Vendor</th>
+                      <th className="p-4">Vendor & Target</th>
                       <th className="p-4">Assigned Slot</th>
                       <th className="p-4">Duration & Expiry</th>
+                      <th className="p-4">Status</th>
                       <th className="p-4">Amount</th>
-                      <th className="p-4">Action</th>
+                      <th className="p-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -607,12 +661,18 @@ export const AdminPortalView: React.FC = () => {
                       <tr key={promo.id} className="hover:bg-gray-50 transition-colors">
                         <td className="p-4">
                           <strong className="font-bold text-emerald-950 block">{promo.vendorName}</strong>
+                          {promo.assignedTargetId && (
+                            <span className="text-[10px] text-emerald-700 font-semibold block">Target ID: {promo.assignedTargetId}</span>
+                          )}
                           <span className="text-[10px] text-gray-500 font-mono">Ref: {promo.txnRef}</span>
                         </td>
                         <td className="p-4">
-                          <span className="px-2.5 py-1 bg-amber-100 text-amber-900 font-extrabold text-[10px] rounded-lg border border-amber-300 uppercase">
+                          <span className="px-2.5 py-1 bg-amber-100 text-amber-900 font-extrabold text-[10px] rounded-lg border border-amber-300 uppercase tracking-wider">
                             {promo.assignedSlot || promo.promoType}
                           </span>
+                          {promo.assignedCategory && (
+                            <span className="text-[10px] text-gray-500 block font-medium mt-1">Cat: {promo.assignedCategory}</span>
+                          )}
                         </td>
                         <td className="p-4 text-gray-700">
                           <div className="flex items-center gap-1 font-mono text-[11px]">
@@ -623,17 +683,52 @@ export const AdminPortalView: React.FC = () => {
                             </span>
                           </div>
                         </td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md uppercase tracking-wide">
+                            🟢 ACTIVE
+                          </span>
+                        </td>
                         <td className="p-4 font-mono font-bold text-emerald-900">
                           ₦{promo.amountNaira.toLocaleString()}
                         </td>
-                        <td className="p-4">
-                          <button
-                            onClick={() => removeActivePromotion(promo.id)}
-                            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] rounded-lg transition-all flex items-center gap-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Remove Promotion</span>
-                          </button>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                const slot = promo.assignedSlot || promo.promoType;
+                                if (slot === 'homepage_banner' || slot === 'sponsored_vendor') {
+                                  setActiveTab('home');
+                                } else if (slot === 'featured_product') {
+                                  if (promo.assignedTargetId) {
+                                    setSelectedProductId(promo.assignedTargetId);
+                                    setActiveTab('product-details');
+                                  } else {
+                                    setActiveTab('home');
+                                  }
+                                } else if (slot === 'category_top') {
+                                  if (promo.assignedCategory) {
+                                    setSelectedCategory(promo.assignedCategory);
+                                  }
+                                  setActiveTab('directory');
+                                } else {
+                                  setActiveTab('home');
+                                }
+                              }}
+                              className="px-3 py-1.5 bg-emerald-950 hover:bg-black text-amber-300 font-bold text-[11px] rounded-lg shadow-xs transition-all flex items-center gap-1"
+                              title="View active promotional spot live on public homepage or directory"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-amber-400" />
+                              <span>View Placement</span>
+                            </button>
+
+                            <button
+                              onClick={() => removeActivePromotion(promo.id)}
+                              className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] rounded-lg transition-all flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

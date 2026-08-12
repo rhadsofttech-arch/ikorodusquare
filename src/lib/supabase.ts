@@ -1,8 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Read Supabase configuration from environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Read Supabase configuration from environment variables (supporting Vite and Node runtimes)
+const supabaseUrl =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
+  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) ||
+  '';
+const supabaseAnonKey =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
+  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) ||
+  '';
 
 // Fallback dummy URL to prevent createClient from throwing an error during initialization if env vars are missing
 const DEFAULT_SUPABASE_URL = 'https://placeholder.supabase.co';

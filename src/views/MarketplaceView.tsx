@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Tag,
   ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IkoroduArea } from '../types';
@@ -25,6 +26,7 @@ export const MarketplaceView: React.FC = () => {
     products,
     vendors,
     categories,
+    promotionRequests = [],
     isLoadingData,
     searchQuery,
     setSearchQuery,
@@ -55,6 +57,21 @@ export const MarketplaceView: React.FC = () => {
 
   const ikoroduAreas: (IkoroduArea | 'All')[] = ['All', ...IKORODU_AREAS];
 
+  // Filter active promotions
+  const now = new Date();
+  const activePromos = promotionRequests.filter((pr) => {
+    if (pr.status !== 'approved' && pr.status !== 'active') return false;
+    const start = pr.startDate ? new Date(pr.startDate) : (pr.approvedAt ? new Date(pr.approvedAt) : new Date(pr.requestedAt));
+    const expires = pr.expiresAt ? new Date(pr.expiresAt) : null;
+    if (new Date(start) > now) return false;
+    if (expires && new Date(expires) <= now) return false;
+    return true;
+  });
+
+  const featuredProductIds = activePromos
+    .filter((pr) => pr.assignedSlot === 'featured_product')
+    .map((pr) => pr.assignedTargetId || pr.productId || pr.vendorId);
+
   const approvedProducts = products.filter((p) => p.status === 'approved');
 
   const filteredProducts = approvedProducts.filter((p) => {
@@ -81,6 +98,12 @@ export const MarketplaceView: React.FC = () => {
     }
 
     return true;
+  }).sort((a, b) => {
+    const aFeat = featuredProductIds.includes(a.id);
+    const bFeat = featuredProductIds.includes(b.id);
+    if (aFeat && !bFeat) return -1;
+    if (!aFeat && bFeat) return 1;
+    return 0;
   });
 
   const handleProductClick = (id: string) => {
@@ -246,13 +269,14 @@ export const MarketplaceView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredProducts.map((product) => {
             const isSaved = wishlist.includes(product.id);
+            const isAssignedFeatured = featuredProductIds.includes(product.id);
             const vendor = vendors.find(
               (v) => v.id === product.vendorId || v.businessName === product.vendorName
             );
             return (
               <div
                 key={product.id}
-                className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
+                className={`bg-white rounded-3xl border ${isAssignedFeatured ? 'border-2 border-amber-400 shadow-md' : 'border-slate-200/90 shadow-xs'} overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group`}
               >
                 <div>
                   <div
@@ -275,6 +299,13 @@ export const MarketplaceView: React.FC = () => {
                     >
                       <Star className={`w-4 h-4 ${isSaved ? 'fill-emerald-950' : ''}`} />
                     </button>
+
+                    {isAssignedFeatured && (
+                      <span className="absolute top-2 left-2 px-2.5 py-1 bg-amber-400 text-emerald-950 text-[10px] font-black uppercase rounded-lg shadow-md flex items-center gap-1 z-10">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" /> FEATURED
+                      </span>
+                    )}
+
                     <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-lg">
                       {product.vendorArea}
                     </span>

@@ -198,6 +198,8 @@ export interface PromotionOption {
   features: string[];
 }
 
+export type PromotionSlot = 'homepage_banner' | 'featured_product' | 'sponsored_vendor' | 'category_top';
+
 export interface PromotionRequest {
   id: string;
   vendorId: string;

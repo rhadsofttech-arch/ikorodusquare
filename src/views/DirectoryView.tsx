@@ -28,6 +28,7 @@ export const DirectoryView: React.FC = () => {
   const {
     vendors,
     categories,
+    promotionRequests = [],
     isLoadingData,
     searchQuery,
     setSearchQuery,
@@ -57,6 +58,25 @@ export const DirectoryView: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const ikoroduAreas: (IkoroduArea | 'All')[] = ['All', ...IKORODU_AREAS];
+
+  // Filter active promotions
+  const now = new Date();
+  const activePromos = promotionRequests.filter((pr) => {
+    if (pr.status !== 'approved' && pr.status !== 'active') return false;
+    const start = pr.startDate ? new Date(pr.startDate) : (pr.approvedAt ? new Date(pr.approvedAt) : new Date(pr.requestedAt));
+    const expires = pr.expiresAt ? new Date(pr.expiresAt) : null;
+    if (new Date(start) > now) return false;
+    if (expires && new Date(expires) <= now) return false;
+    return true;
+  });
+
+  const categoryTopVendorIds = activePromos
+    .filter((pr) => pr.assignedSlot === 'category_top')
+    .map((pr) => pr.assignedTargetId || pr.vendorId);
+
+  const sponsoredVendorIds = activePromos
+    .filter((pr) => pr.assignedSlot === 'sponsored_vendor')
+    .map((pr) => pr.assignedTargetId || pr.vendorId);
 
   // Filter approved vendors
   const approvedVendors = vendors.filter((v) => v.status === 'approved');
@@ -92,6 +112,12 @@ export const DirectoryView: React.FC = () => {
     }
 
     return true;
+  }).sort((a, b) => {
+    const aTop = categoryTopVendorIds.includes(a.id) || sponsoredVendorIds.includes(a.id);
+    const bTop = categoryTopVendorIds.includes(b.id) || sponsoredVendorIds.includes(b.id);
+    if (aTop && !bTop) return -1;
+    if (!aTop && bTop) return 1;
+    return 0;
   });
 
   const handleVendorClick = (id: string) => {
@@ -273,6 +299,7 @@ export const DirectoryView: React.FC = () => {
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredVendors.map((vendor) => {
+            const isTopSpot = categoryTopVendorIds.includes(vendor.id);
             const features = (vendor.features && vendor.features.length > 0)
               ? vendor.features
               : [
@@ -284,7 +311,7 @@ export const DirectoryView: React.FC = () => {
             return (
               <div
                 key={vendor.id}
-                className="bg-white rounded-3xl border border-gray-150 overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col justify-between group"
+                className={`bg-white rounded-3xl border ${isTopSpot ? 'border-2 border-amber-400 shadow-md' : 'border-gray-150 shadow-sm'} overflow-hidden hover:shadow-xl transition-all flex flex-col justify-between group`}
               >
                 <div>
                   <div className="relative h-44 overflow-hidden bg-gray-100">
@@ -295,7 +322,12 @@ export const DirectoryView: React.FC = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                    <div className="absolute top-3 left-3 flex flex-wrap gap-1 max-w-[80%]">
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1 max-w-[80%] z-10">
+                      {isTopSpot && (
+                        <span className="px-2.5 py-1 bg-amber-400 text-emerald-950 font-black text-[10px] rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-emerald-950 fill-emerald-950" /> TOP SPOT
+                        </span>
+                      )}
                       {features.slice(0, 3).map((feat) => (
                         <VendorFeatureBadge key={feat} feature={feat} size="sm" />
                       ))}

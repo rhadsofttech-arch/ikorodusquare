@@ -516,14 +516,19 @@ export async function saveEnquiryToSupabase(enquiry: Enquiry): Promise<boolean> 
 // ==========================================
 
 export async function fetchPromotionsFromSupabase(): Promise<PromotionRequest[] | null> {
-  if (!isSupabaseConfigured()) return null;
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('promotion_requests')
       .select('*')
       .order('requested_at', { ascending: false });
 
-    if (error || !data) return null;
+    if (error) {
+      console.warn('[SUPABASE] Query error fetching promotions:', error.message);
+      return [];
+    }
+
+    if (!data) return [];
 
     return data.map((row) => ({
       id: row.id,
@@ -552,11 +557,31 @@ export async function fetchPromotionsFromSupabase(): Promise<PromotionRequest[] 
       approvedAt: row.approved_at,
       startDate: row.start_date || row.approved_at,
       expiresAt: row.expires_at || row.expiry_date,
-      assignedSlot: row.assigned_slot as any,
-      assignedTargetId: row.assigned_target_id || row.product_id || row.vendor_id,
-      assignedCategory: row.assigned_category || row.category_name,
-      bannerHeading: row.banner_heading || row.title,
-      bannerSubtext: row.banner_subtext || row.subtitle,
+      productId: row.product_id || (row.notes?.startsWith('product:') ? row.notes.replace('product:', '') : undefined),
+      productName: row.product_name || undefined,
+      categoryId: row.category_id || undefined,
+      categoryName: row.category_name || (row.notes?.startsWith('category:') ? row.notes.replace('category:', '') : undefined),
+      promoType: row.promo_type as any,
+      amountNaira: Number(row.amount_naira || 0),
+      durationWeeks: Number(row.duration_weeks || 2),
+      bankName: row.bank_name || 'First City Monument Bank (FCMB)',
+      accountName: row.account_name || 'Rhadsoft Tech - IkoroduSquare',
+      accountNumber: row.account_number || '9474918014',
+      proofUrl: row.proof_url || '',
+      proofFileName: row.proof_file_name || 'payment_receipt.pdf',
+      txnRef: row.txn_ref || `TXN-${row.id}`,
+      notes: row.notes,
+      status: row.status as any,
+      adminNote: row.admin_note,
+      requestedAt: row.requested_at,
+      approvedAt: row.approved_at,
+      startDate: row.start_date || row.approved_at,
+      expiresAt: row.expires_at || row.expiry_date,
+      assignedSlot: (row.assigned_slot || row.promo_type) as any,
+      assignedTargetId: row.assigned_target_id || row.product_id || (row.notes?.startsWith('product:') ? row.notes.replace('product:', '') : row.vendor_id),
+      assignedCategory: row.assigned_category || row.category_name || (row.notes?.startsWith('category:') ? row.notes.replace('category:', '') : undefined),
+      bannerHeading: row.banner_heading || row.title || row.vendor_name,
+      bannerSubtext: row.banner_subtext || row.subtitle || 'Special promotion on IkoroduSquare',
       bannerImageUrl: row.banner_image_url || row.image_url,
       ctaText: row.cta_text || 'Visit Store',
       ctaUrl: row.cta_url,
@@ -564,23 +589,21 @@ export async function fetchPromotionsFromSupabase(): Promise<PromotionRequest[] 
       assignedAt: row.assigned_at,
     }));
   } catch (err) {
-    return null;
+    console.warn('[SUPABASE] Exception fetching promotions:', err);
+    return [];
   }
 }
 
 export async function savePromotionToSupabase(promo: PromotionRequest): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   try {
+    const notesContent = promo.notes || (promo.productId ? `product:${promo.productId}` : promo.categoryName ? `category:${promo.categoryName}` : '');
     const row = {
       id: promo.id,
       vendor_id: promo.vendorId,
       vendor_name: promo.vendorName,
-      product_id: promo.productId || null,
-      product_name: promo.productName || null,
-      category_id: promo.categoryId || null,
-      category_name: promo.categoryName || null,
       promo_type: promo.promoType,
-      promo_title: promo.promoTitle,
+      promo_title: promo.promoTitle || promo.vendorName || 'IkoroduSquare Promotion',
       amount_naira: promo.amountNaira,
       duration_weeks: promo.durationWeeks,
       bank_name: promo.bankName,
@@ -589,27 +612,28 @@ export async function savePromotionToSupabase(promo: PromotionRequest): Promise<
       proof_url: promo.proofUrl,
       proof_file_name: promo.proofFileName,
       txn_ref: promo.txnRef,
-      notes: promo.notes,
+      notes: notesContent,
       status: promo.status,
-      payment_status: promo.paymentStatus || null,
-      assignment_status: promo.assignmentStatus || null,
       admin_note: promo.adminNote,
       requested_at: promo.requestedAt,
       approved_at: promo.approvedAt,
-      start_date: promo.startDate,
       expires_at: promo.expiresAt,
-      assigned_slot: promo.assignedSlot,
-      assigned_target_id: promo.assignedTargetId,
-      assigned_category: promo.assignedCategory,
-      banner_heading: promo.bannerHeading,
-      banner_subtext: promo.bannerSubtext,
-      banner_image_url: promo.bannerImageUrl,
-      cta_text: promo.ctaText,
-      cta_url: promo.ctaUrl,
-      assigned_by: promo.assignedBy,
-      assigned_at: promo.assignedAt,
     };
     const { error } = await supabase.from('promotion_requests').upsert(row);
+    if (error) {
+      console.warn('Supabase savePromotion error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+export async function deletePromotionInSupabase(promoId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from('promotion_requests').delete().eq('id', promoId);
     return !error;
   } catch (err) {
     return false;
