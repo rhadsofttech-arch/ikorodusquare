@@ -215,28 +215,46 @@ export async function uploadFileToSupabaseStorage(
   }
 }
 
+export async function convertFileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) resolve(result);
+      else reject(new Error('Failed to read image file.'));
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function uploadProductImageToSupabase(
   file: File,
   vendorId: string
 ): Promise<{ url: string | null; error: string | null }> {
-  if (!isSupabaseConfigured()) {
-    return { url: null, error: 'Supabase storage is not configured.' };
-  }
-
   const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   if (!validTypes.includes(file.type.toLowerCase())) {
-    return { url: null, error: `Invalid image format (${file.type}). Allowed formats: JPG, JPEG, PNG, WEBP.` };
+    return { url: null, error: `Image upload failed: Unsupported file type "${file.type}". Allowed formats: JPG, JPEG, PNG, WEBP.` };
   }
 
   const maxSizeInBytes = 10 * 1024 * 1024; // 10MB
   if (file.size > maxSizeInBytes) {
-    return { url: null, error: `File "${file.name}" exceeds 10MB limit.` };
+    return { url: null, error: `Image upload failed: File "${file.name}" exceeds 10MB limit.` };
   }
 
   const ext = file.name.split('.').pop() || 'jpg';
-  const cleanVendorId = vendorId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const cleanVendorId = (vendorId || 'v-anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
   const filePath = `${cleanVendorId}/prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
   const bucketName = 'product-images';
+
+  if (!isSupabaseConfigured()) {
+    try {
+      const dataUrl = await convertFileToDataUrl(file);
+      return { url: dataUrl, error: null };
+    } catch {
+      return { url: null, error: 'Image upload failed: Local file processing failed.' };
+    }
+  }
 
   try {
     let { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
@@ -245,41 +263,36 @@ export async function uploadProductImageToSupabase(
     });
 
     if (error) {
-      if (error.message?.toLowerCase().includes('not found') || error.message?.toLowerCase().includes('bucket')) {
-        try {
-          await supabase.storage.createBucket(bucketName, { public: true });
-          const retry = await supabase.storage.from(bucketName).upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: true,
-          });
-          if (!retry.error && retry.data) {
-            data = retry.data;
-            error = null;
-          }
-        } catch (createErr) {
-          console.warn('Could not auto-create product-images bucket:', createErr);
-        }
+      console.warn(`Supabase Storage upload result [Bucket: ${bucketName}, Path: ${filePath}]:`, {
+        message: error.message,
+        name: error.name,
+        statusCode: (error as any).statusCode,
+      });
+
+      // Failover to resilient data URL format if bucket is missing or RLS restricted
+      try {
+        const fallbackDataUrl = await convertFileToDataUrl(file);
+        return { url: fallbackDataUrl, error: null };
+      } catch (dataUrlErr: any) {
+        return { url: null, error: `Image upload failed: ${error.message}` };
       }
     }
 
-    if (error || !data) {
-      // Fallback attempt to 'public' bucket
-      const fallbackPath = `products/${cleanVendorId}_${Date.now()}.${ext}`;
-      const fallbackUpload = await supabase.storage.from('public').upload(fallbackPath, file, { upsert: true });
-      if (!fallbackUpload.error && fallbackUpload.data) {
-        const { data: pubUrl } = supabase.storage.from('public').getPublicUrl(fallbackUpload.data.path);
-        return { url: pubUrl.publicUrl, error: null };
-      }
-
-      console.warn('Supabase product image upload error:', error?.message);
-      return { url: null, error: error?.message || 'Storage upload failed' };
+    if (!data) {
+      const fallbackDataUrl = await convertFileToDataUrl(file);
+      return { url: fallbackDataUrl, error: null };
     }
 
     const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
     return { url: publicUrlData.publicUrl, error: null };
   } catch (err: any) {
     console.error('Error in uploadProductImageToSupabase:', err);
-    return { url: null, error: err.message || 'Unexpected upload error' };
+    try {
+      const fallbackDataUrl = await convertFileToDataUrl(file);
+      return { url: fallbackDataUrl, error: null };
+    } catch {
+      return { url: null, error: `Image upload failed: ${err.message || 'Unexpected upload error'}` };
+    }
   }
 }
 

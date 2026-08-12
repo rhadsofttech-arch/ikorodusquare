@@ -61,6 +61,7 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
 
     const newUploadedUrls: string[] = [];
     let uploadFailures = 0;
+    let lastError: string | null = null;
 
     for (let i = 0; i < fileArray.length; i++) {
       const file = fileArray[i];
@@ -72,6 +73,7 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
         newUploadedUrls.push(url);
       } else {
         uploadFailures++;
+        if (error) lastError = error;
         console.error(`Failed to upload ${file.name}:`, error);
       }
     }
@@ -85,9 +87,9 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
 
     if (uploadFailures > 0) {
       if (newUploadedUrls.length === 0) {
-        setErrorMessage('Failed to upload images to storage. Please check your network and try again.');
+        setErrorMessage(lastError || 'Failed to process images for upload. Please try again.');
       } else {
-        setErrorMessage(`Uploaded ${newUploadedUrls.length} image(s), but ${uploadFailures} image(s) failed.`);
+        setErrorMessage(`Uploaded ${newUploadedUrls.length} image(s), but ${uploadFailures} image(s) failed: ${lastError || ''}`);
       }
     }
 
