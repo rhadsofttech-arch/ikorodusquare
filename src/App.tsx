@@ -47,13 +47,15 @@ const MainContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 text-slate-900 font-sans flex flex-col justify-between selection:bg-amber-300 selection:text-emerald-950 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px]">
-        <Navbar />
-        <Breadcrumb />
-        <MainContent />
-        <Footer />
-      </div>
-    </AppProvider>
+    <ErrorBoundary fallbackTitle="An error occurred in the application">
+      <AppProvider>
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 text-slate-900 font-sans flex flex-col justify-between selection:bg-amber-300 selection:text-emerald-950 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px]">
+          <Navbar />
+          <Breadcrumb />
+          <MainContent />
+          <Footer />
+        </div>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

@@ -186,6 +186,46 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'ikorodu_square_state_v1';
 
+const cleanupObsoleteLocalStorageKeys = () => {
+  if (typeof window === 'undefined') return;
+  const keysToRemove = [
+    `${LOCAL_STORAGE_KEY}_promotions`,
+    `${LOCAL_STORAGE_KEY}_products`,
+    `${LOCAL_STORAGE_KEY}_vendors`,
+    `${LOCAL_STORAGE_KEY}_reviews`,
+    `${LOCAL_STORAGE_KEY}_enquiries`,
+    `${LOCAL_STORAGE_KEY}_notifications`,
+    'ikorodu_square_state_v1_promotions',
+    'ikorodu_square_state_v1_products',
+    'ikorodu_square_state_v1_vendors',
+    'ikorodu_square_state_v1_reviews',
+    'ikorodu_square_state_v1_enquiries',
+    'ikorodu_square_state_v1_notifications',
+  ];
+  keysToRemove.forEach((key) => {
+    try {
+      if (localStorage.getItem(key) !== null) {
+        localStorage.removeItem(key);
+        console.log(`[Storage Cleanup] Purged obsolete key from localStorage: ${key}`);
+      }
+    } catch (e) {
+      console.warn(`[Storage Cleanup] Error removing key ${key}:`, e);
+    }
+  });
+};
+
+// Execute initial cleanup on load
+cleanupObsoleteLocalStorageKeys();
+
+const safeSetLocalStorage = (key: string, value: any) => {
+  try {
+    const serialized = JSON.stringify(value);
+    localStorage.setItem(key, serialized);
+  } catch (err) {
+    console.warn(`[LocalStorage] QuotaExceededError or write failed for "${key}":`, err);
+  }
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isSupabaseConnected = isSupabaseConfigured();
 
@@ -206,10 +246,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // State
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
-  const [vendors, setVendors] = useState<Vendor[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_vendors`);
-    return saved ? JSON.parse(saved) : INITIAL_VENDORS;
-  });
+  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
 
   const setSelectedVendorId = (id: string | null) => {
     setSelectedVendorIdState(id);
@@ -353,27 +390,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_products`);
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
-
-  const [reviews, setReviews] = useState<Review[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_reviews`);
-    return saved ? JSON.parse(saved) : INITIAL_REVIEWS;
-  });
-
-  const [enquiries, setEnquiries] = useState<Enquiry[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_enquiries`);
-    return saved ? JSON.parse(saved) : INITIAL_ENQUIRIES;
-  });
-
-  const [promotionRequests, setPromotionRequests] = useState<PromotionRequest[]>([]);
-
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_notifications`);
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
-  });
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
+  const [enquiries, setEnquiries] = useState<Enquiry[]>(INITIAL_ENQUIRIES);
+  const [promotionRequests, setPromotionRequests] = useState<PromotionRequest[]>(INITIAL_PROMOTION_REQUESTS);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
   const [wishlist, setWishlist] = useState<string[]>(['p-1', 'p-4']);
@@ -499,34 +520,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      authListener?.subscription?.unsubscribe();
     };
   }, []);
-
-  // Persistence Effects
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_vendors`, JSON.stringify(vendors));
-  }, [vendors]);
-
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_products`, JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_reviews`, JSON.stringify(reviews));
-  }, [reviews]);
-
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_enquiries`, JSON.stringify(enquiries));
-  }, [enquiries]);
-
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_promotions`, JSON.stringify(promotionRequests));
-  }, [promotionRequests]);
-
-  useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_notifications`, JSON.stringify(notifications));
-  }, [notifications]);
 
   // Route protection effect: automatically redirect if protected tab is active without valid user
   useEffect(() => {
