@@ -228,71 +228,193 @@ export async function convertFileToDataUrl(file: File): Promise<string> {
   });
 }
 
+/**
+ * Compresses image files in the browser before uploading using HTML5 Canvas.
+ * Reduces 5-10MB camera uploads down to fast, lightweight 100-300KB WebP/JPEG files.
+ */
+export async function compressImageBeforeUpload(
+  file: File,
+  maxDimension = 1200,
+  quality = 0.85
+): Promise<File> {
+  if (file.type.includes('svg') || file.size <= 150 * 1024) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob || blob.size >= file.size) {
+            resolve(file);
+            return;
+          }
+
+          const ext = outputType === 'image/jpeg' ? 'jpg' : 'png';
+          const compressedFile = new File(
+            [blob],
+            `${file.name.replace(/\.[^/.]+$/, '')}.${ext}`,
+            {
+              type: outputType,
+              lastModified: Date.now(),
+            }
+          );
+          resolve(compressedFile);
+        },
+        outputType,
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+
+    img.src = url;
+  });
+}
+
+/**
+ * Primary product image uploader function.
+ * Primary route: Supabase Storage bucket ('product-images').
+ * Secondary fallback route: Compressed Data URL (temporary resilience safety mechanism).
+ */
 export async function uploadProductImageToSupabase(
   file: File,
-  vendorId: string
+  vendorId: string,
+  productId?: string
 ): Promise<{ url: string | null; error: string | null }> {
+  // 1. Format validation
   const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   if (!validTypes.includes(file.type.toLowerCase())) {
-    return { url: null, error: `Image upload failed: Unsupported file type "${file.type}". Allowed formats: JPG, JPEG, PNG, WEBP.` };
+    return {
+      url: null,
+      error: `Image upload failed: Unsupported file type "${file.type}". Allowed formats: JPG, JPEG, PNG, WEBP.`,
+    };
   }
 
+  // 2. Size limit validation
   const maxSizeInBytes = 10 * 1024 * 1024; // 10MB
   if (file.size > maxSizeInBytes) {
-    return { url: null, error: `Image upload failed: File "${file.name}" exceeds 10MB limit.` };
+    return {
+      url: null,
+      error: `Image upload failed: File "${file.name}" exceeds 10MB limit.`,
+    };
   }
 
-  const ext = file.name.split('.').pop() || 'jpg';
+  // 3. Perform canvas image compression before upload
+  let processedFile = file;
+  try {
+    processedFile = await compressImageBeforeUpload(file);
+  } catch (err) {
+    console.warn('[PRODUCT IMAGE] Image compression skipped, using original file:', err);
+  }
+
+  const ext = processedFile.name.split('.').pop() || 'jpg';
   const cleanVendorId = (vendorId || 'v-anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const filePath = `${cleanVendorId}/prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+  const cleanProductId = (productId || 'catalog').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filePath = `${cleanVendorId}/${cleanProductId}/prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
   const bucketName = 'product-images';
 
-  if (!isSupabaseConfigured()) {
+  // 4. Primary Route: Supabase Storage
+  if (isSupabaseConfigured()) {
     try {
-      const dataUrl = await convertFileToDataUrl(file);
-      return { url: dataUrl, error: null };
-    } catch {
-      return { url: null, error: 'Image upload failed: Local file processing failed.' };
+      const { data, error } = await supabase.storage.from(bucketName).upload(filePath, processedFile, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: processedFile.type,
+      });
+
+      if (!error && data?.path) {
+        const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
+        const storagePublicUrl = publicUrlData.publicUrl;
+        console.log(`[PRODUCT IMAGE] Uploaded to Supabase Storage: ${storagePublicUrl}`);
+        return { url: storagePublicUrl, error: null };
+      }
+
+      if (error) {
+        console.warn(`[PRODUCT IMAGE] Supabase Storage primary upload failed [Bucket: ${bucketName}, Path: ${filePath}]:`, {
+          message: error.message,
+          name: error.name,
+          statusCode: (error as any).statusCode,
+        });
+      }
+    } catch (storageErr: any) {
+      console.warn('[PRODUCT IMAGE] Exception during Supabase Storage primary upload:', storageErr);
     }
+  }
+
+  // 5. Fallback Route: Compressed Data URL
+  console.warn('[PRODUCT IMAGE] Storage unavailable — using temporary Data URL fallback');
+  try {
+    const fallbackDataUrl = await convertFileToDataUrl(processedFile);
+    return { url: fallbackDataUrl, error: null };
+  } catch (dataUrlErr: any) {
+    return {
+      url: null,
+      error: `Image upload failed: ${dataUrlErr.message || 'Local file processing failed.'}`,
+    };
+  }
+}
+
+/**
+ * Removes an image object from Supabase Storage when an image is deleted/replaced by a vendor.
+ */
+export async function deleteProductImageFromSupabase(imageUrl: string): Promise<boolean> {
+  if (!isSupabaseConfigured() || !imageUrl || imageUrl.startsWith('data:')) {
+    return true; // Data URLs require no storage object deletion
   }
 
   try {
-    let { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: true,
-    });
+    // Extract relative storage path from public URL
+    // e.g. https://<ref>.supabase.co/storage/v1/object/public/product-images/v_123/prod_123.jpg
+    const bucketPrefix = '/product-images/';
+    const pathIndex = imageUrl.indexOf(bucketPrefix);
+    if (pathIndex === -1) return false;
+
+    const relativePath = imageUrl.substring(pathIndex + bucketPrefix.length);
+    const { error } = await supabase.storage.from('product-images').remove([relativePath]);
 
     if (error) {
-      console.warn(`Supabase Storage upload result [Bucket: ${bucketName}, Path: ${filePath}]:`, {
-        message: error.message,
-        name: error.name,
-        statusCode: (error as any).statusCode,
-      });
-
-      // Failover to resilient data URL format if bucket is missing or RLS restricted
-      try {
-        const fallbackDataUrl = await convertFileToDataUrl(file);
-        return { url: fallbackDataUrl, error: null };
-      } catch (dataUrlErr: any) {
-        return { url: null, error: `Image upload failed: ${error.message}` };
-      }
+      console.warn(`[PRODUCT IMAGE] Failed to delete Storage object (${relativePath}):`, error.message);
+      return false;
     }
 
-    if (!data) {
-      const fallbackDataUrl = await convertFileToDataUrl(file);
-      return { url: fallbackDataUrl, error: null };
-    }
-
-    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
-    return { url: publicUrlData.publicUrl, error: null };
+    console.log(`[PRODUCT IMAGE] Successfully removed object from Supabase Storage: ${relativePath}`);
+    return true;
   } catch (err: any) {
-    console.error('Error in uploadProductImageToSupabase:', err);
-    try {
-      const fallbackDataUrl = await convertFileToDataUrl(file);
-      return { url: fallbackDataUrl, error: null };
-    } catch {
-      return { url: null, error: `Image upload failed: ${err.message || 'Unexpected upload error'}` };
-    }
+    console.error('[PRODUCT IMAGE] Error removing image from Supabase Storage:', err);
+    return false;
   }
 }
 

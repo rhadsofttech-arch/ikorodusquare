@@ -1683,6 +1683,7 @@ export const VendorDashboardView: React.FC = () => {
                   images={prodImages}
                   onChange={setProdImages}
                   vendorId={vendor.id}
+                  productId={editingProduct?.id}
                   maxImages={8}
                 />
               </div>

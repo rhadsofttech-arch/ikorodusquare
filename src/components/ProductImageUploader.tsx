@@ -9,12 +9,13 @@ import {
   CheckCircle2,
   RefreshCw,
 } from 'lucide-react';
-import { uploadProductImageToSupabase } from '../lib/supabaseDb';
+import { uploadProductImageToSupabase, deleteProductImageFromSupabase } from '../lib/supabaseDb';
 
 interface ProductImageUploaderProps {
   images: string[];
   onChange: (newImages: string[]) => void;
   vendorId: string;
+  productId?: string;
   maxImages?: number;
 }
 
@@ -22,6 +23,7 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
   images,
   onChange,
   vendorId,
+  productId,
   maxImages = 8,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -67,7 +69,7 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
       const file = fileArray[i];
       setUploadProgress({ current: i + 1, total: fileArray.length });
 
-      const { url, error } = await uploadProductImageToSupabase(file, vendorId);
+      const { url, error } = await uploadProductImageToSupabase(file, vendorId, productId);
 
       if (url) {
         newUploadedUrls.push(url);
@@ -127,6 +129,12 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
   };
 
   const handleRemoveImage = (indexToRemove: number) => {
+    const urlToRemove = images[indexToRemove];
+    if (urlToRemove) {
+      deleteProductImageFromSupabase(urlToRemove).catch((err) =>
+        console.warn('Background storage deletion error:', err)
+      );
+    }
     const updated = images.filter((_, idx) => idx !== indexToRemove);
     onChange(updated);
   };

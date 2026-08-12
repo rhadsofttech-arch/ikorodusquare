@@ -35,6 +35,7 @@ import {
   fetchProductsFromSupabase,
   saveProductToSupabase,
   deleteProductFromSupabase,
+  deleteProductImageFromSupabase,
   fetchReviewsFromSupabase,
   saveReviewToSupabase,
   fetchEnquiriesFromSupabase,
@@ -938,6 +939,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteProduct = (productId: string) => {
+    const p = products.find((item) => item.id === productId);
+    if (p && p.images && p.images.length > 0) {
+      p.images.forEach((imgUrl) => {
+        deleteProductImageFromSupabase(imgUrl).catch((err) =>
+          console.warn('[PRODUCT DELETION] Error deleting product image from storage:', err)
+        );
+      });
+    }
     setProducts((prev) => prev.filter((p) => p.id !== productId));
     deleteProductFromSupabase(productId);
   };
