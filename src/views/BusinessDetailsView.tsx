@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { safeFormatPrice, getProductCoverImage } from '../lib/productHelpers';
 import {
   MapPin,
   Phone,
@@ -344,7 +345,9 @@ export const BusinessDetailsView: React.FC = () => {
                     {vendor.businessName}
                   </h1>
                   {vendor.isVerified && (
-                    <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" title="Verified Store" />
+                    <span title="Verified Store">
+                      <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                    </span>
                   )}
                 </div>
                 <p className="text-xs sm:text-sm font-semibold text-emerald-800 flex items-center gap-2 flex-wrap">
@@ -667,9 +670,13 @@ export const BusinessDetailsView: React.FC = () => {
                   >
                     <div className="h-40 bg-gray-100 overflow-hidden">
                       <img
-                        src={product.images[0]}
-                        alt={product.name}
+                        src={getProductCoverImage(product)}
+                        alt={product.name || 'Product'}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800';
+                        }}
                       />
                     </div>
                     <div className="p-3 space-y-1">
@@ -677,7 +684,7 @@ export const BusinessDetailsView: React.FC = () => {
                         {product.name}
                       </h4>
                       <span className="text-sm font-black text-emerald-900 font-mono">
-                        ₦{product.price.toLocaleString()}
+                        ₦{safeFormatPrice(product.price)}
                       </span>
                     </div>
                   </div>

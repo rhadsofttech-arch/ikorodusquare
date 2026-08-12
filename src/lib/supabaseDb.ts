@@ -483,8 +483,10 @@ export async function fetchProductsFromSupabase(): Promise<Product[] | null> {
   }
 }
 
-export async function saveProductToSupabase(product: Product): Promise<boolean> {
-  if (!isSupabaseConfigured()) return false;
+export async function saveProductToSupabase(product: Product): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase credentials are not configured.' };
+  }
   try {
     const row = {
       id: product.id,
@@ -516,13 +518,56 @@ export async function saveProductToSupabase(product: Product): Promise<boolean> 
     const { error } = await supabase.from('products').upsert(row);
     if (error) {
       console.warn('Supabase saveProduct error:', error.message);
-      return false;
+      return { success: false, error: `Database save failed: ${error.message}` };
     }
-    return true;
-  } catch (err) {
+    return { success: true };
+  } catch (err: any) {
     console.error('Error saving product to Supabase:', err);
-    return false;
+    return { success: false, error: err.message || 'Unexpected database error while saving product.' };
   }
+}
+
+/**
+ * Batch upload product images with controlled concurrency (e.g. 3 parallel uploads at a time).
+ */
+export async function uploadProductImagesBatch(
+  files: File[],
+  vendorId: string,
+  productId?: string,
+  onProgress?: (current: number, total: number) => void
+): Promise<{ urls: string[]; failures: { fileName: string; error: string }[] }> {
+  const urls: string[] = [];
+  const failures: { fileName: string; error: string }[] = [];
+  const concurrencyLimit = 3;
+  let completedCount = 0;
+
+  // Process files in concurrency chunks
+  for (let i = 0; i < files.length; i += concurrencyLimit) {
+    const chunk = files.slice(i, i + concurrencyLimit);
+    const results = await Promise.all(
+      chunk.map(async (file) => {
+        const res = await uploadProductImageToSupabase(file, vendorId, productId);
+        completedCount++;
+        if (onProgress) {
+          onProgress(completedCount, files.length);
+        }
+        return { file, res };
+      })
+    );
+
+    for (const { file, res } of results) {
+      if (res.url) {
+        urls.push(res.url);
+      } else {
+        failures.push({
+          fileName: file.name,
+          error: res.error || 'Unknown upload error',
+        });
+      }
+    }
+  }
+
+  return { urls, failures };
 }
 
 export async function deleteProductFromSupabase(productId: string): Promise<boolean> {

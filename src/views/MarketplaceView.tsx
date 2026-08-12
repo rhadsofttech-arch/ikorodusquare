@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { safeFormatPrice, getProductCoverImage } from '../lib/productHelpers';
 import {
   Search,
   ShoppingBag,
@@ -284,9 +285,13 @@ export const MarketplaceView: React.FC = () => {
                     onClick={() => handleProductClick(product.id)}
                   >
                     <img
-                      src={product.images[0]}
-                      alt={product.name}
+                      src={getProductCoverImage(product)}
+                      alt={product.name || 'Product'}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800';
+                      }}
                     />
                     <button
                       onClick={(e) => {
@@ -334,13 +339,13 @@ export const MarketplaceView: React.FC = () => {
 
                     <div className="pt-1 flex items-baseline gap-2">
                       <span className="text-sm font-black text-emerald-900 font-mono">
-                        ₦{product.price.toLocaleString()}
+                        ₦{safeFormatPrice(product.price)}
                       </span>
-                      {product.salePrice && (
+                      {product.salePrice ? (
                         <span className="text-[10px] text-gray-400 line-through font-mono">
-                          ₦{product.salePrice.toLocaleString()}
+                          ₦{safeFormatPrice(product.salePrice)}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -381,10 +386,14 @@ export const MarketplaceView: React.FC = () => {
                 className="bg-white rounded-2xl border border-gray-150 p-4 flex flex-col sm:flex-row items-center gap-4 shadow-sm hover:shadow-md transition-all"
               >
                 <img
-                  src={product.images[0]}
-                  alt={product.name}
+                  src={getProductCoverImage(product)}
+                  alt={product.name || 'Product'}
                   className="w-24 h-24 rounded-xl object-cover shrink-0 cursor-pointer"
                   onClick={() => handleProductClick(product.id)}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800';
+                  }}
                 />
                 <div className="flex-1 min-w-0 space-y-1">
                   <span className="text-[10px] uppercase font-bold text-emerald-700">
@@ -402,7 +411,7 @@ export const MarketplaceView: React.FC = () => {
 
                 <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
                   <span className="text-base font-black text-emerald-950 font-mono">
-                    ₦{product.price.toLocaleString()}
+                    ₦{safeFormatPrice(product.price)}
                   </span>
                   <div className="flex items-center gap-2">
                     <button

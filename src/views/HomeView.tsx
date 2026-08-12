@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { safeFormatPrice, getProductCoverImage } from '../lib/productHelpers';
 import {
   Search,
   Store,
@@ -531,7 +532,7 @@ export const HomeView: React.FC = () => {
                               }}
                               className="flex items-center gap-3 p-2 hover:bg-emerald-50 rounded-xl cursor-pointer transition-colors"
                             >
-                              <img src={p.images[0]} alt={p.name} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-slate-200" />
+                              <img src={getProductCoverImage(p)} alt={p.name || 'Product'} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-slate-200" />
                               <div className="flex-1 min-w-0">
                                 <h5 className="text-xs font-bold text-slate-900 truncate">{p.name}</h5>
                                 <div className="flex items-center gap-2 text-[10px] text-slate-500">
@@ -540,7 +541,7 @@ export const HomeView: React.FC = () => {
                                   <span className="text-emerald-700 font-semibold">{p.vendorArea}</span>
                                 </div>
                               </div>
-                              <span className="text-xs font-black text-emerald-950 font-mono shrink-0">₦{p.price.toLocaleString()}</span>
+                              <span className="text-xs font-black text-emerald-950 font-mono shrink-0">₦{safeFormatPrice(p.price)}</span>
                             </div>
                           ))}
                         </div>
@@ -846,7 +847,7 @@ export const HomeView: React.FC = () => {
                   <WhatsAppChatButton
                     whatsappNumber={vendor.whatsapp}
                     businessName={vendor.businessName}
-                    type="vendor"
+                    type="business"
                     vendorId={vendor.id}
                     variant="primary"
                     className="flex-1 text-xs"
@@ -923,9 +924,13 @@ export const HomeView: React.FC = () => {
                     onClick={() => handleProductClick(product.id)}
                   >
                     <img
-                      src={product.images[0]}
-                      alt={product.name}
+                      src={getProductCoverImage(product)}
+                      alt={product.name || 'Product'}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800';
+                      }}
                     />
                     <button
                       onClick={(e) => {
@@ -971,13 +976,13 @@ export const HomeView: React.FC = () => {
 
                     <div className="pt-1 flex items-baseline gap-2">
                       <span className="text-base font-black text-emerald-950 font-mono">
-                        ₦{product.price.toLocaleString()}
+                        ₦{safeFormatPrice(product.price)}
                       </span>
-                      {product.salePrice && (
+                      {product.salePrice ? (
                         <span className="text-[10px] text-slate-400 line-through font-mono">
-                          ₦{product.salePrice.toLocaleString()}
+                          ₦{safeFormatPrice(product.salePrice)}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>

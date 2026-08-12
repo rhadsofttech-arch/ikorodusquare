@@ -220,7 +220,9 @@ export const Navbar: React.FC = () => {
                             {v.businessName}
                           </span>
                           {v.isVerified && (
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" title="Verified Store" />
+                            <span title="Verified Store">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            </span>
                           )}
                         </div>
                         <p className="text-[10px] text-slate-500 truncate flex items-center gap-1">

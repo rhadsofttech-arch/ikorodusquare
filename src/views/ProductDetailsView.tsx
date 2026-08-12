@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { safeFormatPrice, getProductCoverImage } from '../lib/productHelpers';
 import {
   MessageSquare,
   ShieldCheck,
@@ -35,15 +36,15 @@ export const ProductDetailsView: React.FC = () => {
 
   useSEO({
     title: product
-      ? `${product.name} (₦${product.price.toLocaleString()}) | ${vendor?.businessName || 'Ikorodu Vendor'} | IkoroduSquare`
+      ? `${product.name} (₦${safeFormatPrice(product.price)}) | ${vendor?.businessName || 'Ikorodu Vendor'} | IkoroduSquare`
       : 'Product Details | IkoroduSquare',
     description: product
-      ? `${product.name} available for ₦${product.price.toLocaleString()} from ${vendor?.businessName} in ${product.vendorArea}, Ikorodu. ${product.description.slice(0, 150)}`
+      ? `${product.name} available for ₦${safeFormatPrice(product.price)} from ${vendor?.businessName} in ${product.vendorArea || 'Ikorodu'}, Ikorodu. ${(product.description || '').slice(0, 150)}`
       : 'Product listing on IkoroduSquare.',
     keywords: product
       ? `${product.name}, ${product.category}, buy ${product.name} Ikorodu, ${vendor?.businessName}, ${product.vendorArea} shopping`
       : undefined,
-    ogImage: product?.images?.[0] || vendor?.logoUrl,
+    ogImage: getProductCoverImage(product) || vendor?.logoUrl,
     ogType: 'product',
     canonicalUrl: product && vendor ? `https://www.ikorodusquare.com.ng/store/${vendor.slug}` : undefined,
     jsonLd: product && vendor
@@ -103,7 +104,7 @@ export const ProductDetailsView: React.FC = () => {
   };
 
   const whatsappMessage = encodeURIComponent(
-    `Hi ${vendor.businessName}, I found your listing "${product.name}" (₦${product.price.toLocaleString()}) on IkoroduSquare. Is it currently in stock for delivery in ${product.vendorArea}?`
+    `Hi ${vendor?.businessName || 'Vendor'}, I found your listing "${product?.name || 'Product'}" (₦${safeFormatPrice(product?.price)}) on IkoroduSquare. Is it currently in stock for delivery in ${product?.vendorArea || 'Ikorodu'}?`
   );
 
   return (
@@ -118,8 +119,8 @@ export const ProductDetailsView: React.FC = () => {
         </button>
 
         <ShareButton
-          title={`${product.name} - ₦${product.price.toLocaleString()}`}
-          text={`Check out "${product.name}" available for ₦${product.price.toLocaleString()} from ${vendor.businessName} in ${product.vendorArea}, Ikorodu on IkoroduSquare!`}
+          title={`${product?.name} - ₦${safeFormatPrice(product?.price)}`}
+          text={`Check out "${product?.name}" available for ₦${safeFormatPrice(product?.price)} from ${vendor?.businessName} in ${product?.vendorArea}, Ikorodu on IkoroduSquare!`}
           variant="outline"
           className="px-3.5 py-2 text-xs"
           label="Share Listing"
@@ -132,9 +133,13 @@ export const ProductDetailsView: React.FC = () => {
           <div className="bg-white rounded-3xl border border-gray-150 p-4 shadow-sm overflow-hidden">
             <div className="relative h-80 sm:h-96 rounded-2xl overflow-hidden bg-gray-100">
               <img
-                src={product.images[activeImageIdx] || product.images[0]}
-                alt={product.name}
+                src={(product?.images && product.images[activeImageIdx]) || getProductCoverImage(product)}
+                alt={product?.name || 'Product'}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800';
+                }}
               />
               <div className="absolute top-4 right-4 flex items-center gap-2">
                 <ShareButton
@@ -155,7 +160,7 @@ export const ProductDetailsView: React.FC = () => {
             </div>
 
             {/* Thumbnail selector */}
-            {product.images.length > 1 && (
+            {Array.isArray(product?.images) && product.images.length > 1 && (
               <div className="flex gap-2 pt-4 overflow-x-auto">
                 {product.images.map((img, idx) => (
                   <button
@@ -190,15 +195,15 @@ export const ProductDetailsView: React.FC = () => {
             {/* Price Row */}
             <div className="flex items-baseline gap-3 p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl">
               <span className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono">
-                ₦{product.price.toLocaleString()}
+                ₦{safeFormatPrice(product?.price)}
               </span>
-              {product.salePrice && (
+              {product?.salePrice ? (
                 <span className="text-sm text-gray-400 line-through font-mono">
-                  ₦{product.salePrice.toLocaleString()}
+                  ₦{safeFormatPrice(product.salePrice)}
                 </span>
-              )}
+              ) : null}
               <span className="ml-auto text-xs font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-lg shadow-xs">
-                {product.availability} ({product.stock} available)
+                {product?.availability || 'In Stock'} ({product?.stock ?? 10} available)
               </span>
             </div>
 

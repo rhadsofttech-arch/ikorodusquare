@@ -62,6 +62,7 @@ export interface Category {
   iconName: string;
   description: string;
   subcategories: string[];
+  vendorCount?: number;
 }
 
 export interface BusinessHours {
@@ -104,6 +105,7 @@ export interface Vendor {
   galleryUrls: string[];
   cacCertificateUrl?: string;
   ninDocUrl?: string;
+  ninDocumentUrl?: string;
   ownerName: string;
   ownerEmail: string;
   ownerPhone: string;
@@ -149,6 +151,8 @@ export interface Product {
   isFeatured: boolean;
   status: 'pending' | 'approved' | 'rejected';
   viewsCount: number;
+  rating?: number;
+  reviewCount?: number;
   createdAt: string;
 }
 

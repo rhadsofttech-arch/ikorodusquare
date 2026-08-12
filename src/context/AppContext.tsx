@@ -108,10 +108,11 @@ interface AppContextType {
   toggleVendorFeature: (vendorId: string, feature: VendorFeature) => void;
   updateVendorFeatures: (vendorId: string, features: VendorFeature[]) => void;
 
-  addProduct: (productData: Partial<Product>) => Product;
-  updateProduct: (productId: string, productData: Partial<Product>) => void;
+  addProduct: (productData: Partial<Product>) => Promise<Product>;
+  updateProduct: (productId: string, productData: Partial<Product>) => Promise<void>;
   deleteProduct: (productId: string) => void;
   approveProduct: (productId: string) => void;
+  trackWhatsAppClick: (vendorId: string) => void;
 
   addReview: (reviewData: Omit<Review, 'id' | 'createdAt'>) => void;
   approveReview: (reviewId: string) => void;
@@ -892,7 +893,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Product Actions
-  const addProduct = (productData: Partial<Product>): Product => {
+  const addProduct = async (productData: Partial<Product>): Promise<Product> => {
     const newProduct: Product = {
       id: `p-${Date.now()}`,
       vendorId: productData.vendorId || 'v-3',
@@ -902,10 +903,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       name: productData.name || 'New Item',
       slug: (productData.name || 'new-item').toLowerCase().replace(/\s+/g, '-'),
       description: productData.description || '',
-      price: productData.price || 0,
-      salePrice: productData.salePrice,
+      price: typeof productData.price === 'number' ? productData.price : Number(productData.price) || 0,
+      salePrice: productData.salePrice !== undefined && (productData.salePrice as any) !== '' ? Number(productData.salePrice) : undefined,
       sku: productData.sku || `SKU-${Date.now().toString().slice(-6)}`,
-      stock: productData.stock || 10,
+      stock: typeof productData.stock === 'number' ? productData.stock : Number(productData.stock) || 10,
       category: productData.category || 'General',
       subcategory: productData.subcategory || 'General',
       brand: productData.brand,
@@ -913,29 +914,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       condition: productData.condition || 'New',
       availability: 'In Stock',
       deliveryOptions: productData.deliveryOptions || ['Rider Delivery', 'Store Pick-up'],
-      images: productData.images || ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800'],
+      images: Array.isArray(productData.images) && productData.images.length > 0
+        ? productData.images
+        : ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800'],
       isFeatured: false,
       status: 'approved', // Auto-approved for verified vendor
       viewsCount: 0,
       createdAt: new Date().toISOString(),
     };
 
+    const dbRes = await saveProductToSupabase(newProduct);
+    if (!dbRes.success) {
+      console.warn('[ADD PRODUCT] Supabase save returned error:', dbRes.error);
+      // Even if DB save fails due to transient connection, local optimistic update still allowed or throw if requested
+    }
+
     setProducts((prev) => [newProduct, ...prev]);
-    saveProductToSupabase(newProduct);
     return newProduct;
   };
 
-  const updateProduct = (productId: string, productData: Partial<Product>) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === productId) {
-          const updated = { ...p, ...productData };
-          saveProductToSupabase(updated);
-          return updated;
-        }
-        return p;
-      })
-    );
+  const updateProduct = async (productId: string, productData: Partial<Product>): Promise<void> => {
+    const target = products.find((p) => p.id === productId);
+    if (!target) return;
+
+    const updated: Product = {
+      ...target,
+      ...productData,
+      price: productData.price !== undefined ? Number(productData.price) : target.price,
+      salePrice: productData.salePrice !== undefined && (productData.salePrice as any) !== '' ? Number(productData.salePrice) : target.salePrice,
+      images: Array.isArray(productData.images) ? productData.images : target.images,
+    };
+
+    const dbRes = await saveProductToSupabase(updated);
+    if (!dbRes.success) {
+      console.warn('[UPDATE PRODUCT] Supabase save returned error:', dbRes.error);
+    }
+
+    setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
   };
 
   const deleteProduct = (productId: string) => {
@@ -960,6 +975,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return updated;
         }
         return p;
+      })
+    );
+  };
+
+  const trackWhatsAppClick = (vendorId: string) => {
+    setVendors((prev) =>
+      prev.map((v) => {
+        if (v.id === vendorId) {
+          const newClicks = (v.whatsappClicks || 0) + 1;
+          updateVendorInSupabase(v.id, { whatsappClicks: newClicks });
+          return { ...v, whatsappClicks: newClicks };
+        }
+        return v;
       })
     );
   };
@@ -1267,7 +1295,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return v;
           })
         );
-      } else if (targetReq.promoType === 'premium_subscription') {
+      } else if ((targetReq.promoType as string) === 'premium_subscription') {
         setVendors((prev) =>
           prev.map((v) => {
             if (v.id === targetReq.vendorId) {
@@ -1551,6 +1579,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProduct,
         deleteProduct,
         approveProduct,
+        trackWhatsAppClick,
         addReview,
         approveReview,
         rejectReview,

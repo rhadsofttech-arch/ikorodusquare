@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { safeFormatPrice, getProductCoverImage } from '../lib/productHelpers';
 import {
   Store,
   ShoppingBag,
@@ -35,6 +36,7 @@ import {
   MapPin,
   Building2,
   Save,
+  Loader2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO, PROMOTION_OPTIONS, IKORODU_AREAS } from '../data/mockData';
@@ -113,6 +115,9 @@ export const VendorDashboardView: React.FC = () => {
   const [prodCondition, setProdCondition] = useState<'New' | 'Used - Like New' | 'Refurbished'>('New');
   const [prodImages, setProdImages] = useState<string[]>([]);
   const [productFormError, setProductFormError] = useState<string | null>(null);
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [isUploadingProductImages, setIsUploadingProductImages] = useState(false);
+  const [productSuccessToast, setProductSuccessToast] = useState<string | null>(null);
 
   // Manual Promotion Real Receipt State
   const [selectedPromoOption, setSelectedPromoOption] = useState(PROMOTION_OPTIONS[1]);
@@ -186,10 +191,10 @@ export const VendorDashboardView: React.FC = () => {
     area: vendor.area || 'Sabo',
     phone: vendor.phone || '',
     whatsapp: vendor.whatsapp || '',
-    website: vendor.website || '',
-    instagram: vendor.instagram || '',
-    facebook: vendor.facebook || '',
-    tiktok: vendor.tiktok || '',
+    website: (vendor as any).website || '',
+    instagram: (vendor as any).instagram || '',
+    facebook: (vendor as any).facebook || '',
+    tiktok: (vendor as any).tiktok || '',
     yearsInBusiness: vendor.yearsInBusiness || 1,
     logoUrl: vendor.logoUrl || '',
     coverImageUrl: vendor.coverImageUrl || '',
@@ -213,10 +218,10 @@ export const VendorDashboardView: React.FC = () => {
       area: vendor.area || 'Sabo',
       phone: vendor.phone || '',
       whatsapp: vendor.whatsapp || '',
-      website: vendor.website || '',
-      instagram: vendor.instagram || '',
-      facebook: vendor.facebook || '',
-      tiktok: vendor.tiktok || '',
+      website: (vendor as any).website || '',
+      instagram: (vendor as any).instagram || '',
+      facebook: (vendor as any).facebook || '',
+      tiktok: (vendor as any).tiktok || '',
       yearsInBusiness: vendor.yearsInBusiness || 1,
       logoUrl: vendor.logoUrl || '',
       coverImageUrl: vendor.coverImageUrl || '',
@@ -241,10 +246,10 @@ export const VendorDashboardView: React.FC = () => {
         area: vendor.area || 'Sabo',
         phone: vendor.phone || '',
         whatsapp: vendor.whatsapp || '',
-        website: vendor.website || '',
-        instagram: vendor.instagram || '',
-        facebook: vendor.facebook || '',
-        tiktok: vendor.tiktok || '',
+        website: (vendor as any).website || '',
+        instagram: (vendor as any).instagram || '',
+        facebook: (vendor as any).facebook || '',
+        tiktok: (vendor as any).tiktok || '',
         yearsInBusiness: vendor.yearsInBusiness || 1,
         logoUrl: vendor.logoUrl || '',
         coverImageUrl: vendor.coverImageUrl || '',
@@ -295,32 +300,38 @@ export const VendorDashboardView: React.FC = () => {
     setProductModalOpen(true);
   };
 
-  const handleSaveProductSubmit = (e: React.FormEvent) => {
+  const handleSaveProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setProductFormError(null);
+
+    if (isUploadingProductImages) {
+      setProductFormError('Please wait until all image uploads finish before publishing.');
+      return;
+    }
 
     if (!prodName.trim()) {
       setProductFormError('Please enter a product title.');
       return;
     }
 
-    if (prodPrice <= 0) {
+    if (!prodPrice || Number(prodPrice) <= 0) {
       setProductFormError('Please enter a valid price in Naira.');
       return;
     }
 
-    if (prodImages.length === 0) {
+    if (!Array.isArray(prodImages) || prodImages.length === 0) {
       setProductFormError('Please upload at least 1 photo for your product.');
       return;
     }
 
     const salePriceNum = prodSalePrice !== '' ? Number(prodSalePrice) : undefined;
+    setIsSubmittingProduct(true);
 
     try {
       if (editingProduct) {
-        updateProduct(editingProduct.id, {
+        await updateProduct(editingProduct.id, {
           name: prodName.trim(),
-          price: prodPrice,
+          price: Number(prodPrice),
           salePrice: salePriceNum,
           category: prodCategory,
           subcategory: prodSubcategory.trim(),
@@ -329,13 +340,14 @@ export const VendorDashboardView: React.FC = () => {
           condition: prodCondition,
           images: prodImages,
         });
+        setProductSuccessToast(`Product "${prodName.trim()}" updated successfully!`);
       } else {
-        addProduct({
+        await addProduct({
           vendorId: vendor.id,
           vendorName: vendor.businessName,
           vendorArea: vendor.area,
           name: prodName.trim(),
-          price: prodPrice,
+          price: Number(prodPrice),
           salePrice: salePriceNum,
           category: prodCategory,
           subcategory: prodSubcategory.trim(),
@@ -344,11 +356,16 @@ export const VendorDashboardView: React.FC = () => {
           condition: prodCondition,
           images: prodImages,
         });
+        setProductSuccessToast(`Product "${prodName.trim()}" published successfully!`);
       }
 
       setProductModalOpen(false);
+      setTimeout(() => setProductSuccessToast(null), 5000);
     } catch (err: any) {
-      setProductFormError(err.message || 'Failed to save product. Please try again.');
+      console.error('[PRODUCT PUBLISH ERROR]', err);
+      setProductFormError(err.message || 'Failed to publish product. Please check your network and try again.');
+    } finally {
+      setIsSubmittingProduct(false);
     }
   };
 
@@ -802,6 +819,22 @@ export const VendorDashboardView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Success Toast */}
+            {productSuccessToast && (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs flex items-center justify-between gap-3 shadow-sm animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span className="font-bold">{productSuccessToast}</span>
+                </div>
+                <button
+                  onClick={() => setProductSuccessToast(null)}
+                  className="text-emerald-700 hover:text-emerald-950 font-bold"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
             {vendorProducts.length === 0 ? (
               <div className="col-span-full bg-white p-8 rounded-3xl border border-slate-200 text-center space-y-3">
                 <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
@@ -820,9 +853,13 @@ export const VendorDashboardView: React.FC = () => {
                   className="bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200/90 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-xs hover:shadow-md transition-all duration-300"
                 >
                   <img
-                    src={p.images?.[0] || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800'}
-                    alt={p.name}
+                    src={getProductCoverImage(p)}
+                    alt={p.name || 'Product'}
                     className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-100"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800';
+                    }}
                   />
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -834,10 +871,10 @@ export const VendorDashboardView: React.FC = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-2 font-mono text-xs">
-                      <span className="font-black text-emerald-950">₦{p.price.toLocaleString()}</span>
-                      {p.salePrice && (
-                        <span className="text-slate-400 line-through text-[11px]">₦{p.salePrice.toLocaleString()}</span>
-                      )}
+                      <span className="font-black text-emerald-950">₦{safeFormatPrice(p.price)}</span>
+                      {p.salePrice ? (
+                        <span className="text-slate-400 line-through text-[11px]">₦{safeFormatPrice(p.salePrice)}</span>
+                      ) : null}
                     </div>
                     <p className="text-[10px] text-slate-500">
                       Category: {p.category} • Stock: {p.stock} • {p.images?.length || 0} photo(s)
@@ -1685,6 +1722,7 @@ export const VendorDashboardView: React.FC = () => {
                   vendorId={vendor.id}
                   productId={editingProduct?.id}
                   maxImages={8}
+                  onUploadingStateChange={setIsUploadingProductImages}
                 />
               </div>
 
@@ -1692,17 +1730,33 @@ export const VendorDashboardView: React.FC = () => {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
+                  disabled={isSubmittingProduct}
                   onClick={() => setProductModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 rounded-xl transition-colors"
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 rounded-xl transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-emerald-800 text-amber-300 font-extrabold rounded-xl hover:bg-emerald-900 shadow-md transition-all flex items-center gap-1.5"
+                  disabled={isSubmittingProduct || isUploadingProductImages}
+                  className="px-6 py-2.5 bg-emerald-800 text-amber-300 font-extrabold rounded-xl hover:bg-emerald-900 shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save className="w-4 h-4 text-amber-400" />
-                  <span>{editingProduct ? 'Save Changes' : 'Publish Product'}</span>
+                  {isSubmittingProduct ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                      <span>Saving Product...</span>
+                    </>
+                  ) : isUploadingProductImages ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                      <span>Uploading Photos...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 text-amber-400" />
+                      <span>{editingProduct ? 'Save Changes' : 'Publish Product'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

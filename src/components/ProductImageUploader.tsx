@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   RefreshCw,
 } from 'lucide-react';
-import { uploadProductImageToSupabase, deleteProductImageFromSupabase } from '../lib/supabaseDb';
+import { uploadProductImagesBatch, deleteProductImageFromSupabase } from '../lib/supabaseDb';
 
 interface ProductImageUploaderProps {
   images: string[];
@@ -17,6 +17,7 @@ interface ProductImageUploaderProps {
   vendorId: string;
   productId?: string;
   maxImages?: number;
+  onUploadingStateChange?: (isUploading: boolean) => void;
 }
 
 export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
@@ -25,6 +26,7 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
   vendorId,
   productId,
   maxImages = 8,
+  onUploadingStateChange,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
@@ -34,6 +36,13 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
 
   const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+  const setUploadingStatus = (uploading: boolean) => {
+    setIsUploading(uploading);
+    if (onUploadingStateChange) {
+      onUploadingStateChange(uploading);
+    }
+  };
 
   const handleFileValidationAndUpload = async (files: FileList | File[]) => {
     setErrorMessage(null);
@@ -58,46 +67,40 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
       }
     }
 
-    setIsUploading(true);
+    setUploadingStatus(true);
     setUploadProgress({ current: 0, total: fileArray.length });
 
-    const newUploadedUrls: string[] = [];
-    let uploadFailures = 0;
-    let lastError: string | null = null;
+    try {
+      const { urls, failures } = await uploadProductImagesBatch(
+        fileArray,
+        vendorId,
+        productId,
+        (current, total) => {
+          setUploadProgress({ current, total });
+        }
+      );
 
-    for (let i = 0; i < fileArray.length; i++) {
-      const file = fileArray[i];
-      setUploadProgress({ current: i + 1, total: fileArray.length });
-
-      const { url, error } = await uploadProductImageToSupabase(file, vendorId, productId);
-
-      if (url) {
-        newUploadedUrls.push(url);
-      } else {
-        uploadFailures++;
-        if (error) lastError = error;
-        console.error(`Failed to upload ${file.name}:`, error);
+      if (urls.length > 0) {
+        onChange([...images, ...urls]);
       }
-    }
 
-    setIsUploading(false);
-    setUploadProgress(null);
-
-    if (newUploadedUrls.length > 0) {
-      onChange([...images, ...newUploadedUrls]);
-    }
-
-    if (uploadFailures > 0) {
-      if (newUploadedUrls.length === 0) {
-        setErrorMessage(lastError || 'Failed to process images for upload. Please try again.');
-      } else {
-        setErrorMessage(`Uploaded ${newUploadedUrls.length} image(s), but ${uploadFailures} image(s) failed: ${lastError || ''}`);
+      if (failures.length > 0) {
+        const failNames = failures.map((f) => f.fileName).join(', ');
+        const firstErr = failures[0].error;
+        if (urls.length === 0) {
+          setErrorMessage(`Failed to upload images (${failNames}): ${firstErr}`);
+        } else {
+          setErrorMessage(`Uploaded ${urls.length} image(s), but ${failures.length} failed (${failNames}): ${firstErr}`);
+        }
       }
-    }
-
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    } catch (err: any) {
+      setErrorMessage(err.message || 'An unexpected error occurred during image upload.');
+    } finally {
+      setUploadingStatus(false);
+      setUploadProgress(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -154,7 +157,7 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
             Product Photos <span className="text-red-500">*</span>
           </label>
           <p className="text-[11px] text-slate-500">
-            Upload up to {maxImages} high-quality product images. The first image will be the primary cover photo on product cards.
+            Upload up to {maxImages} high-quality product images. The first photo will be the primary cover image.
           </p>
         </div>
         <span className="text-xs font-bold font-mono px-2.5 py-1 bg-slate-100 rounded-lg text-slate-700">
@@ -206,11 +209,11 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
             <Loader2 className="w-8 h-8 text-emerald-700 animate-spin mx-auto" />
             <div>
               <p className="text-xs font-bold text-slate-800">
-                Uploading to Supabase Storage...
+                Uploading photos to Storage...
               </p>
               {uploadProgress && (
                 <p className="text-[11px] font-mono text-emerald-800 mt-1">
-                  Processing file {uploadProgress.current} of {uploadProgress.total}
+                  Uploading {uploadProgress.current} of {uploadProgress.total}
                 </p>
               )}
             </div>
@@ -235,7 +238,7 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
                 Click to browse or drag & drop product photos
               </p>
               <p className="text-[11px] text-slate-500">
-                Supports JPG, JPEG, PNG, WEBP (Max 10MB per image)
+                Supports JPG, JPEG, PNG, WEBP (Max 10MB per photo)
               </p>
             </div>
           </div>
@@ -262,6 +265,10 @@ export const ProductImageUploader: React.FC<ProductImageUploaderProps> = ({
                     src={imgUrl}
                     alt={`Product preview ${idx + 1}`}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800';
+                    }}
                   />
 
                   {/* Primary Cover Badge */}
