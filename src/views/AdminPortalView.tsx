@@ -45,6 +45,8 @@ export const AdminPortalView: React.FC = () => {
     promotionRequests,
     enquiries,
     reviews,
+    isLoadingData,
+    refreshData,
     approveVendor,
     rejectVendor,
     suspendVendor,
@@ -68,6 +70,17 @@ export const AdminPortalView: React.FC = () => {
     setSelectedCategory,
     categories,
   } = useApp();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const [adminTab, setAdminTab] = useState<'pending-vendors' | 'promotions-queue' | 'all-vendors' | 'review-moderation' | 'audit-logs'>('pending-vendors');
   const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
@@ -280,13 +293,25 @@ export const AdminPortalView: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => setActiveTab('home')}
-          className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-amber-300"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Marketplace</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing || isLoadingData}
+            className="px-3.5 py-2 bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 border border-amber-400/30 disabled:opacity-50"
+            title="Reload all live records directly from Supabase"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing || isLoadingData ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing || isLoadingData ? 'Syncing...' : 'Sync Database'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('home')}
+            className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-2 border border-amber-300"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Marketplace</span>
+          </button>
+        </div>
       </div>
 
       {/* Admin Header & System Stats */}

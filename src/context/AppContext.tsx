@@ -16,13 +16,6 @@ import {
   VendorFeature,
 } from '../types';
 import {
-  INITIAL_VENDORS,
-  INITIAL_PRODUCTS,
-  INITIAL_REVIEWS,
-  INITIAL_ENQUIRIES,
-  INITIAL_PROMOTION_REQUESTS,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_AUDIT_LOGS,
   CATEGORIES,
   MANUAL_PAYMENT_INFO,
 } from '../data/mockData';
@@ -57,6 +50,7 @@ import {
 interface AppContextType {
   // Supabase status
   isSupabaseConnected: boolean;
+  refreshData: () => Promise<void>;
 
   // Role & Auth
   currentRole: UserRole;
@@ -88,8 +82,8 @@ interface AppContextType {
   setSelectedArea: (area: IkoroduArea | 'All') => void;
 
   // Actions
-  addVendorRegistration: (vendorData: Partial<Vendor>) => Vendor;
-  updateVendorProfile: (vendorId: string, updatedData: Partial<Vendor>) => void;
+  addVendorRegistration: (vendorData: Partial<Vendor>) => Promise<Vendor>;
+  updateVendorProfile: (vendorId: string, updatedData: Partial<Vendor>) => Promise<void>;
   registerCustomer: (customerData: {
     id?: string;
     firstName: string;
@@ -98,11 +92,11 @@ interface AppContextType {
     phone: string;
     area: IkoroduArea;
   }) => User;
-  approveVendor: (vendorId: string) => void;
-  rejectVendor: (vendorId: string, reason?: string) => void;
-  suspendVendor: (vendorId: string) => void;
-  reactivateVendor: (vendorId: string) => void;
-  deleteVendorPermanently: (vendorId: string) => void;
+  approveVendor: (vendorId: string) => Promise<void>;
+  rejectVendor: (vendorId: string, reason?: string) => Promise<void>;
+  suspendVendor: (vendorId: string) => Promise<void>;
+  reactivateVendor: (vendorId: string) => Promise<void>;
+  deleteVendorPermanently: (vendorId: string) => Promise<void>;
   toggleVerifyVendor: (vendorId: string) => void;
   toggleFeatureVendor: (vendorId: string) => void;
   toggleVendorFeature: (vendorId: string, feature: VendorFeature) => void;
@@ -243,10 +237,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
 
-  // State
+  // State - Pure real database states, initialized to empty arrays
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
-  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+  const [promotionRequests, setPromotionRequests] = useState<PromotionRequest[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [followingVendors, setFollowingVendors] = useState<string[]>([]);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedArea, setSelectedArea] = useState<IkoroduArea | 'All'>('All');
+
+  const refreshData = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      setIsLoadingData(false);
+      return;
+    }
+    setIsLoadingData(true);
+    try {
+      const [sbVendors, sbProducts, sbReviews, sbEnquiries, sbPromos, sbNotifs, sbLogs] = await Promise.all([
+        fetchVendorsFromSupabase(),
+        fetchProductsFromSupabase(),
+        fetchReviewsFromSupabase(),
+        fetchEnquiriesFromSupabase(),
+        fetchPromotionsFromSupabase(),
+        fetchNotificationsFromSupabase(),
+        fetchAuditLogsFromSupabase(),
+      ]);
+
+      if (sbVendors !== null) setVendors(sbVendors);
+      if (sbProducts !== null) setProducts(sbProducts);
+      if (sbReviews !== null) setReviews(sbReviews);
+      if (sbEnquiries !== null) setEnquiries(sbEnquiries);
+      if (sbPromos !== null) setPromotionRequests(sbPromos);
+      if (sbNotifs !== null) setNotifications(sbNotifs);
+      if (sbLogs !== null) setAuditLogs(sbLogs);
+    } catch (err) {
+      console.error('Error refreshing data from Supabase:', err);
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, []);
 
   const setSelectedVendorId = (id: string | null) => {
     setSelectedVendorIdState(id);
@@ -390,21 +428,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
-  const [enquiries, setEnquiries] = useState<Enquiry[]>(INITIAL_ENQUIRIES);
-  const [promotionRequests, setPromotionRequests] = useState<PromotionRequest[]>(INITIAL_PROMOTION_REQUESTS);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
-  const [wishlist, setWishlist] = useState<string[]>(['p-1', 'p-4']);
-  const [followingVendors, setFollowingVendors] = useState<string[]>(['v-1', 'v-3']);
-
-  // Filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedArea, setSelectedArea] = useState<IkoroduArea | 'All'>('All');
-
   // Synchronize authenticated user state with Supabase session and public.profiles
   const syncSessionUser = async (session: any) => {
     if (!session?.user) {
@@ -463,26 +486,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     (async () => {
       setIsLoadingData(true);
       try {
-        const sbVendors = await fetchVendorsFromSupabase();
-        if (sbVendors && sbVendors.length > 0) setVendors(sbVendors);
-
-        const sbProducts = await fetchProductsFromSupabase();
-        if (sbProducts && sbProducts.length > 0) setProducts(sbProducts);
-
-        const sbReviews = await fetchReviewsFromSupabase();
-        if (sbReviews && sbReviews.length > 0) setReviews(sbReviews);
-
-        const sbEnquiries = await fetchEnquiriesFromSupabase();
-        if (sbEnquiries && sbEnquiries.length > 0) setEnquiries(sbEnquiries);
-
-        const sbPromos = await fetchPromotionsFromSupabase();
-        if (sbPromos !== null) setPromotionRequests(sbPromos);
-
-        const sbNotifs = await fetchNotificationsFromSupabase();
-        if (sbNotifs && sbNotifs.length > 0) setNotifications(sbNotifs);
-
-        const sbLogs = await fetchAuditLogsFromSupabase();
-        if (sbLogs && sbLogs.length > 0) setAuditLogs(sbLogs);
+        await refreshData();
 
         // Check current session
         const {
@@ -522,7 +526,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       authListener?.subscription?.unsubscribe();
     };
-  }, []);
+  }, [refreshData]);
 
   // Route protection effect: automatically redirect if protected tab is active without valid user
   useEffect(() => {
@@ -550,9 +554,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Vendor actions
-  const addVendorRegistration = (vendorData: Partial<Vendor>): Vendor => {
+  const addVendorRegistration = async (vendorData: Partial<Vendor>): Promise<Vendor> => {
     const newVendor: Vendor = {
       id: vendorData.id || `v-${Date.now()}`,
+      userId: vendorData.userId || (currentUser?.id || undefined),
       businessName: vendorData.businessName || 'New Business',
       slug: (vendorData.businessName || 'new-business').toLowerCase().replace(/\s+/g, '-'),
       category: vendorData.category || 'General Services',
@@ -600,8 +605,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    setVendors((prev) => [newVendor, ...prev]);
-    saveVendorToSupabase(newVendor);
+    setVendors((prev) => [newVendor, ...prev.filter((v) => v.id !== newVendor.id)]);
+    await saveVendorToSupabase(newVendor);
 
     // Add admin notification
     const newNotif: NotificationItem = {
@@ -683,11 +688,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newUser;
   };
 
-  const approveVendor = (vendorId: string) => {
+  const approveVendor = async (vendorId: string) => {
     setVendors((prev) =>
       prev.map((v) => (v.id === vendorId ? { ...v, status: 'approved' } : v))
     );
-    updateVendorInSupabase(vendorId, { status: 'approved' });
+    await updateVendorInSupabase(vendorId, { status: 'approved' });
+
+    // Refresh vendors to ensure exact DB sync
+    const fresh = await fetchVendorsFromSupabase();
+    if (fresh !== null) setVendors(fresh);
 
     // Add audit
     const log: AuditLog = {
@@ -702,11 +711,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveAuditLogToSupabase(log);
   };
 
-  const updateVendorProfile = (vendorId: string, updatedData: Partial<Vendor>) => {
+  const updateVendorProfile = async (vendorId: string, updatedData: Partial<Vendor>) => {
     setVendors((prev) =>
       prev.map((v) => (v.id === vendorId ? { ...v, ...updatedData } : v))
     );
-    updateVendorInSupabase(vendorId, updatedData);
+    await updateVendorInSupabase(vendorId, updatedData);
 
     // Sync currentUser profile if this vendor belongs to currentUser
     if (
@@ -749,11 +758,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveAuditLogToSupabase(log);
   };
 
-  const rejectVendor = (vendorId: string, reason?: string) => {
+  const rejectVendor = async (vendorId: string, reason?: string) => {
     setVendors((prev) =>
       prev.map((v) => (v.id === vendorId ? { ...v, status: 'rejected' } : v))
     );
-    updateVendorInSupabase(vendorId, { status: 'rejected' });
+    await updateVendorInSupabase(vendorId, { status: 'rejected' });
+
+    const fresh = await fetchVendorsFromSupabase();
+    if (fresh !== null) setVendors(fresh);
 
     const log: AuditLog = {
       id: `log-${Date.now()}`,
@@ -767,18 +779,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveAuditLogToSupabase(log);
   };
 
-  const suspendVendor = (vendorId: string) => {
+  const suspendVendor = async (vendorId: string) => {
     setVendors((prev) =>
       prev.map((v) => (v.id === vendorId ? { ...v, status: 'suspended' } : v))
     );
-    updateVendorInSupabase(vendorId, { status: 'suspended' });
+    await updateVendorInSupabase(vendorId, { status: 'suspended' });
   };
 
-  const reactivateVendor = (vendorId: string) => {
+  const reactivateVendor = async (vendorId: string) => {
     setVendors((prev) =>
       prev.map((v) => (v.id === vendorId ? { ...v, status: 'approved' } : v))
     );
-    updateVendorInSupabase(vendorId, { status: 'approved' });
+    await updateVendorInSupabase(vendorId, { status: 'approved' });
 
     const log: AuditLog = {
       id: `log-${Date.now()}`,
@@ -792,7 +804,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveAuditLogToSupabase(log);
   };
 
-  const deleteVendorPermanently = (vendorId: string) => {
+  const deleteVendorPermanently = async (vendorId: string) => {
     const targetVendor = vendors.find((v) => v.id === vendorId);
     const vendorName = targetVendor ? targetVendor.businessName : vendorId;
 
@@ -802,7 +814,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setReviews((prev) => prev.filter((r) => r.vendorId !== vendorId));
     setEnquiries((prev) => prev.filter((e) => e.vendorId !== vendorId));
 
-    deleteVendorFromSupabase(vendorId);
+    await deleteVendorFromSupabase(vendorId);
 
     const log: AuditLog = {
       id: `log-${Date.now()}`,
@@ -1536,6 +1548,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         isSupabaseConnected,
+        refreshData,
         currentRole,
         setRole,
         currentUser,

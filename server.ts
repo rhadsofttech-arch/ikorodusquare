@@ -9,7 +9,7 @@ import verifyOtpHandler from './api/otp/verify';
 import healthHandler from './api/health';
 import sitemapHandler from './api/sitemap';
 import { generateRobotsTxt, generateSitemapXml, injectSeoIntoHtml } from './src/server/seoRenderer';
-import { INITIAL_VENDORS, INITIAL_PRODUCTS } from './src/data/mockData';
+import { fetchVendorsFromSupabase, fetchProductsFromSupabase } from './src/lib/supabaseDb';
 
 dotenv.config();
 
@@ -30,10 +30,14 @@ app.get('/robots.txt', (_req, res) => {
   res.send(generateRobotsTxt());
 });
 
-app.get('/sitemap.xml', (_req, res) => {
+app.get('/sitemap.xml', async (_req, res) => {
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=3600');
-  res.send(generateSitemapXml(INITIAL_VENDORS, INITIAL_PRODUCTS));
+  const [vendors, products] = await Promise.all([
+    fetchVendorsFromSupabase().catch(() => null),
+    fetchProductsFromSupabase().catch(() => null),
+  ]);
+  res.send(generateSitemapXml(vendors || [], products || []));
 });
 
 // Start Express Server with Vite SSR / Pre-rendering Middleware
@@ -64,7 +68,11 @@ async function startServer() {
         const indexPath = path.resolve(process.cwd(), 'index.html');
         let template = fs.readFileSync(indexPath, 'utf-8');
         template = await vite.transformIndexHtml(url, template);
-        const html = injectSeoIntoHtml(template, url, INITIAL_VENDORS, INITIAL_PRODUCTS);
+        const [vendors, products] = await Promise.all([
+          fetchVendorsFromSupabase().catch(() => null),
+          fetchProductsFromSupabase().catch(() => null),
+        ]);
+        const html = injectSeoIntoHtml(template, url, vendors || [], products || []);
         res.status(200).set({ 'Content-Type': 'text/html; charset=utf-8' }).end(html);
       } catch (err) {
         if (err instanceof Error) {
@@ -82,9 +90,13 @@ async function startServer() {
     }
 
     app.use(express.static(distPath, { index: false }));
-    app.get('*', (req, res) => {
+    app.get('*', async (req, res) => {
       if (template) {
-        const html = injectSeoIntoHtml(template, req.originalUrl, INITIAL_VENDORS, INITIAL_PRODUCTS);
+        const [vendors, products] = await Promise.all([
+          fetchVendorsFromSupabase().catch(() => null),
+          fetchProductsFromSupabase().catch(() => null),
+        ]);
+        const html = injectSeoIntoHtml(template, req.originalUrl, vendors || [], products || []);
         res.status(200).set({ 'Content-Type': 'text/html; charset=utf-8' }).end(html);
       } else {
         res.sendFile(indexPath);

@@ -1,4 +1,4 @@
-import { CATEGORIES, INITIAL_VENDORS, INITIAL_PRODUCTS } from '../data/mockData';
+import { CATEGORIES } from '../data/mockData';
 import { Vendor, Product, Category } from '../types';
 
 export const SITE_URL = 'https://www.ikorodusquare.com.ng';
@@ -39,7 +39,7 @@ Sitemap: ${SITE_URL}/sitemap.xml
 `;
 }
 
-export function generateSitemapXml(vendors: Vendor[] = INITIAL_VENDORS, products: Product[] = INITIAL_PRODUCTS): string {
+export function generateSitemapXml(vendors: Vendor[] = [], products: Product[] = []): string {
   const approvedVendors = vendors.filter((v) => v.status === 'approved');
   const approvedProducts = products.filter((p) => p.status === 'approved');
   const now = new Date().toISOString().split('T')[0];
@@ -93,8 +93,8 @@ ${xmlEntries}
 
 export function getPageMetadata(
   urlPath: string,
-  vendors: Vendor[] = INITIAL_VENDORS,
-  products: Product[] = INITIAL_PRODUCTS
+  vendors: Vendor[] = [],
+  products: Product[] = []
 ): PageMetadata {
   const cleanPath = urlPath.split('?')[0].split('#')[0];
   const approvedVendors = vendors.filter((v) => v.status === 'approved');
@@ -488,8 +488,8 @@ export function getPageMetadata(
 export function injectSeoIntoHtml(
   htmlTemplate: string,
   urlPath: string,
-  vendors: Vendor[] = INITIAL_VENDORS,
-  products: Product[] = INITIAL_PRODUCTS
+  vendors: Vendor[] = [],
+  products: Product[] = []
 ): string {
   const meta = getPageMetadata(urlPath, vendors, products);
 

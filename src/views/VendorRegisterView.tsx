@@ -151,8 +151,9 @@ export const VendorRegisterView: React.FC = () => {
       const userId = authResult?.user?.id || `v-user-${Date.now()}`;
 
       // 2. Register vendor in database and app state
-      const newVendor = addVendorRegistration({
+      const newVendor = await addVendorRegistration({
         id: userId,
+        userId: userId,
         businessName: vBusinessName,
         category: vCategory,
         subcategory: vSubcategory,

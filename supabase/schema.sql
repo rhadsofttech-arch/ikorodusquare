@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS public.vendors (
   views_count INT DEFAULT 0,
   whatsapp_clicks INT DEFAULT 0,
   phone_clicks INT DEFAULT 0,
+  features JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -73,6 +74,7 @@ ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Vendors viewable by everyone" ON public.vendors FOR SELECT USING (true);
 CREATE POLICY "Anyone can register vendor" ON public.vendors FOR INSERT WITH CHECK (true);
 CREATE POLICY "Anyone can update vendor" ON public.vendors FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete vendor" ON public.vendors FOR DELETE USING (true);
 
 -- 3. PRODUCTS TABLE
 CREATE TABLE IF NOT EXISTS public.products (

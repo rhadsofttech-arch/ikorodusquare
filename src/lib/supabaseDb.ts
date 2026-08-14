@@ -22,10 +22,15 @@ export async function fetchVendorsFromSupabase(): Promise<Vendor[] | null> {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error || !data) return null;
+    if (error) {
+      console.warn('Supabase fetchVendors error:', error.message);
+      return null;
+    }
+    if (!data) return [];
 
     return data.map((row) => ({
       id: row.id,
+      userId: row.user_id || undefined,
       businessName: row.business_name,
       slug: row.slug,
       category: row.category,
@@ -51,7 +56,7 @@ export async function fetchVendorsFromSupabase(): Promise<Vendor[] | null> {
       ownerName: row.owner_name,
       ownerEmail: row.owner_email,
       ownerPhone: row.owner_phone || '',
-      status: row.status as any,
+      status: (row.status as any) || 'pending',
       isVerified: Boolean(row.is_verified),
       isFeatured: Boolean(row.is_featured),
       isPremium: Boolean(row.is_premium),
@@ -74,49 +79,67 @@ export async function fetchVendorsFromSupabase(): Promise<Vendor[] | null> {
 export async function saveVendorToSupabase(vendor: Vendor): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   try {
-    const row = {
+    const row: Record<string, any> = {
       id: vendor.id,
       business_name: vendor.businessName,
       slug: vendor.slug,
       category: vendor.category,
-      subcategory: vendor.subcategory,
-      description: vendor.description,
-      address: vendor.address,
+      subcategory: vendor.subcategory || '',
+      description: vendor.description || '',
+      address: vendor.address || '',
       area: vendor.area,
-      lga: vendor.lga,
-      state: vendor.state,
-      country: vendor.country,
+      lga: vendor.lga || 'Ikorodu',
+      state: vendor.state || 'Lagos State',
+      country: vendor.country || 'Nigeria',
       phone: vendor.phone,
       whatsapp: vendor.whatsapp,
-      website: vendor.website,
-      instagram: vendor.instagram,
-      facebook: vendor.facebook,
-      tiktok: vendor.tiktok,
-      years_in_business: vendor.yearsInBusiness,
-      logo_url: vendor.logoUrl,
-      cover_image_url: vendor.coverImageUrl,
-      gallery_urls: vendor.galleryUrls,
-      cac_certificate_url: vendor.cacCertificateUrl,
-      nin_doc_url: vendor.ninDocUrl,
+      website: vendor.website || null,
+      instagram: vendor.instagram || null,
+      facebook: vendor.facebook || null,
+      tiktok: vendor.tiktok || null,
+      years_in_business: vendor.yearsInBusiness || 1,
+      logo_url: vendor.logoUrl || null,
+      cover_image_url: vendor.coverImageUrl || null,
+      gallery_urls: vendor.galleryUrls || [],
+      cac_certificate_url: vendor.cacCertificateUrl || null,
+      nin_doc_url: vendor.ninDocUrl || null,
       owner_name: vendor.ownerName,
       owner_email: vendor.ownerEmail,
-      owner_phone: vendor.ownerPhone,
-      status: vendor.status,
-      is_verified: vendor.isVerified,
-      is_featured: vendor.isFeatured,
-      is_premium: vendor.isPremium,
-      features: vendor.features || [],
-      rating: vendor.rating,
-      review_count: vendor.reviewCount,
-      business_hours: vendor.businessHours,
-      delivery_areas: vendor.deliveryAreas,
-      views_count: vendor.viewsCount,
-      whatsapp_clicks: vendor.whatsappClicks,
-      phone_clicks: vendor.phoneClicks,
-      created_at: vendor.createdAt,
+      owner_phone: vendor.ownerPhone || null,
+      status: vendor.status || 'pending',
+      is_verified: Boolean(vendor.isVerified),
+      is_featured: Boolean(vendor.isFeatured),
+      is_premium: Boolean(vendor.isPremium),
+      rating: vendor.rating || 0,
+      review_count: vendor.reviewCount || 0,
+      business_hours: vendor.businessHours || [],
+      delivery_areas: vendor.deliveryAreas || [],
+      views_count: vendor.viewsCount || 0,
+      whatsapp_clicks: vendor.whatsappClicks || 0,
+      phone_clicks: vendor.phoneClicks || 0,
+      created_at: vendor.createdAt || new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('vendors').upsert(row);
+    if (vendor.userId) {
+      row.user_id = vendor.userId;
+    }
+
+    if (vendor.features && vendor.features.length > 0) {
+      row.features = vendor.features;
+    }
+
+    let { error } = await supabase.from('vendors').upsert(row);
+    if (error && error.message?.includes('features')) {
+      delete row.features;
+      const retry = await supabase.from('vendors').upsert(row);
+      error = retry.error;
+    }
+    if (error && error.message?.includes('user_id')) {
+      delete row.user_id;
+      const retry = await supabase.from('vendors').upsert(row);
+      error = retry.error;
+    }
+
     if (error) {
       console.warn('Supabase saveVendor error:', error.message);
       return false;
@@ -167,7 +190,13 @@ export async function updateVendorInSupabase(
     if (updates.whatsappClicks !== undefined) snakeUpdates.whatsapp_clicks = updates.whatsappClicks;
     if (updates.phoneClicks !== undefined) snakeUpdates.phone_clicks = updates.phoneClicks;
 
-    const { error } = await supabase.from('vendors').update(snakeUpdates).eq('id', vendorId);
+    let { error } = await supabase.from('vendors').update(snakeUpdates).eq('id', vendorId);
+    if (error && error.message?.includes('features')) {
+      delete snakeUpdates.features;
+      const retry = await supabase.from('vendors').update(snakeUpdates).eq('id', vendorId);
+      error = retry.error;
+    }
+
     if (error) {
       console.warn('Supabase updateVendor error:', error.message);
       return false;
