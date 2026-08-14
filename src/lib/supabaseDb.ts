@@ -77,8 +77,17 @@ export async function fetchVendorsFromSupabase(): Promise<Vendor[] | null> {
 }
 
 export async function saveVendorToSupabase(vendor: Vendor): Promise<boolean> {
-  if (!isSupabaseConfigured()) return false;
+  if (!isSupabaseConfigured()) {
+    console.warn('[VENDOR SUPABASE INSERT ERROR] Supabase is not configured');
+    throw new Error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  }
+
   try {
+    const isUuid = (str?: string) =>
+      Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str));
+
+    const validUserId = isUuid(vendor.userId) ? vendor.userId : (isUuid(vendor.id) ? vendor.id : null);
+
     const row: Record<string, any> = {
       id: vendor.id,
       business_name: vendor.businessName,
@@ -107,6 +116,7 @@ export async function saveVendorToSupabase(vendor: Vendor): Promise<boolean> {
       owner_email: vendor.ownerEmail,
       owner_phone: vendor.ownerPhone || null,
       status: vendor.status || 'pending',
+      is_live: vendor.status === 'approved',
       is_verified: Boolean(vendor.isVerified),
       is_featured: Boolean(vendor.isFeatured),
       is_premium: Boolean(vendor.isPremium),
@@ -120,34 +130,60 @@ export async function saveVendorToSupabase(vendor: Vendor): Promise<boolean> {
       created_at: vendor.createdAt || new Date().toISOString(),
     };
 
-    if (vendor.userId) {
-      row.user_id = vendor.userId;
+    if (validUserId) {
+      row.user_id = validUserId;
     }
 
     if (vendor.features && vendor.features.length > 0) {
       row.features = vendor.features;
     }
 
-    let { error } = await supabase.from('vendors').upsert(row);
-    if (error && error.message?.includes('features')) {
-      delete row.features;
-      const retry = await supabase.from('vendors').upsert(row);
-      error = retry.error;
-    }
-    if (error && error.message?.includes('user_id')) {
-      delete row.user_id;
-      const retry = await supabase.from('vendors').upsert(row);
-      error = retry.error;
+    console.log('[VENDOR SUPABASE INSERT START]', {
+      id: row.id,
+      user_id: row.user_id,
+      business_name: row.business_name,
+      status: row.status,
+      is_live: row.is_live,
+      owner_email: row.owner_email,
+    });
+
+    let { data, error } = await supabase.from('vendors').upsert(row).select();
+
+    // Check if optional column mismatches caused error and retry with stripped fields
+    if (error && error.message) {
+      if (error.message.includes('features')) {
+        delete row.features;
+        const retry = await supabase.from('vendors').upsert(row).select();
+        error = retry.error;
+        data = retry.data;
+      }
+      if (error && error.message?.includes('is_live')) {
+        delete row.is_live;
+        const retry = await supabase.from('vendors').upsert(row).select();
+        error = retry.error;
+        data = retry.data;
+      }
+      if (error && error.message?.includes('user_id')) {
+        delete row.user_id;
+        const retry = await supabase.from('vendors').upsert(row).select();
+        error = retry.error;
+        data = retry.data;
+      }
     }
 
     if (error) {
-      console.warn('Supabase saveVendor error:', error.message);
-      return false;
+      console.error('[VENDOR SUPABASE INSERT ERROR]', error);
+      throw new Error(`Supabase vendors table error (${error.code || 'UNKNOWN'}): ${error.message}`);
     }
+
+    console.log('[VENDOR SUPABASE INSERT RESULT]', {
+      success: true,
+      data,
+    });
     return true;
-  } catch (err) {
-    console.error('Error saving vendor to Supabase:', err);
-    return false;
+  } catch (err: any) {
+    console.error('[VENDOR SUPABASE INSERT ERROR]', err);
+    throw err;
   }
 }
 
@@ -180,7 +216,10 @@ export async function updateVendorInSupabase(
     if (updates.ownerPhone !== undefined) snakeUpdates.owner_phone = updates.ownerPhone;
     if (updates.businessHours !== undefined) snakeUpdates.business_hours = updates.businessHours;
     if (updates.deliveryAreas !== undefined) snakeUpdates.delivery_areas = updates.deliveryAreas;
-    if (updates.status !== undefined) snakeUpdates.status = updates.status;
+    if (updates.status !== undefined) {
+      snakeUpdates.status = updates.status;
+      snakeUpdates.is_live = updates.status === 'approved';
+    }
     if (updates.isVerified !== undefined) snakeUpdates.is_verified = updates.isVerified;
     if (updates.isFeatured !== undefined) snakeUpdates.is_featured = updates.isFeatured;
     if (updates.isPremium !== undefined) snakeUpdates.is_premium = updates.isPremium;
@@ -191,6 +230,11 @@ export async function updateVendorInSupabase(
     if (updates.phoneClicks !== undefined) snakeUpdates.phone_clicks = updates.phoneClicks;
 
     let { error } = await supabase.from('vendors').update(snakeUpdates).eq('id', vendorId);
+    if (error && error.message?.includes('is_live')) {
+      delete snakeUpdates.is_live;
+      const retry = await supabase.from('vendors').update(snakeUpdates).eq('id', vendorId);
+      error = retry.error;
+    }
     if (error && error.message?.includes('features')) {
       delete snakeUpdates.features;
       const retry = await supabase.from('vendors').update(snakeUpdates).eq('id', vendorId);

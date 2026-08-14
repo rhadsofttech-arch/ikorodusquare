@@ -172,7 +172,7 @@ interface AppContextType {
 
   // Supabase Auth Methods
   signInWithSupabase: (e: string, p: string) => Promise<any>;
-  signUpWithSupabase: (e: string, p: string, data: Partial<User>) => Promise<any>;
+  signUpWithSupabase: (e: string, p: string, data: Partial<User>, autoNavigate?: boolean) => Promise<any>;
   signOutSupabase: () => Promise<void>;
 }
 
@@ -605,8 +605,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    setVendors((prev) => [newVendor, ...prev.filter((v) => v.id !== newVendor.id)]);
+    console.log('[VENDOR OBJECT CREATED]', {
+      id: newVendor.id,
+      userId: newVendor.userId,
+      businessName: newVendor.businessName,
+      status: newVendor.status,
+    });
+
     await saveVendorToSupabase(newVendor);
+    setVendors((prev) => [newVendor, ...prev.filter((v) => v.id !== newVendor.id)]);
 
     // Add admin notification
     const newNotif: NotificationItem = {
@@ -1503,15 +1510,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return data;
   };
 
-  const signUpWithSupabase = async (email: string, pass: string, data: Partial<User>) => {
+  const signUpWithSupabase = async (
+    email: string,
+    pass: string,
+    data: Partial<User>,
+    autoNavigate = true
+  ) => {
     const res = await supabaseSignUp(email, pass, data);
     setIsAuthModalOpen(false);
     const authUser = res?.user || res?.session?.user;
     if (authUser) {
       const userObj = await syncSessionUser(res.session || { user: authUser });
       const role = userObj?.role || data.role || 'customer';
-      if (role === 'vendor') {
-        setActiveTab('vendor-portal');
+      if (autoNavigate) {
+        if (role === 'vendor') {
+          setActiveTab('vendor-portal');
+        } else if (role === 'admin') {
+          setActiveTab('admin-portal');
+        } else {
+          setActiveTab('customer-portal');
+        }
       }
     }
     return res;

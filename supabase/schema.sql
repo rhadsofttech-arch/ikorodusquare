@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS public.vendors (
   owner_email TEXT NOT NULL,
   owner_phone TEXT,
   status TEXT NOT NULL DEFAULT 'pending',
+  is_live BOOLEAN DEFAULT false,
   is_verified BOOLEAN DEFAULT false,
   is_featured BOOLEAN DEFAULT false,
   is_premium BOOLEAN DEFAULT false,

@@ -140,15 +140,35 @@ export const VendorRegisterView: React.FC = () => {
     setSubmitting(true);
     setRegError('');
     try {
+      console.log('[NEW VENDOR REGISTRATION]', {
+        email: vEmail,
+        businessName: vBusinessName,
+        category: vCategory,
+        area: vArea,
+      });
+
       // 1. Create real Supabase Auth user (automatically creates public.profiles record)
       const authResult = await signUpWithSupabase(vEmail, vPassword, {
         firstName: vOwnerName,
         phone: vPhone || vOwnerPhone,
         role: 'vendor',
         area: vArea,
+      }, false);
+
+      const userId = authResult?.user?.id;
+      if (!userId) {
+        throw new Error('Supabase Auth failed to return a valid user ID. Registration cannot proceed.');
+      }
+
+      console.log('[AUTH USER CREATED]', {
+        id: userId,
+        email: authResult.user.email,
       });
 
-      const userId = authResult?.user?.id || `v-user-${Date.now()}`;
+      console.log('[PROFILE CREATED]', {
+        id: userId,
+        role: 'vendor',
+      });
 
       // 2. Register vendor in database and app state
       const newVendor = await addVendorRegistration({
@@ -179,8 +199,8 @@ export const VendorRegisterView: React.FC = () => {
       setSubmittedVendor(newVendor);
       setVendorStep(5); // Success screen
     } catch (err: any) {
-      console.error('Vendor auth registration error:', err);
-      setRegError(err.message || 'Failed to create user in Supabase Authentication. Registration cannot proceed.');
+      console.error('[VENDOR SUPABASE INSERT ERROR]', err);
+      setRegError(err.message || 'Failed to complete vendor registration in Supabase.');
     } finally {
       setSubmitting(false);
     }
