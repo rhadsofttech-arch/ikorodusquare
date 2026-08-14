@@ -35,6 +35,7 @@ import { PROMOTION_OPTIONS, MANUAL_PAYMENT_INFO, IKORODU_AREAS } from '../data/m
 import { IkoroduMapExplorer } from '../components/IkoroduMapExplorer';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
 import { useSEO } from '../hooks/useSEO';
+import { getCategoryIcon } from '../lib/categoryIcons';
 
 export const HomeView: React.FC = () => {
   const {
@@ -47,6 +48,7 @@ export const HomeView: React.FC = () => {
     setSearchQuery,
     selectedArea,
     setSelectedArea,
+    setSelectedCategory,
     setActiveTab,
     setSelectedVendorId,
     setSelectedProductId,
@@ -1021,28 +1023,34 @@ export const HomeView: React.FC = () => {
             </h2>
             <p className="text-xs text-slate-500">Find local stores and essential products across Ikorodu</p>
           </div>
-          <button
-            onClick={() => setActiveTab('categories')}
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
+          <a
+            href="/categories"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab('categories');
+            }}
+            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
           >
             <span>All Categories</span>
             <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          </a>
         </div>
 
         {/* Minimalist Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {categories.map((cat) => (
-            <div
+            <a
               key={cat.id}
-              onClick={() => {
-                setSearchQuery(cat.name);
-                setActiveTab('marketplace');
+              href={`/directory?category=${encodeURIComponent(cat.name)}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setSelectedCategory(cat.name);
+                setActiveTab('directory');
               }}
               className="p-3 bg-white border border-slate-200 rounded-2xl flex items-center gap-2.5 cursor-pointer hover:bg-slate-50 transition-colors shadow-2xs group"
             >
               <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                <Briefcase className="w-4 h-4" />
+                {getCategoryIcon(cat.slug || cat.id, 'w-4 h-4')}
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-xs font-bold text-slate-900 truncate group-hover:text-emerald-800 transition-colors">
@@ -1050,7 +1058,7 @@ export const HomeView: React.FC = () => {
                 </h3>
                 <span className="text-[10px] text-slate-500 font-medium">{cat.vendorCount} stores</span>
               </div>
-            </div>
+            </a>
           ))}
         </div>
       </section>

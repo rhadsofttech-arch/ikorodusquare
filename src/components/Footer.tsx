@@ -102,29 +102,76 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2.5 text-xs text-emerald-200 font-medium">
               <li>
-                <button onClick={() => setActiveTab('directory')} className="hover:text-amber-300 transition-colors">
+                <a
+                  href="/directory"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveTab('directory');
+                  }}
+                  className="hover:text-amber-300 transition-colors"
+                >
                   Business Directory
-                </button>
+                </a>
               </li>
               <li>
-                <button onClick={() => setActiveTab('marketplace')} className="hover:text-amber-300 transition-colors">
+                <a
+                  href="/marketplace"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveTab('marketplace');
+                  }}
+                  className="hover:text-amber-300 transition-colors"
+                >
                   Product Marketplace
-                </button>
+                </a>
               </li>
               <li>
-                <button onClick={() => setActiveTab('categories')} className="hover:text-amber-300 transition-colors">
+                <a
+                  href="/directory?category=Accommodation"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveTab('directory');
+                  }}
+                  className="hover:text-amber-300 transition-colors"
+                >
+                  Hotels & Accommodation
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/categories"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveTab('categories');
+                  }}
+                  className="hover:text-amber-300 transition-colors"
+                >
                   Categories List
-                </button>
+                </a>
               </li>
               <li>
-                <button onClick={() => setActiveTab('promotions')} className="hover:text-amber-300 transition-colors">
+                <a
+                  href="/promotions-pricing"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveTab('promotions-pricing');
+                  }}
+                  className="hover:text-amber-300 transition-colors"
+                >
                   Vendor Advertising Rates
-                </button>
+                </a>
               </li>
               <li>
-                <button onClick={() => setActiveTab('register-vendor')} className="hover:text-amber-300 transition-colors font-bold text-amber-400">
+                <a
+                  href="/register-vendor"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveTab('register-vendor');
+                  }}
+                  className="hover:text-amber-300 transition-colors font-bold text-amber-400"
+                >
                   Register Your Business
-                </button>
+                </a>
               </li>
             </ul>
           </div>

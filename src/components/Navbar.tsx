@@ -322,8 +322,12 @@ export const Navbar: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
           <div className="flex items-center justify-between gap-3 sm:gap-4">
             {/* Logo */}
-            <div
-              onClick={() => handleNavClick('home')}
+            <a
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                handleNavClick('home');
+              }}
               className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0"
             >
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-800 via-emerald-700 to-teal-600 flex items-center justify-center text-white shadow-sm border border-emerald-600/30 group-hover:scale-105 transition-transform">
@@ -342,7 +346,7 @@ export const Navbar: React.FC = () => {
                   Local Business Directory & Marketplace
                 </p>
               </div>
-            </div>
+            </a>
 
             {/* Search Bar (Desktop Real-time Search Input) */}
             <div className="hidden md:flex items-center flex-1 max-w-lg mx-4 relative z-50">
@@ -562,15 +566,18 @@ export const Navbar: React.FC = () => {
 
               {/* Register Business CTA - HIDDEN WHEN LOGGED IN AS VENDOR */}
               {!isVendor && (
-                <button
-                  type="button"
-                  onClick={() => handleNavClick('register-vendor')}
+                <a
+                  href="/register-vendor"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleNavClick('register-vendor');
+                  }}
                   className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-900 hover:to-teal-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all hover:shadow-md"
                 >
                   <PlusCircle className="w-4 h-4 text-amber-300" />
                   <span className="hidden sm:inline">Register Business</span>
                   <span className="sm:hidden">Register</span>
-                </button>
+                </a>
               )}
 
               {/* Mobile Hamburger Toggle */}
@@ -635,9 +642,12 @@ export const Navbar: React.FC = () => {
           {/* Secondary Nav Links (Desktop) */}
           <nav className="hidden lg:flex items-center justify-between border-t border-slate-100 mt-2.5 pt-2 text-xs font-medium text-slate-700">
             <div className="flex items-center gap-7">
-              <button
-                type="button"
-                onClick={() => handleNavClick('home')}
+              <a
+                href="/"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNavClick('home');
+                }}
                 className={`hover:text-emerald-700 pb-1 border-b-2 transition-all ${
                   activeTab === 'home'
                     ? 'border-emerald-700 text-emerald-950 font-bold'
@@ -645,10 +655,13 @@ export const Navbar: React.FC = () => {
                 }`}
               >
                 Home
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNavClick('marketplace')}
+              </a>
+              <a
+                href="/marketplace"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNavClick('marketplace');
+                }}
                 className={`flex items-center gap-1.5 hover:text-emerald-700 pb-1 border-b-2 transition-all ${
                   activeTab === 'marketplace'
                     ? 'border-emerald-700 text-emerald-950 font-bold'
@@ -657,10 +670,13 @@ export const Navbar: React.FC = () => {
               >
                 <ShoppingBag className="w-3.5 h-3.5 text-amber-500" />
                 Product Marketplace
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNavClick('directory')}
+              </a>
+              <a
+                href="/directory"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNavClick('directory');
+                }}
                 className={`flex items-center gap-1.5 hover:text-emerald-700 pb-1 border-b-2 transition-all ${
                   activeTab === 'directory'
                     ? 'border-emerald-700 text-emerald-950 font-bold'
@@ -669,10 +685,13 @@ export const Navbar: React.FC = () => {
               >
                 <Store className="w-3.5 h-3.5 text-emerald-600" />
                 Business Directory
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNavClick('promotions-pricing')}
+              </a>
+              <a
+                href="/promotions-pricing"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNavClick('promotions-pricing');
+                }}
                 className={`flex items-center gap-1.5 hover:text-emerald-700 pb-1 border-b-2 transition-all ${
                   activeTab === 'promotions-pricing' || activeTab === 'promotions'
                     ? 'border-emerald-700 text-emerald-950 font-bold'
@@ -681,7 +700,7 @@ export const Navbar: React.FC = () => {
               >
                 <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
                 Promotions & Pricing
-              </button>
+              </a>
             </div>
 
             <div className="flex items-center gap-3">

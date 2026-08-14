@@ -1,12 +1,19 @@
+# IkoroduSquare Robots.txt
 User-agent: *
 Allow: /
 Allow: /store/
-Allow: /marketplace
+Allow: /product/
 Allow: /directory
+Allow: /marketplace
 Allow: /categories
+Allow: /promotions-pricing
+Allow: /register-vendor
+
+# Disallow private user accounts and admin portals
 Disallow: /admin
+Disallow: /admin-portal
 Disallow: /vendor-portal
-Disallow: /auth
-Disallow: /register
+Disallow: /customer-portal
+Disallow: /api/
 
 Sitemap: https://www.ikorodusquare.com.ng/sitemap.xml

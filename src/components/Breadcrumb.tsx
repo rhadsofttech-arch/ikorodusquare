@@ -25,6 +25,7 @@ export const Breadcrumb: React.FC = () => {
 
   interface BreadcrumbItem {
     label: string;
+    href?: string;
     onClick?: () => void;
     icon?: React.ReactNode;
     isCurrent?: boolean;
@@ -33,6 +34,7 @@ export const Breadcrumb: React.FC = () => {
   const items: BreadcrumbItem[] = [
     {
       label: 'Home',
+      href: '/',
       onClick: () => {
         setActiveTab('home');
       },
@@ -43,6 +45,7 @@ export const Breadcrumb: React.FC = () => {
   if (activeTab === 'directory') {
     items.push({
       label: 'Directory',
+      href: '/directory',
       onClick: selectedCategory !== 'All' ? () => setSelectedCategory('All') : undefined,
       icon: <Store className="w-3.5 h-3.5 text-slate-500" />,
       isCurrent: selectedCategory === 'All',
@@ -56,6 +59,7 @@ export const Breadcrumb: React.FC = () => {
   } else if (activeTab === 'marketplace') {
     items.push({
       label: 'Marketplace',
+      href: '/marketplace',
       onClick: selectedCategory !== 'All' ? () => setSelectedCategory('All') : undefined,
       icon: <ShoppingBag className="w-3.5 h-3.5 text-slate-500" />,
       isCurrent: selectedCategory === 'All',
@@ -69,12 +73,14 @@ export const Breadcrumb: React.FC = () => {
   } else if (activeTab === 'vendor-details') {
     items.push({
       label: 'Directory',
+      href: '/directory',
       onClick: () => setActiveTab('directory'),
       icon: <Store className="w-3.5 h-3.5 text-slate-500" />,
     });
     if (vendor?.category) {
       items.push({
         label: vendor.category,
+        href: `/directory?category=${encodeURIComponent(vendor.category)}`,
         onClick: () => {
           setSelectedCategory(vendor.category);
           setActiveTab('directory');
@@ -88,12 +94,14 @@ export const Breadcrumb: React.FC = () => {
   } else if (activeTab === 'product-details') {
     items.push({
       label: 'Marketplace',
+      href: '/marketplace',
       onClick: () => setActiveTab('marketplace'),
       icon: <ShoppingBag className="w-3.5 h-3.5 text-slate-500" />,
     });
     if (product?.category) {
       items.push({
         label: product.category,
+        href: `/directory?category=${encodeURIComponent(product.category)}`,
         onClick: () => {
           setSelectedCategory(product.category);
           setActiveTab('marketplace');
@@ -153,14 +161,18 @@ export const Breadcrumb: React.FC = () => {
                 )}
 
                 {item.onClick && !isLast ? (
-                  <button
-                    onClick={item.onClick}
+                  <a
+                    href={item.href || '#'}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      item.onClick?.();
+                    }}
                     className="inline-flex items-center gap-1.5 font-medium text-slate-600 hover:text-emerald-800 transition-colors py-1 px-1.5 rounded-lg hover:bg-slate-100"
                     title={item.label}
                   >
                     {item.icon}
                     <span>{item.label}</span>
-                  </button>
+                  </a>
                 ) : (
                   <span
                     className={`inline-flex items-center gap-1.5 py-1 px-1.5 rounded-lg ${

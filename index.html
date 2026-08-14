@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IkoroduSquare | Local Business Directory & Marketplace in Ikorodu</title>
     <meta name="description" content="Discover verified local businesses, products and services across Ikorodu. Shop local, find businesses and connect directly with vendors on IkoroduSquare." />
-    <meta name="keywords" content="Ikorodu businesses, Ikorodu marketplace, Sabo Ikorodu, Ebute Ikorodu, Agric Ikorodu, local vendors Lagos, buy local Ikorodu, Ikorodu business directory" />
+    <meta name="keywords" content="Ikorodu businesses, Ikorodu marketplace, Sabo Ikorodu, Ebute Ikorodu, Agric Ikorodu, local vendors Lagos, buy local Ikorodu, Ikorodu business directory, Accommodation Ikorodu" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://www.ikorodusquare.com.ng/" />
 
@@ -23,10 +23,40 @@
     <meta name="twitter:title" content="IkoroduSquare | Local Business Directory & Marketplace in Ikorodu" />
     <meta name="twitter:description" content="Discover verified local businesses, products and services across Ikorodu. Shop local, find businesses and connect directly with vendors on IkoroduSquare." />
     <meta name="twitter:image" content="https://www.ikorodusquare.com.ng/og-image.jpg" />
+
+    <!-- Structured Data JSON-LD -->
+    <script id="json-ld-schema" type="application/ld+json">
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "IkoroduSquare",
+          "url": "https://www.ikorodusquare.com.ng/",
+          "logo": "https://www.ikorodusquare.com.ng/og-image.jpg",
+          "description": "Hyperlocal Local Business Directory & Marketplace in Ikorodu, Lagos State, Nigeria.",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Ikorodu",
+            "addressRegion": "Lagos State",
+            "addressCountry": "NG"
+          }
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "IkoroduSquare",
+          "url": "https://www.ikorodusquare.com.ng/",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://www.ikorodusquare.com.ng/marketplace?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

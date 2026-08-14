@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Core Static Pages -->
   <url>
     <loc>https://www.ikorodusquare.com.ng/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.ikorodusquare.com.ng/marketplace</loc>
+    <loc>https://www.ikorodusquare.com.ng/directory</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.ikorodusquare.com.ng/directory</loc>
+    <loc>https://www.ikorodusquare.com.ng/marketplace</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
@@ -20,36 +21,115 @@
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/promotions-pricing</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/register-vendor</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Business Category Directory Links -->
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/directory?category=Accommodation</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/directory?category=Fashion%20%26%20Apparel</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/directory?category=Electronics%20%26%20Mobile</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/directory?category=Food%20%26%20Confectionery</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/directory?category=Beauty%20%26%20Personal%20Care</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/directory?category=Real%20Estate%20%26%20Rentals</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
 
   <!-- Approved Vendor Storefronts -->
   <url>
+    <loc>https://www.ikorodusquare.com.ng/store/de-royal-grand-hotel-suites</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.ikorodusquare.com.ng/store/ikorodu-mega-bakery</loc>
-    <changefreq>daily</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://www.ikorodusquare.com.ng/store/ayanfe-fabrics-sabo</loc>
-    <changefreq>daily</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://www.ikorodusquare.com.ng/store/sparkle-electronics-sabo</loc>
-    <changefreq>daily</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://www.ikorodusquare.com.ng/store/sparklestitches-by-oabit</loc>
-    <changefreq>daily</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://www.ikorodusquare.com.ng/store/royal-caterers-agric</loc>
-    <changefreq>daily</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.ikorodusquare.com.ng/store/d-tech-solar-solutions</loc>
-    <changefreq>daily</changefreq>
+    <loc>https://www.ikorodusquare.com.ng/store/royal-comfort-furniture</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/store/apex-solar-inverter</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Approved Product Pages -->
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/product/p-15</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/product/p-1</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/product/p-2</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/product/p-3</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.ikorodusquare.com.ng/product/p-4</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
   </url>
 </urlset>
