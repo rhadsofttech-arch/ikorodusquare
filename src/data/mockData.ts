@@ -284,6 +284,21 @@ export const CATEGORIES: Category[] = [
     description: 'Wholesale provision stores, supermarket food staples, drinks & household items.',
     subcategories: ['Wholesale Provisions', 'Supermarket Staples', 'Drinks, Beverages & Wine', 'Imported Household Goods'],
   },
+  {
+    id: 'cat-religious',
+    name: 'Religious Organizations',
+    slug: 'religious-organizations',
+    iconName: 'Church',
+    description: 'Churches, mosques, Islamic centers, ministries, faith-based charities, prayer camps & religious bookstores across Ikorodu.',
+    subcategories: [
+      'Churches & Ministries',
+      'Mosques & Islamic Centers',
+      'Religious Bookstores & Media',
+      'Faith-Based Charities & Outreach',
+      'Prayer Centers & Retreats',
+      'Religious Articles & Vestments',
+    ],
+  },
 ];
 
 export const INITIAL_VENDORS: Vendor[] = [

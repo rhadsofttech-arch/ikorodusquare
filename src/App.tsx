@@ -26,7 +26,7 @@ const MainContent: React.FC = () => {
       <ErrorBoundary>
         <div key={activeTab}>
           {activeTab === 'home' && <HomeView />}
-          {activeTab === 'directory' && <DirectoryView />}
+          {(activeTab === 'directory' || activeTab === 'categories') && <DirectoryView />}
           {activeTab === 'vendor-details' && <BusinessDetailsView />}
           {activeTab === 'marketplace' && <MarketplaceView />}
           {activeTab === 'product-details' && <ProductDetailsView />}

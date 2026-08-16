@@ -317,8 +317,8 @@ export function getPageMetadata(
   if (cleanPath === '/directory') {
     const title = 'Verified Business Directory in Ikorodu | IkoroduSquare';
     const description =
-      'Browse verified shops, artisan services, restaurants, hotels, fashion designers, and local businesses in Sabo, Agric, Ebute, and across Ikorodu.';
-    const keywords = 'Ikorodu business directory, verified vendors Ikorodu, shops in Sabo, artisans in Ebute, services in Agric Ikorodu';
+      'Browse verified shops, artisan services, restaurants, hotels, fashion designers, religious organizations, and local businesses in Sabo, Agric, Ebute, and across Ikorodu.';
+    const keywords = 'Ikorodu business directory, verified vendors Ikorodu, shops in Sabo, artisans in Ebute, religious organizations Ikorodu, services in Agric Ikorodu';
     const canonicalUrl = `${SITE_URL}/directory`;
 
     const topStores = approvedVendors
@@ -411,7 +411,7 @@ export function getPageMetadata(
   const description =
     'Discover verified local businesses, products, hotels, and services across Ikorodu. Shop local, find businesses, and connect directly with vendors on IkoroduSquare.';
   const keywords =
-    'Ikorodu businesses, Ikorodu marketplace, Sabo Ikorodu, Ebute Ikorodu, Agric Ikorodu, local vendors Lagos, buy local Ikorodu, Ikorodu business directory, Accommodation Ikorodu';
+    'Ikorodu businesses, Ikorodu marketplace, Sabo Ikorodu, Ebute Ikorodu, Agric Ikorodu, local vendors Lagos, buy local Ikorodu, Ikorodu business directory, Accommodation Ikorodu, Religious Organizations Ikorodu';
   const canonicalUrl = `${SITE_URL}/`;
 
   const orgJsonLd = {
