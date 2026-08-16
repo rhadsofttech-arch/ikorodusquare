@@ -7,6 +7,8 @@ import {
   Globe,
   Instagram,
   Facebook,
+  Video,
+  ArrowUpRight,
   Star,
   CheckCircle2,
   Sparkles,
@@ -35,6 +37,7 @@ import { ShareButton } from '../components/ShareButton';
 import { VendorFeatureBadge } from '../components/VendorFeatureBadge';
 import { VendorFeature } from '../types';
 import { useSEO } from '../hooks/useSEO';
+import { normalizeExternalUrl, formatSocialDisplayLabel } from '../lib/urlHelpers';
 
 export const BusinessDetailsView: React.FC = () => {
   const {
@@ -626,26 +629,125 @@ export const BusinessDetailsView: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-3 text-xs">
+            <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-4 text-xs">
               <h3 className="text-base font-black text-emerald-950 font-display">
                 Owner & Contact Info
               </h3>
-              <p className="text-gray-600">
-                Owner: <strong className="text-emerald-950">{vendor.ownerName}</strong>
-              </p>
-              <p className="text-gray-600">
-                Phone: <strong className="text-emerald-950">{vendor.phone}</strong>
-              </p>
-              <p className="text-gray-600">
-                WhatsApp: <strong className="text-emerald-950">+{vendor.whatsapp}</strong>
-              </p>
-              {vendor.website && (
-                <p className="text-gray-600">
-                  Website:{' '}
-                  <a href={vendor.website} target="_blank" rel="noreferrer" className="text-emerald-700 font-bold hover:underline">
-                    {vendor.website}
+              <div className="space-y-2">
+                <p className="text-gray-600 flex items-center justify-between">
+                  <span>Owner:</span>
+                  <strong className="text-emerald-950 font-bold">{vendor.ownerName}</strong>
+                </p>
+                <p className="text-gray-600 flex items-center justify-between">
+                  <span>Phone:</span>
+                  <a
+                    href={`tel:${vendor.phone}`}
+                    className="text-emerald-900 font-bold hover:text-emerald-700 hover:underline"
+                  >
+                    {vendor.phone}
                   </a>
                 </p>
+                <p className="text-gray-600 flex items-center justify-between">
+                  <span>WhatsApp:</span>
+                  <a
+                    href={`https://wa.me/${vendor.whatsapp ? vendor.whatsapp.replace(/\D/g, '') : ''}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-900 font-bold hover:text-emerald-700 hover:underline"
+                  >
+                    +{vendor.whatsapp}
+                  </a>
+                </p>
+              </div>
+
+              {/* Website & Social Profile Links */}
+              {(vendor.website || vendor.instagram || vendor.facebook || vendor.tiktok) && (
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <h4 className="font-bold text-[11px] uppercase tracking-wider text-slate-400">
+                    Website & Social Links
+                  </h4>
+                  <div className="space-y-1.5 pt-0.5">
+                    {vendor.website && (
+                      <a
+                        href={normalizeExternalUrl(vendor.website, 'website')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-950 border border-slate-200/80 hover:border-emerald-300 text-slate-700 transition-all group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="font-medium truncate">
+                            {formatSocialDisplayLabel(vendor.website, 'website') || 'Website'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-emerald-700 font-bold text-[11px] shrink-0">
+                          <span>Visit Website</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        </div>
+                      </a>
+                    )}
+
+                    {vendor.instagram && (
+                      <a
+                        href={normalizeExternalUrl(vendor.instagram, 'instagram')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-pink-50 hover:text-pink-950 border border-slate-200/80 hover:border-pink-300 text-slate-700 transition-all group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <Instagram className="w-4 h-4 text-pink-600 shrink-0" />
+                          <span className="font-medium truncate">
+                            {formatSocialDisplayLabel(vendor.instagram, 'instagram')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-pink-700 font-bold text-[11px] shrink-0">
+                          <span>Instagram</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        </div>
+                      </a>
+                    )}
+
+                    {vendor.facebook && (
+                      <a
+                        href={normalizeExternalUrl(vendor.facebook, 'facebook')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-950 border border-slate-200/80 hover:border-blue-300 text-slate-700 transition-all group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <Facebook className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span className="font-medium truncate">
+                            {formatSocialDisplayLabel(vendor.facebook, 'facebook')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-blue-700 font-bold text-[11px] shrink-0">
+                          <span>Facebook Page</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        </div>
+                      </a>
+                    )}
+
+                    {vendor.tiktok && (
+                      <a
+                        href={normalizeExternalUrl(vendor.tiktok, 'tiktok')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 hover:text-slate-950 border border-slate-200/80 hover:border-slate-400 text-slate-700 transition-all group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <Video className="w-4 h-4 text-slate-800 shrink-0" />
+                          <span className="font-medium truncate">
+                            {formatSocialDisplayLabel(vendor.tiktok, 'tiktok')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-slate-800 font-bold text-[11px] shrink-0">
+                          <span>TikTok</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        </div>
+                      </a>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           </div>
