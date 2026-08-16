@@ -23,6 +23,10 @@ import {
   ArrowLeft,
   AlertCircle,
   User,
+  Store,
+  Package,
+  Briefcase,
+  X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Review } from '../types';
@@ -559,7 +563,8 @@ export const BusinessDetailsView: React.FC = () => {
                   }}
                   className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-emerald-500/30"
                 >
-                  🛍️ Store Inquiry
+                  <Store className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>Store Inquiry</span>
                 </button>
                 <button
                   type="button"
@@ -569,7 +574,8 @@ export const BusinessDetailsView: React.FC = () => {
                   }}
                   className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-emerald-500/30"
                 >
-                  📦 Product Availability
+                  <Package className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>Product Availability</span>
                 </button>
                 <button
                   type="button"
@@ -579,7 +585,8 @@ export const BusinessDetailsView: React.FC = () => {
                   }}
                   className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-emerald-500/30"
                 >
-                  🚚 Delivery Rates
+                  <Truck className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>Delivery Rates</span>
                 </button>
                 <button
                   type="button"
@@ -589,7 +596,8 @@ export const BusinessDetailsView: React.FC = () => {
                   }}
                   className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-emerald-500/30"
                 >
-                  💼 Wholesale Order
+                  <Briefcase className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>Wholesale Order</span>
                 </button>
               </div>
             </div>
@@ -949,9 +957,10 @@ export const BusinessDetailsView: React.FC = () => {
               </div>
               <button
                 onClick={() => setWhatsAppModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+                className="text-gray-400 hover:text-gray-600 font-bold p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Close"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -974,7 +983,10 @@ export const BusinessDetailsView: React.FC = () => {
                         : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <span className="block text-xs">🛍️ General Inquiry</span>
+                    <span className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
+                      <Store className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span>General Inquiry</span>
+                    </span>
                     <span className="text-[10px] text-gray-500 font-normal">Store location & services</span>
                   </button>
 
@@ -987,7 +999,10 @@ export const BusinessDetailsView: React.FC = () => {
                         : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <span className="block text-xs">📦 Product / Price Quote</span>
+                    <span className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
+                      <Package className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span>Product / Price Quote</span>
+                    </span>
                     <span className="text-[10px] text-gray-500 font-normal">Inquire specific items</span>
                   </button>
 
@@ -1003,7 +1018,10 @@ export const BusinessDetailsView: React.FC = () => {
                         : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <span className="block text-xs">🚚 Delivery & Dispatch</span>
+                    <span className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
+                      <Truck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span>Delivery & Dispatch</span>
+                    </span>
                     <span className="text-[10px] text-gray-500 font-normal">Fees & pickup spots</span>
                   </button>
 
@@ -1019,7 +1037,10 @@ export const BusinessDetailsView: React.FC = () => {
                         : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <span className="block text-xs">💼 Wholesale / Bulk</span>
+                    <span className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
+                      <Briefcase className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span>Wholesale / Bulk</span>
+                    </span>
                     <span className="text-[10px] text-gray-500 font-normal">Volume discounts</span>
                   </button>
                 </div>

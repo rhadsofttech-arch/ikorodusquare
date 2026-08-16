@@ -579,9 +579,10 @@ export const VendorRegisterView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setVendorStep(1)}
-                    className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 font-bold text-xs text-gray-700 rounded-xl transition-all"
+                    className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 font-bold text-xs text-gray-700 rounded-xl transition-all inline-flex items-center gap-1.5"
                   >
-                    ← Back
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
                   </button>
                   <button
                     type="button"
@@ -671,9 +672,10 @@ export const VendorRegisterView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setVendorStep(2)}
-                    className="px-5 py-2.5 bg-gray-100 font-bold text-xs text-gray-700 rounded-xl"
+                    className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 font-bold text-xs text-gray-700 rounded-xl transition-all inline-flex items-center gap-1.5"
                   >
-                    ← Back
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
                   </button>
                   <button
                     type="button"
@@ -735,9 +737,10 @@ export const VendorRegisterView: React.FC = () => {
                   type="button"
                   onClick={() => setVendorStep(3)}
                   disabled={submitting}
-                  className="px-5 py-2.5 bg-gray-100 font-bold text-xs text-gray-700 rounded-xl"
+                  className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 font-bold text-xs text-gray-700 rounded-xl transition-all inline-flex items-center gap-1.5"
                 >
-                  ← Back to Owner Info
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back to Owner Info</span>
                 </button>
                 <button
                   type="button"
@@ -972,9 +975,10 @@ export const VendorRegisterView: React.FC = () => {
                     type="button"
                     onClick={() => setCustomerStep(1)}
                     disabled={submitting}
-                    className="px-5 py-2.5 bg-gray-100 font-bold text-xs text-gray-700 rounded-xl"
+                    className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 font-bold text-xs text-gray-700 rounded-xl transition-all inline-flex items-center gap-1.5"
                   >
-                    ← Back
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back</span>
                   </button>
                   <button
                     type="submit"

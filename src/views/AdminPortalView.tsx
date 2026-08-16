@@ -27,6 +27,7 @@ import {
   Phone,
   Store,
   Star,
+  X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO } from '../data/mockData';
@@ -938,7 +939,7 @@ export const AdminPortalView: React.FC = () => {
                               title={v.isVerified ? 'Remove Verified Status' : 'Assign Verified Status'}
                             >
                               <ShieldCheck className="w-3 h-3" />
-                              <span>{v.isVerified ? 'Verified ✓' : 'Assign Verified'}</span>
+                              <span>{v.isVerified ? 'Verified' : 'Assign Verified'}</span>
                             </button>
 
                             <button
@@ -1216,9 +1217,10 @@ export const AdminPortalView: React.FC = () => {
               </h3>
               <button
                 onClick={() => setAssignSlotModalReq(null)}
-                className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Close"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1372,9 +1374,10 @@ export const AdminPortalView: React.FC = () => {
               </div>
               <button
                 onClick={() => setSelectedVendorDetail(null)}
-                className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Close"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1621,9 +1624,10 @@ export const AdminPortalView: React.FC = () => {
               </h3>
               <button
                 onClick={() => setDirectPlacementModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Close"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1797,8 +1801,12 @@ export const AdminPortalView: React.FC = () => {
                   Uploaded file stored in Supabase Storage. Verify bank transaction details carefully.
                 </p>
               </div>
-              <button onClick={() => setPreviewProofUrl(null)} className="text-slate-400 hover:text-slate-600 font-bold">
-                ✕
+              <button
+                onClick={() => setPreviewProofUrl(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 

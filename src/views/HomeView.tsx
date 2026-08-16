@@ -28,6 +28,8 @@ import {
   ExternalLink,
   Compass,
   ThumbsUp,
+  Flame,
+  BadgeCheck,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IkoroduArea, PromotionOption } from '../types';
@@ -297,7 +299,7 @@ export const HomeView: React.FC = () => {
     title: string;
     subtitle: string;
     location: string;
-    badgeIcon: string;
+    badgeIcon: React.ReactNode;
     badgeLabel: string;
     timeAgo: string;
     timestamp: number;
@@ -312,7 +314,7 @@ export const HomeView: React.FC = () => {
       title: `${v.businessName} just joined IkoroduSquare`,
       subtitle: `${v.category} • ${v.subcategory || 'Local Store'}`,
       location: `${v.area}, Ikorodu`,
-      badgeIcon: '🟢',
+      badgeIcon: <Store className="w-3 h-3 text-amber-300 shrink-0" />,
       badgeLabel: 'New Business',
       timeAgo: getRelativeTime(v.createdAt),
       timestamp: isNaN(t) ? Date.now() - 3600000 : t,
@@ -328,7 +330,7 @@ export const HomeView: React.FC = () => {
         title: `${v.businessName} verified on IkoroduSquare`,
         subtitle: `Official badge granted • ${v.category}`,
         location: `${v.area}, Ikorodu`,
-        badgeIcon: '🏪',
+        badgeIcon: <BadgeCheck className="w-3 h-3 text-amber-300 shrink-0" />,
         badgeLabel: 'Verified Store',
         timeAgo: getRelativeTime(v.createdAt),
         timestamp: isNaN(t) ? Date.now() - 7200000 : t + 500,
@@ -350,7 +352,7 @@ export const HomeView: React.FC = () => {
         title: `New product added by ${p.vendorName}`,
         subtitle: `${p.name} • ₦${p.price.toLocaleString()}`,
         location: `${p.vendorArea}, Ikorodu`,
-        badgeIcon: '🛍️',
+        badgeIcon: <ShoppingBag className="w-3 h-3 text-amber-300 shrink-0" />,
         badgeLabel: 'New Product',
         timeAgo: getRelativeTime(p.createdAt),
         timestamp: isNaN(t) ? Date.now() - 1800000 : t,
@@ -366,7 +368,7 @@ export const HomeView: React.FC = () => {
           title: `Product is trending: ${p.name}`,
           subtitle: `By ${p.vendorName} • ₦${p.price.toLocaleString()}`,
           location: `${p.vendorArea}, Ikorodu`,
-          badgeIcon: '🔥',
+          badgeIcon: <Flame className="w-3 h-3 text-amber-300 shrink-0" />,
           badgeLabel: 'Trending Item',
           timeAgo: getRelativeTime(p.createdAt),
           timestamp: isNaN(t) ? Date.now() - 5400000 : t + 1000,
@@ -388,9 +390,9 @@ export const HomeView: React.FC = () => {
       liveActivities.push({
         id: `act-r-${r.id}`,
         title: `${targetVendor.businessName} received a new review`,
-        subtitle: `⭐ ${r.rating}/5 — "${r.comment.length > 50 ? r.comment.substring(0, 50) + '...' : r.comment}"`,
+        subtitle: `Rating: ${r.rating}/5 — "${r.comment.length > 50 ? r.comment.substring(0, 50) + '...' : r.comment}"`,
         location: `${targetVendor.area}, Ikorodu`,
-        badgeIcon: '⭐',
+        badgeIcon: <Star className="w-3 h-3 text-amber-300 fill-amber-300 shrink-0" />,
         badgeLabel: 'New Review',
         timeAgo: getRelativeTime(r.createdAt),
         timestamp: isNaN(t) ? Date.now() - 86400000 : t,
@@ -724,8 +726,9 @@ export const HomeView: React.FC = () => {
             className="absolute inset-0 w-full h-full object-cover opacity-30"
           />
           <div className="relative z-10 space-y-3 max-w-2xl">
-            <span className="px-3 py-1 bg-amber-400 text-emerald-950 rounded-full font-black text-[10px] uppercase tracking-wider inline-block shadow-sm">
-              ⭐ FEATURED HOMEPAGE BANNER
+            <span className="px-3 py-1 bg-amber-400 text-emerald-950 rounded-full font-black text-[10px] uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm">
+              <Sparkles className="w-3 h-3 text-emerald-950 fill-emerald-950" />
+              <span>FEATURED HOMEPAGE BANNER</span>
             </span>
             <h2 className="text-xl sm:text-3xl font-black font-display text-white leading-tight">
               {activeBannerPromo.bannerHeading || `Promoted Merchant: ${activeBannerPromo.vendorName}`}
@@ -766,8 +769,9 @@ export const HomeView: React.FC = () => {
                 Top-tier verified merchants with exclusive homepage spotlight in Ikorodu
               </p>
             </div>
-            <span className="px-3 py-1 bg-amber-400 text-emerald-950 text-xs font-black rounded-full uppercase tracking-wider self-start sm:self-auto shadow-xs">
-              ⭐ OFFICIAL SPONSORED SPOTLIGHT
+            <span className="px-3 py-1 bg-amber-400 text-emerald-950 text-xs font-black rounded-full uppercase tracking-wider self-start sm:self-auto shadow-xs inline-flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" />
+              <span>OFFICIAL SPONSORED SPOTLIGHT</span>
             </span>
           </div>
 
@@ -880,23 +884,33 @@ export const HomeView: React.FC = () => {
           {/* Filter Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             {[
-              { id: 'all', label: 'All Recommendations' },
-              { id: 'under50k', label: 'Under ₦50,000' },
-              { id: 'topRated', label: '⭐ Top Rated (4.8+)' },
-              { id: 'artisan', label: 'Bespoke & Artisan' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setRecommendationFilter(tab.id as any)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors whitespace-nowrap ${
-                  recommendationFilter === tab.id
-                    ? 'bg-emerald-950 text-amber-300 shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+              { id: 'all', label: 'All Recommendations', icon: null },
+              { id: 'under50k', label: 'Under ₦50,000', icon: null },
+              { id: 'topRated', label: 'Top Rated (4.8+)', icon: Star },
+              { id: 'artisan', label: 'Bespoke & Artisan', icon: Sparkles },
+            ].map((tab) => {
+              const TabIcon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setRecommendationFilter(tab.id as any)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors whitespace-nowrap inline-flex items-center gap-1.5 ${
+                    recommendationFilter === tab.id
+                      ? 'bg-emerald-950 text-amber-300 shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {TabIcon && (
+                    <TabIcon
+                      className={`w-3.5 h-3.5 ${
+                        recommendationFilter === tab.id ? 'text-amber-300 fill-amber-300' : 'text-amber-500'
+                      }`}
+                    />
+                  )}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -908,12 +922,13 @@ export const HomeView: React.FC = () => {
               (v) => v.id === product.vendorId || v.businessName === product.vendorName
             );
             const badges = [
-              '🔥 Trending in Sabo',
-              '⚡ Fast WhatsApp Reply',
-              '⭐ Verified Artisan',
-              '💎 Best Local Price',
+              { text: 'Trending in Sabo', icon: Flame },
+              { text: 'Fast WhatsApp Reply', icon: Zap },
+              { text: 'Verified Artisan', icon: BadgeCheck },
+              { text: 'Best Local Price', icon: Sparkles },
             ];
-            const badge = badges[idx % badges.length];
+            const badgeItem = badges[idx % badges.length];
+            const BadgeIcon = badgeItem.icon;
 
             return (
               <div
@@ -953,13 +968,15 @@ export const HomeView: React.FC = () => {
                         <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" /> FEATURED
                       </span>
                     ) : (
-                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-950/80 text-amber-300 text-[9px] font-black uppercase rounded-md backdrop-blur-md shadow-xs">
-                        {badge}
+                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-950/80 text-amber-300 text-[9px] font-black uppercase rounded-md backdrop-blur-md shadow-xs inline-flex items-center gap-1">
+                        <BadgeIcon className="w-3 h-3 text-amber-300 shrink-0" />
+                        <span>{badgeItem.text}</span>
                       </span>
                     )}
 
-                    <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-lg">
-                      {product.vendorArea}
+                    <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-lg flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-white shrink-0" />
+                      <span>{product.vendorArea}</span>
                     </span>
                   </div>
 

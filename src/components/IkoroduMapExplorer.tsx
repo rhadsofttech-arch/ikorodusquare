@@ -399,7 +399,7 @@ export const IkoroduMapExplorer: React.FC<IkoroduMapExplorerProps> = ({
                           : 'bg-white/95 text-slate-900 border-slate-300'
                       }`}
                     >
-                      <span>📍</span>
+                      <MapPin className="w-3 h-3 text-red-600 shrink-0" />
                       <span>{district.areaCode}</span>
                       <span className="text-[9px] font-mono font-bold px-1 rounded-full bg-slate-100 text-slate-700">
                         {districtVendorsCount}
