@@ -36,6 +36,8 @@ import { IkoroduArea, PromotionOption } from '../types';
 import { PROMOTION_OPTIONS, MANUAL_PAYMENT_INFO, IKORODU_AREAS } from '../data/mockData';
 import { IkoroduMapExplorer } from '../components/IkoroduMapExplorer';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
+import { ProductSkeletonCard } from '../components/ProductSkeletonCard';
+import { VendorSkeletonCard } from '../components/VendorSkeletonCard';
 import { useSEO } from '../hooks/useSEO';
 import { getCategoryIcon } from '../lib/categoryIcons';
 
@@ -58,6 +60,10 @@ export const HomeView: React.FC = () => {
     trackVendorWhatsAppClick,
     toggleWishlist,
     wishlist,
+    isLoadingData,
+    isCriticalDataLoading,
+    criticalDataError,
+    refreshCriticalData,
   } = useApp();
 
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -667,7 +673,29 @@ export const HomeView: React.FC = () => {
           </div>
 
           {/* Horizontally Scrollable Activity Row */}
-          {recentLiveActivities.length > 0 ? (
+          {isCriticalDataLoading || isLoadingData ? (
+            <div className="flex items-stretch gap-3.5 overflow-x-auto pb-3 pt-1 -mx-1 px-1">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="w-72 sm:w-80 shrink-0 bg-emerald-900/50 border border-emerald-700/40 rounded-2xl p-4 flex flex-col justify-between space-y-3 animate-pulse"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="h-4 bg-emerald-800/80 rounded-full w-24" />
+                      <div className="h-3 bg-emerald-800/60 rounded w-16" />
+                    </div>
+                    <div className="h-4 bg-emerald-800/80 rounded w-3/4" />
+                    <div className="h-3 bg-emerald-800/50 rounded w-full" />
+                  </div>
+                  <div className="pt-2 border-t border-emerald-800/40 flex justify-between">
+                    <div className="h-3 bg-emerald-800/60 rounded w-20" />
+                    <div className="h-3 bg-amber-400/60 rounded w-12" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : recentLiveActivities.length > 0 ? (
             <div className="flex items-stretch gap-3.5 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-emerald-700 scrollbar-track-emerald-900/50 -mx-1 px-1">
               {recentLiveActivities.map((act) => (
                 <div
@@ -914,121 +942,133 @@ export const HomeView: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-          {recommendedProducts.slice(0, 8).map((product, idx) => {
-            const isSaved = wishlist.includes(product.id);
-            const isAssignedFeatured = featuredProductIds.includes(product.id);
-            const vendor = vendors.find(
-              (v) => v.id === product.vendorId || v.businessName === product.vendorName
-            );
-            const badges = [
-              { text: 'Trending in Sabo', icon: Flame },
-              { text: 'Fast WhatsApp Reply', icon: Zap },
-              { text: 'Verified Artisan', icon: BadgeCheck },
-              { text: 'Best Local Price', icon: Sparkles },
-            ];
-            const badgeItem = badges[idx % badges.length];
-            const BadgeIcon = badgeItem.icon;
+        {isCriticalDataLoading || isLoadingData ? (
+          <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <ProductSkeletonCard key={idx} viewMode="grid" />
+            ))}
+          </div>
+        ) : recommendedProducts.length > 0 ? (
+          <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+            {recommendedProducts.slice(0, 8).map((product, idx) => {
+              const isSaved = wishlist.includes(product.id);
+              const isAssignedFeatured = featuredProductIds.includes(product.id);
+              const vendor = vendors.find(
+                (v) => v.id === product.vendorId || v.businessName === product.vendorName
+              );
+              const badges = [
+                { text: 'Trending in Sabo', icon: Flame },
+                { text: 'Fast WhatsApp Reply', icon: Zap },
+                { text: 'Verified Artisan', icon: BadgeCheck },
+                { text: 'Best Local Price', icon: Sparkles },
+              ];
+              const badgeItem = badges[idx % badges.length];
+              const BadgeIcon = badgeItem.icon;
 
-            return (
-              <div
-                key={product.id}
-                className={`bg-white rounded-3xl border ${isAssignedFeatured ? 'border-2 border-amber-400 shadow-md' : 'border-slate-200 shadow-2xs'} overflow-hidden flex flex-col justify-between group`}
-              >
-                <div>
-                  <div
-                    className="relative h-44 bg-slate-100 overflow-hidden cursor-pointer"
-                    onClick={() => handleProductClick(product.id)}
-                  >
-                    <img
-                      src={getProductCoverImage(product)}
-                      alt={product.name || 'Product'}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800';
-                      }}
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleWishlist(product.id);
-                      }}
-                      className={`absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-colors ${
-                        isSaved
-                          ? 'bg-amber-400 text-emerald-950'
-                          : 'bg-white/80 text-slate-700 hover:text-red-500'
-                      }`}
-                    >
-                      <Star className={`w-4 h-4 ${isSaved ? 'fill-emerald-950' : ''}`} />
-                    </button>
-
-                    {isAssignedFeatured ? (
-                      <span className="absolute top-2 left-2 px-2.5 py-1 bg-amber-400 text-emerald-950 text-[10px] font-black uppercase rounded-lg shadow-md flex items-center gap-1 z-10">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" /> FEATURED
-                      </span>
-                    ) : (
-                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-950/80 text-amber-300 text-[9px] font-black uppercase rounded-md backdrop-blur-md shadow-xs inline-flex items-center gap-1">
-                        <BadgeIcon className="w-3 h-3 text-amber-300 shrink-0" />
-                        <span>{badgeItem.text}</span>
-                      </span>
-                    )}
-
-                    <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-lg flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-white shrink-0" />
-                      <span>{product.vendorArea}</span>
-                    </span>
-                  </div>
-
-                  <div className="p-4 space-y-1.5">
-                    <span className="text-[10px] font-extrabold uppercase text-emerald-700 tracking-wider">
-                      {product.category}
-                    </span>
-                    <h4
+              return (
+                <div
+                  key={product.id}
+                  className={`bg-white rounded-3xl border ${isAssignedFeatured ? 'border-2 border-amber-400 shadow-md' : 'border-slate-200 shadow-2xs'} overflow-hidden flex flex-col justify-between group`}
+                >
+                  <div>
+                    <div
+                      className="relative h-44 bg-slate-100 overflow-hidden cursor-pointer"
                       onClick={() => handleProductClick(product.id)}
-                      className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 hover:text-emerald-700 cursor-pointer transition-colors"
                     >
-                      {product.name}
-                    </h4>
+                      <img
+                        src={getProductCoverImage(product)}
+                        alt={product.name || 'Product'}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&q=80&w=800';
+                        }}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleWishlist(product.id);
+                        }}
+                        className={`absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-colors ${
+                          isSaved
+                            ? 'bg-amber-400 text-emerald-950'
+                            : 'bg-white/80 text-slate-700 hover:text-red-500'
+                        }`}
+                      >
+                        <Star className={`w-4 h-4 ${isSaved ? 'fill-emerald-950' : ''}`} />
+                      </button>
 
-                    <p className="text-[11px] text-slate-500 truncate">By {product.vendorName}</p>
-
-                    <div className="pt-1 flex items-baseline gap-2">
-                      <span className="text-base font-black text-emerald-950 font-mono">
-                        ₦{safeFormatPrice(product.price)}
-                      </span>
-                      {product.salePrice ? (
-                        <span className="text-[10px] text-slate-400 line-through font-mono">
-                          ₦{safeFormatPrice(product.salePrice)}
+                      {isAssignedFeatured ? (
+                        <span className="absolute top-2 left-2 px-2.5 py-1 bg-amber-400 text-emerald-950 text-[10px] font-black uppercase rounded-lg shadow-md flex items-center gap-1 z-10">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" /> FEATURED
                         </span>
-                      ) : null}
+                      ) : (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-950/80 text-amber-300 text-[9px] font-black uppercase rounded-md backdrop-blur-md shadow-xs inline-flex items-center gap-1">
+                          <BadgeIcon className="w-3 h-3 text-amber-300 shrink-0" />
+                          <span>{badgeItem.text}</span>
+                        </span>
+                      )}
+
+                      <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-lg flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-white shrink-0" />
+                        <span>{product.vendorArea}</span>
+                      </span>
+                    </div>
+
+                    <div className="p-4 space-y-1.5">
+                      <span className="text-[10px] font-extrabold uppercase text-emerald-700 tracking-wider">
+                        {product.category}
+                      </span>
+                      <h4
+                        onClick={() => handleProductClick(product.id)}
+                        className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 hover:text-emerald-700 cursor-pointer transition-colors"
+                      >
+                        {product.name}
+                      </h4>
+
+                      <p className="text-[11px] text-slate-500 truncate">By {product.vendorName}</p>
+
+                      <div className="pt-1 flex items-baseline gap-2">
+                        <span className="text-base font-black text-emerald-950 font-mono">
+                          ₦{safeFormatPrice(product.price)}
+                        </span>
+                        {product.salePrice ? (
+                          <span className="text-[10px] text-slate-400 line-through font-mono">
+                            ₦{safeFormatPrice(product.salePrice)}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="p-4 pt-0 flex flex-col gap-2">
-                  <WhatsAppChatButton
-                    whatsappNumber={vendor?.whatsapp}
-                    businessName={product.vendorName}
-                    type="product"
-                    productTitle={product.name}
-                    productPrice={product.price}
-                    vendorId={product.vendorId}
-                    variant="primary"
-                    className="w-full text-xs"
-                    label="Direct WhatsApp Chat"
-                  />
-                  <button
-                    onClick={() => handleProductClick(product.id)}
-                    className="w-full py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl text-xs font-bold transition-colors"
-                  >
-                    View Details
-                  </button>
+                  <div className="p-4 pt-0 flex flex-col gap-2">
+                    <WhatsAppChatButton
+                      whatsappNumber={vendor?.whatsapp}
+                      businessName={product.vendorName}
+                      type="product"
+                      productTitle={product.name}
+                      productPrice={product.price}
+                      vendorId={product.vendorId}
+                      variant="primary"
+                      className="w-full text-xs"
+                      label="Direct WhatsApp Chat"
+                    />
+                    <button
+                      onClick={() => handleProductClick(product.id)}
+                      className="w-full py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl text-xs font-bold transition-colors"
+                    >
+                      View Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 shadow-2xs">
+            <p className="text-xs text-slate-500 font-medium">No recommended products found for this filter.</p>
+          </div>
+        )}
       </section>
 
       {/* 3. Browse Business Categories (MINIMALIST COMPACT STYLE) */}
@@ -1101,102 +1141,125 @@ export const HomeView: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-          {featuredProducts.slice(0, 8).map((product) => {
-            const isSaved = wishlist.includes(product.id);
-            const isAssignedFeatured = featuredProductIds.includes(product.id);
-            const vendor = vendors.find(
-              (v) => v.id === product.vendorId || v.businessName === product.vendorName
-            );
-            return (
-              <div
-                key={product.id}
-                className={`bg-white rounded-3xl border ${isAssignedFeatured ? 'border-2 border-amber-400 shadow-md' : 'border-slate-200'} overflow-hidden shadow-2xs flex flex-col justify-between group`}
-              >
-                <div>
-                  <div
-                    className="relative h-44 bg-slate-100 overflow-hidden cursor-pointer"
-                    onClick={() => handleProductClick(product.id)}
-                  >
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleWishlist(product.id);
-                      }}
-                      className={`absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-colors ${
-                        isSaved
-                          ? 'bg-amber-400 text-emerald-950'
-                          : 'bg-white/80 text-slate-700 hover:text-red-500'
-                      }`}
-                    >
-                      <Star className={`w-4 h-4 ${isSaved ? 'fill-emerald-950' : ''}`} />
-                    </button>
-
-                    {isAssignedFeatured && (
-                      <span className="absolute top-2 left-2 px-2.5 py-1 bg-amber-400 text-emerald-950 text-[10px] font-black uppercase rounded-lg shadow-md flex items-center gap-1 z-10">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" /> FEATURED
-                      </span>
-                    )}
-
-                    <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-lg">
-                      {product.vendorArea}
-                    </span>
-                  </div>
-
-                  <div className="p-4 space-y-1.5">
-                    <span className="text-[10px] font-extrabold uppercase text-emerald-700 tracking-wider">
-                      {product.category}
-                    </span>
-                    <h4
+        {isCriticalDataLoading || isLoadingData ? (
+          <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <ProductSkeletonCard key={idx} viewMode="grid" />
+            ))}
+          </div>
+        ) : featuredProducts.length > 0 ? (
+          <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+            {featuredProducts.slice(0, 8).map((product) => {
+              const isSaved = wishlist.includes(product.id);
+              const isAssignedFeatured = featuredProductIds.includes(product.id);
+              const vendor = vendors.find(
+                (v) => v.id === product.vendorId || v.businessName === product.vendorName
+              );
+              return (
+                <div
+                  key={product.id}
+                  className={`bg-white rounded-3xl border ${isAssignedFeatured ? 'border-2 border-amber-400 shadow-md' : 'border-slate-200'} overflow-hidden shadow-2xs flex flex-col justify-between group`}
+                >
+                  <div>
+                    <div
+                      className="relative h-44 bg-slate-100 overflow-hidden cursor-pointer"
                       onClick={() => handleProductClick(product.id)}
-                      className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 hover:text-emerald-700 cursor-pointer transition-colors"
                     >
-                      {product.name}
-                    </h4>
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleWishlist(product.id);
+                        }}
+                        className={`absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-colors ${
+                          isSaved
+                            ? 'bg-amber-400 text-emerald-950'
+                            : 'bg-white/80 text-slate-700 hover:text-red-500'
+                        }`}
+                      >
+                        <Star className={`w-4 h-4 ${isSaved ? 'fill-emerald-950' : ''}`} />
+                      </button>
 
-                    <p className="text-[11px] text-slate-500 truncate">By {product.vendorName}</p>
-
-                    <div className="pt-1 flex items-baseline gap-2">
-                      <span className="text-base font-black text-emerald-950 font-mono">
-                        ₦{product.price.toLocaleString()}
-                      </span>
-                      {product.salePrice && (
-                        <span className="text-[10px] text-slate-400 line-through font-mono">
-                          ₦{product.salePrice.toLocaleString()}
+                      {isAssignedFeatured && (
+                        <span className="absolute top-2 left-2 px-2.5 py-1 bg-amber-400 text-emerald-950 text-[10px] font-black uppercase rounded-lg shadow-md flex items-center gap-1 z-10">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" /> FEATURED
                         </span>
                       )}
+
+                      <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-lg">
+                        {product.vendorArea}
+                      </span>
+                    </div>
+
+                    <div className="p-4 space-y-1.5">
+                      <span className="text-[10px] font-extrabold uppercase text-emerald-700 tracking-wider">
+                        {product.category}
+                      </span>
+                      <h4
+                        onClick={() => handleProductClick(product.id)}
+                        className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 hover:text-emerald-700 cursor-pointer transition-colors"
+                      >
+                        {product.name}
+                      </h4>
+
+                      <p className="text-[11px] text-slate-500 truncate">By {product.vendorName}</p>
+
+                      <div className="pt-1 flex items-baseline gap-2">
+                        <span className="text-base font-black text-emerald-950 font-mono">
+                          ₦{product.price.toLocaleString()}
+                        </span>
+                        {product.salePrice && (
+                          <span className="text-[10px] text-slate-400 line-through font-mono">
+                            ₦{product.salePrice.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="p-4 pt-0 flex flex-col gap-2">
-                  <WhatsAppChatButton
-                    whatsappNumber={vendor?.whatsapp}
-                    businessName={product.vendorName}
-                    type="product"
-                    productTitle={product.name}
-                    productPrice={product.price}
-                    vendorId={product.vendorId}
-                    variant="primary"
-                    className="w-full text-xs"
-                    label="Direct WhatsApp Chat"
-                  />
-                  <button
-                    onClick={() => handleProductClick(product.id)}
-                    className="w-full py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl text-xs font-bold transition-colors"
-                  >
-                    View Details
-                  </button>
+                  <div className="p-4 pt-0 flex flex-col gap-2">
+                    <WhatsAppChatButton
+                      whatsappNumber={vendor?.whatsapp}
+                      businessName={product.vendorName}
+                      type="product"
+                      productTitle={product.name}
+                      productPrice={product.price}
+                      vendorId={product.vendorId}
+                      variant="primary"
+                      className="w-full text-xs"
+                      label="Direct WhatsApp Chat"
+                    />
+                    <button
+                      onClick={() => handleProductClick(product.id)}
+                      className="w-full py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl text-xs font-bold transition-colors"
+                    >
+                      View Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : criticalDataError ? (
+          <div className="p-8 text-center bg-white rounded-3xl border border-red-200 shadow-2xs space-y-3">
+            <p className="text-xs text-red-600 font-semibold">{criticalDataError}</p>
+            <button
+              onClick={refreshCriticalData}
+              className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors"
+            >
+              Retry Connection
+            </button>
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 shadow-2xs space-y-2">
+            <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
+            <p className="text-xs text-slate-600 font-medium">No marketplace products listed yet.</p>
+          </div>
+        )}
       </section>
 
       {/* 5. Business Directory: Featured & Verified Storefronts */}
@@ -1220,99 +1283,128 @@ export const HomeView: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sponsoredVendors.slice(0, 6).map((vendor) => (
-            <div
-              key={vendor.id}
-              className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xs flex flex-col justify-between group"
-            >
-              <div>
-                {/* Cover & Badges */}
-                <div className="relative h-44 overflow-hidden bg-slate-100">
-                  <img
-                    src={vendor.coverImageUrl}
-                    alt={vendor.businessName}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                    {vendor.isVerified && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white shadow-xs">
-                        <CheckCircle2 className="w-3 h-3 text-amber-300" /> Verified
-                      </span>
-                    )}
-                    {vendor.isPremium && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-emerald-950 shadow-xs">
-                        <Sparkles className="w-3 h-3" /> Premium
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-xl flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-amber-400" /> {vendor.area}
-                  </span>
-                </div>
-
-                {/* Body Content */}
-                <div className="p-5 space-y-3">
-                  <div className="flex items-start gap-3">
+        {isCriticalDataLoading || isLoadingData ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <VendorSkeletonCard key={idx} viewMode="grid" />
+            ))}
+          </div>
+        ) : (sponsoredVendors.length > 0 ? sponsoredVendors : approvedVendors).length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(sponsoredVendors.length > 0 ? sponsoredVendors : approvedVendors).slice(0, 6).map((vendor) => (
+              <div
+                key={vendor.id}
+                className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xs flex flex-col justify-between group"
+              >
+                <div>
+                  {/* Cover & Badges */}
+                  <div className="relative h-44 overflow-hidden bg-slate-100">
                     <img
-                      src={vendor.logoUrl}
+                      src={vendor.coverImageUrl}
                       alt={vendor.businessName}
-                      className="w-12 h-12 rounded-2xl object-cover border-2 border-white shadow-md -mt-8 relative z-10 bg-white"
+                      className="w-full h-full object-cover"
                     />
-                    <div className="flex-1 min-w-0">
-                      <h3
-                        onClick={() => handleVendorClick(vendor.id)}
-                        className="font-black text-base text-slate-900 hover:text-emerald-700 cursor-pointer transition-colors truncate font-display"
-                      >
-                        {vendor.businessName}
-                      </h3>
-                      <p className="text-xs text-emerald-800 font-bold">{vendor.category}</p>
-                    </div>
-                  </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-normal">
-                    {vendor.description}
-                  </p>
-
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-1 text-amber-500 font-bold">
-                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      <span>{vendor.rating > 0 ? vendor.rating : 'New'}</span>
-                      <span className="text-slate-400 font-normal">
-                        ({vendor.reviewCount} reviews)
-                      </span>
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                      {vendor.isVerified && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white shadow-xs">
+                          <CheckCircle2 className="w-3 h-3 text-amber-300" /> Verified
+                        </span>
+                      )}
+                      {vendor.isPremium && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-emerald-950 shadow-xs">
+                          <Sparkles className="w-3 h-3" /> Premium
+                        </span>
+                      )}
                     </div>
 
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      {vendor.yearsInBusiness} yrs in business
+                    <span className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-xl flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-amber-400" /> {vendor.area}
                     </span>
                   </div>
+
+                  {/* Body Content */}
+                  <div className="p-5 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={vendor.logoUrl}
+                        alt={vendor.businessName}
+                        className="w-12 h-12 rounded-2xl object-cover border-2 border-white shadow-md -mt-8 relative z-10 bg-white"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3
+                          onClick={() => handleVendorClick(vendor.id)}
+                          className="font-black text-base text-slate-900 hover:text-emerald-700 cursor-pointer transition-colors truncate font-display"
+                        >
+                          {vendor.businessName}
+                        </h3>
+                        <p className="text-xs text-emerald-800 font-bold">{vendor.category}</p>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-normal">
+                      {vendor.description}
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-1 text-amber-500 font-bold">
+                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                        <span>{vendor.rating > 0 ? vendor.rating : 'New'}</span>
+                        <span className="text-slate-400 font-normal">
+                          ({vendor.reviewCount} reviews)
+                        </span>
+                      </div>
+
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        {vendor.yearsInBusiness} yrs in business
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
+                  <button
+                    onClick={() => handleVendorClick(vendor.id)}
+                    className="flex-1 py-2 text-xs font-bold text-emerald-950 bg-emerald-100/80 hover:bg-emerald-200/80 rounded-xl transition-colors text-center"
+                  >
+                    View Storefront
+                  </button>
+                  <WhatsAppChatButton
+                    whatsappNumber={vendor.whatsapp}
+                    businessName={vendor.businessName}
+                    type="business"
+                    vendorId={vendor.id}
+                    variant="primary"
+                    label="Direct WhatsApp Chat"
+                  />
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
-                <button
-                  onClick={() => handleVendorClick(vendor.id)}
-                  className="flex-1 py-2 text-xs font-bold text-emerald-950 bg-emerald-100/80 hover:bg-emerald-200/80 rounded-xl transition-colors text-center"
-                >
-                  View Storefront
-                </button>
-                <WhatsAppChatButton
-                  whatsappNumber={vendor.whatsapp}
-                  businessName={vendor.businessName}
-                  type="business"
-                  vendorId={vendor.id}
-                  variant="primary"
-                  label="Direct WhatsApp Chat"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : criticalDataError ? (
+          <div className="p-8 text-center bg-white rounded-3xl border border-red-200 shadow-2xs space-y-3">
+            <p className="text-xs text-red-600 font-semibold">{criticalDataError}</p>
+            <button
+              onClick={refreshCriticalData}
+              className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors"
+            >
+              Retry Connection
+            </button>
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 shadow-2xs space-y-3">
+            <Building2 className="w-10 h-10 text-slate-300 mx-auto" />
+            <p className="text-xs text-slate-600 font-medium">No businesses registered yet. Be the first local store in Ikorodu!</p>
+            <button
+              onClick={() => setActiveTab('vendor-register')}
+              className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors"
+            >
+              Register Your Business
+            </button>
+          </div>
+        )}
       </section>
 
       {/* 6. Promotional Plans Section (SINGLE ROW MANDATE) */}
@@ -1406,6 +1498,7 @@ export const HomeView: React.FC = () => {
           handleVendorClick={handleVendorClick}
           handleProductClick={handleProductClick}
           trackVendorWhatsAppClick={trackVendorWhatsAppClick}
+          isLoading={isCriticalDataLoading || isLoadingData}
         />
       </section>
 

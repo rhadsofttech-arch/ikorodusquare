@@ -271,3 +271,23 @@ export interface AuditLog {
   details: string;
   timestamp: string;
 }
+
+export type VerificationRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface VerificationRequest {
+  id: string;
+  vendorId: string;
+  vendorName: string;
+  amountNaira: number; // 3000
+  bankName: string; // First City Monument Bank (FCMB)
+  accountName: string; // Rhadsoft Tech - IkoroduSquare
+  accountNumber: string; // 9474918014
+  proofUrl: string; // Proof of payment receipt URL in Supabase Storage
+  proofFileName: string;
+  txnRef: string;
+  status: VerificationRequestStatus;
+  adminNote?: string;
+  requestedAt: string;
+  reviewedAt?: string;
+}
+

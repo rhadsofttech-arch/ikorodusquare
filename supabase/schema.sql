@@ -233,3 +233,29 @@ CREATE POLICY "Anyone can upsert OTP code" ON public.otp_codes FOR INSERT WITH C
 CREATE POLICY "Anyone can update OTP code" ON public.otp_codes FOR UPDATE USING (true);
 CREATE POLICY "Anyone can delete OTP code" ON public.otp_codes FOR DELETE USING (true);
 
+-- 10. VERIFICATION REQUESTS TABLE (One-Time ₦3,000 Vendor Verification)
+CREATE TABLE IF NOT EXISTS public.verification_requests (
+  id TEXT PRIMARY KEY,
+  vendor_id TEXT NOT NULL REFERENCES public.vendors(id) ON DELETE CASCADE,
+  vendor_name TEXT NOT NULL,
+  amount_naira NUMERIC NOT NULL DEFAULT 3000,
+  bank_name TEXT NOT NULL DEFAULT 'First City Monument Bank (FCMB)',
+  account_name TEXT NOT NULL DEFAULT 'Rhadsoft Tech - IkoroduSquare',
+  account_number TEXT NOT NULL DEFAULT '9474918014',
+  proof_url TEXT NOT NULL,
+  proof_file_name TEXT,
+  txn_ref TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected'
+  admin_note TEXT,
+  requested_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ
+);
+
+ALTER TABLE public.verification_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Verification requests viewable by everyone" ON public.verification_requests FOR SELECT USING (true);
+CREATE POLICY "Anyone can create verification request" ON public.verification_requests FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update verification request" ON public.verification_requests FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete verification request" ON public.verification_requests FOR DELETE USING (true);
+
+

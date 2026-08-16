@@ -8,6 +8,7 @@ import {
   Review,
   Enquiry,
   PromotionRequest,
+  VerificationRequest,
   NotificationItem,
   AuditLog,
   IkoroduArea,
@@ -35,6 +36,9 @@ import {
   saveEnquiryToSupabase,
   fetchPromotionsFromSupabase,
   savePromotionToSupabase,
+  fetchVerificationRequestsFromSupabase,
+  saveVerificationRequestToSupabase,
+  deleteVerificationRequestInSupabase,
   fetchNotificationsFromSupabase,
   saveNotificationToSupabase,
   fetchAuditLogsFromSupabase,
@@ -51,6 +55,7 @@ interface AppContextType {
   // Supabase status
   isSupabaseConnected: boolean;
   refreshData: () => Promise<void>;
+  refreshCriticalData: () => Promise<void>;
 
   // Role & Auth
   currentRole: UserRole;
@@ -62,12 +67,16 @@ interface AppContextType {
   
   // Data State
   isLoadingData: boolean;
+  isCriticalDataLoading: boolean;
+  isSecondaryDataLoading: boolean;
+  criticalDataError: string | null;
   vendors: Vendor[];
   products: Product[];
   categories: Category[];
   reviews: Review[];
   enquiries: Enquiry[];
   promotionRequests: PromotionRequest[];
+  verificationRequests: VerificationRequest[];
   notifications: NotificationItem[];
   auditLogs: AuditLog[];
   wishlist: string[]; // Product IDs
@@ -146,6 +155,11 @@ interface AppContextType {
   }) => void;
   rejectPromotionRequest: (requestId: string, adminNote?: string) => void;
   removeActivePromotion: (requestId: string) => void;
+
+  // Paid Vendor Verification Actions (₦3,000)
+  submitVerificationRequest: (data: Omit<VerificationRequest, 'id' | 'status' | 'requestedAt'>) => VerificationRequest;
+  approveVerificationRequest: (requestId: string, adminNote?: string) => void;
+  rejectVerificationRequest: (requestId: string, adminNote?: string) => void;
 
   toggleWishlist: (productId: string) => void;
   toggleFollowVendor: (vendorId: string) => void;
@@ -239,12 +253,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // State - Pure real database states, initialized to empty arrays
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [isCriticalDataLoading, setIsCriticalDataLoading] = useState<boolean>(true);
+  const [isSecondaryDataLoading, setIsSecondaryDataLoading] = useState<boolean>(true);
+  const [criticalDataError, setCriticalDataError] = useState<string | null>(null);
 
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [promotionRequests, setPromotionRequests] = useState<PromotionRequest[]>([]);
+  const [verificationRequests, setVerificationRequests] = useState<VerificationRequest[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -255,36 +273,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedArea, setSelectedArea] = useState<IkoroduArea | 'All'>('All');
 
-  const refreshData = useCallback(async () => {
+  // Tier 1: Critical Public Catalog (Vendors, Products, Promotions)
+  const fetchCriticalPublicData = useCallback(async () => {
     if (!isSupabaseConfigured()) {
+      setIsCriticalDataLoading(false);
       setIsLoadingData(false);
       return;
     }
+    setIsCriticalDataLoading(true);
     setIsLoadingData(true);
+    setCriticalDataError(null);
     try {
-      const [sbVendors, sbProducts, sbReviews, sbEnquiries, sbPromos, sbNotifs, sbLogs] = await Promise.all([
+      const [sbVendors, sbProducts, sbPromos] = await Promise.all([
         fetchVendorsFromSupabase(),
         fetchProductsFromSupabase(),
-        fetchReviewsFromSupabase(),
-        fetchEnquiriesFromSupabase(),
         fetchPromotionsFromSupabase(),
-        fetchNotificationsFromSupabase(),
-        fetchAuditLogsFromSupabase(),
       ]);
 
       if (sbVendors !== null) setVendors(sbVendors);
       if (sbProducts !== null) setProducts(sbProducts);
-      if (sbReviews !== null) setReviews(sbReviews);
-      if (sbEnquiries !== null) setEnquiries(sbEnquiries);
       if (sbPromos !== null) setPromotionRequests(sbPromos);
-      if (sbNotifs !== null) setNotifications(sbNotifs);
-      if (sbLogs !== null) setAuditLogs(sbLogs);
-    } catch (err) {
-      console.error('Error refreshing data from Supabase:', err);
+      setCriticalDataError(null);
+    } catch (err: any) {
+      console.error('Error fetching critical public data (vendors, products, promotions):', err);
+      setCriticalDataError(err?.message || 'Failed to load business directory and products. Please check your internet connection.');
     } finally {
+      setIsCriticalDataLoading(false);
       setIsLoadingData(false);
     }
   }, []);
+
+  // Tier 2: Secondary / Background Data (Reviews, Enquiries, Verifications, Notifications, Audit Logs)
+  const fetchSecondaryData = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      setIsSecondaryDataLoading(false);
+      return;
+    }
+    setIsSecondaryDataLoading(true);
+    try {
+      const results = await Promise.allSettled([
+        fetchReviewsFromSupabase(),
+        fetchEnquiriesFromSupabase(),
+        fetchVerificationRequestsFromSupabase(),
+        fetchNotificationsFromSupabase(),
+        fetchAuditLogsFromSupabase(),
+      ]);
+
+      const [resReviews, resEnquiries, resVerifs, resNotifs, resLogs] = results;
+      if (resReviews.status === 'fulfilled' && resReviews.value !== null) setReviews(resReviews.value);
+      if (resEnquiries.status === 'fulfilled' && resEnquiries.value !== null) setEnquiries(resEnquiries.value);
+      if (resVerifs.status === 'fulfilled' && resVerifs.value !== null) setVerificationRequests(resVerifs.value);
+      if (resNotifs.status === 'fulfilled' && resNotifs.value !== null) setNotifications(resNotifs.value);
+      if (resLogs.status === 'fulfilled' && resLogs.value !== null) setAuditLogs(resLogs.value);
+    } catch (err) {
+      console.warn('Non-blocking secondary background data refresh encountered an error:', err);
+    } finally {
+      setIsSecondaryDataLoading(false);
+    }
+  }, []);
+
+  // Combined Refresh (runs both concurrently without blocking critical public UI)
+  const refreshData = useCallback(async () => {
+    await Promise.allSettled([
+      fetchCriticalPublicData(),
+      fetchSecondaryData(),
+    ]);
+  }, [fetchCriticalPublicData, fetchSecondaryData]);
+
+  const refreshCriticalData = useCallback(async () => {
+    await fetchCriticalPublicData();
+  }, [fetchCriticalPublicData]);
 
   const setSelectedVendorId = (id: string | null) => {
     setSelectedVendorIdState(id);
@@ -474,7 +532,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let isMounted = true;
     if (!isSupabaseConfigured()) {
       const timer = setTimeout(() => {
-        if (isMounted) setIsLoadingData(false);
+        if (isMounted) {
+          setIsCriticalDataLoading(false);
+          setIsLoadingData(false);
+          setIsSecondaryDataLoading(false);
+        }
       }, 500);
       return () => {
         isMounted = false;
@@ -482,21 +544,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Load initial data from Supabase
-    (async () => {
-      setIsLoadingData(true);
-      try {
-        await refreshData();
+    // 1. Tier 1: Fire critical public data load immediately (fastest path to show homepage & catalog)
+    fetchCriticalPublicData();
 
-        // Check current session
+    // 2. Tier 2: Concurrently fire secondary background data without blocking public catalog
+    fetchSecondaryData();
+
+    // 3. Auth: Concurrently check session without blocking public catalog
+    (async () => {
+      try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        await syncSessionUser(session);
+        if (isMounted && session) {
+          await syncSessionUser(session);
+        }
       } catch (err) {
-        console.error('Error fetching initial data from Supabase:', err);
-      } finally {
-        if (isMounted) setIsLoadingData(false);
+        console.error('Session sync error on mount:', err);
       }
     })();
 
@@ -526,7 +590,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       authListener?.subscription?.unsubscribe();
     };
-  }, [refreshData]);
+  }, [fetchCriticalPublicData, fetchSecondaryData]);
 
   // Route protection effect: automatically redirect if protected tab is active without valid user
   useEffect(() => {
@@ -1440,6 +1504,155 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveAuditLogToSupabase(log);
   };
 
+  // ==========================================
+  // PAID VENDOR VERIFICATION ACTIONS (₦3,000)
+  // ==========================================
+
+  const submitVerificationRequest = (
+    data: Omit<VerificationRequest, 'id' | 'status' | 'requestedAt'>
+  ): VerificationRequest => {
+    const newReq: VerificationRequest = {
+      ...data,
+      id: `vr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      amountNaira: 3000,
+      bankName: data.bankName || MANUAL_PAYMENT_INFO.bankName,
+      accountName: data.accountName || MANUAL_PAYMENT_INFO.accountName,
+      accountNumber: data.accountNumber || MANUAL_PAYMENT_INFO.accountNumber,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+    };
+
+    setVerificationRequests((prev) => [newReq, ...prev]);
+    saveVerificationRequestToSupabase(newReq);
+
+    // Notify Admin
+    const notif: NotificationItem = {
+      id: `n-${Date.now()}`,
+      userId: 'admin',
+      targetRole: 'admin',
+      title: 'New ₦3,000 Vendor Verification Request',
+      message: `${data.vendorName} submitted ₦3,000 payment proof (Ref: ${data.txnRef}) for store verification.`,
+      type: 'vendor_approval',
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications((prev) => [notif, ...prev]);
+    saveNotificationToSupabase(notif);
+
+    // Audit Log
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VERIFICATION_REQUEST_SUBMITTED',
+      performedBy: data.vendorName,
+      role: 'vendor',
+      details: `Submitted ₦3,000 verification request (Ref: ${data.txnRef}, File: ${data.proofFileName})`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+
+    return newReq;
+  };
+
+  const approveVerificationRequest = (requestId: string, adminNote?: string) => {
+    const targetReq = verificationRequests.find((r) => r.id === requestId);
+    if (!targetReq) return;
+
+    const nowStr = new Date().toISOString();
+
+    // 1. Check if vendor is unverified; if unverified, invoke existing toggleVerifyVendor
+    const targetVendor = vendors.find((v) => v.id === targetReq.vendorId);
+    if (targetVendor && !targetVendor.isVerified) {
+      toggleVerifyVendor(targetVendor.id);
+    }
+
+    // 2. Update the verification request status to 'approved'
+    const updatedReq: VerificationRequest = {
+      ...targetReq,
+      status: 'approved',
+      adminNote: adminNote || '₦3,000 FCMB bank transfer verified by Administrator.',
+      reviewedAt: nowStr,
+    };
+
+    setVerificationRequests((prev) =>
+      prev.map((r) => (r.id === requestId ? updatedReq : r))
+    );
+    saveVerificationRequestToSupabase(updatedReq);
+
+    // 3. Notify the Vendor
+    const notif: NotificationItem = {
+      id: `n-${Date.now()}`,
+      userId: targetReq.vendorId,
+      targetRole: 'vendor',
+      title: 'Storefront Verification Approved! 🎉',
+      message: `Congratulations! Your ₦3,000 verification payment was approved. The official Verified Business badge is now active on your storefront and listings.`,
+      type: 'vendor_approval',
+      isRead: false,
+      createdAt: nowStr,
+    };
+    setNotifications((prev) => [notif, ...prev]);
+    saveNotificationToSupabase(notif);
+
+    // 4. Audit Log
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VERIFICATION_REQUEST_APPROVED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Approved ₦3,000 verification request for "${targetReq.vendorName}" (Vendor ID: ${targetReq.vendorId}, Ref: ${targetReq.txnRef})`,
+      timestamp: nowStr,
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+  };
+
+  const rejectVerificationRequest = (requestId: string, adminNote?: string) => {
+    const targetReq = verificationRequests.find((r) => r.id === requestId);
+    if (!targetReq) return;
+
+    const nowStr = new Date().toISOString();
+
+    // NOTE: vendors.is_verified is NOT altered upon rejection.
+    const updatedReq: VerificationRequest = {
+      ...targetReq,
+      status: 'rejected',
+      adminNote: adminNote || 'Payment verification could not be confirmed. Please check transaction details and re-submit.',
+      reviewedAt: nowStr,
+    };
+
+    setVerificationRequests((prev) =>
+      prev.map((r) => (r.id === requestId ? updatedReq : r))
+    );
+    saveVerificationRequestToSupabase(updatedReq);
+
+    // Notify the Vendor
+    const notif: NotificationItem = {
+      id: `n-${Date.now()}`,
+      userId: targetReq.vendorId,
+      targetRole: 'vendor',
+      title: 'Verification Request Update',
+      message: `Your verification payment could not be verified: ${updatedReq.adminNote}. You may submit a new receipt in your Vendor Dashboard.`,
+      type: 'vendor_approval',
+      isRead: false,
+      createdAt: nowStr,
+    };
+    setNotifications((prev) => [notif, ...prev]);
+    saveNotificationToSupabase(notif);
+
+    // Audit Log
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VERIFICATION_REQUEST_REJECTED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Rejected verification request for "${targetReq.vendorName}" (Reason: ${updatedReq.adminNote})`,
+      timestamp: nowStr,
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+  };
+
+
   // Engagement tracking
   const trackVendorWhatsAppClick = (vendorId: string) => {
     setVendors((prev) =>
@@ -1567,6 +1780,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         isSupabaseConnected,
         refreshData,
+        refreshCriticalData,
         currentRole,
         setRole,
         currentUser,
@@ -1574,12 +1788,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeTab,
         setActiveTab,
         isLoadingData,
+        isCriticalDataLoading,
+        isSecondaryDataLoading,
+        criticalDataError,
         vendors,
         products,
         categories: CATEGORIES,
         reviews,
         enquiries,
         promotionRequests,
+        verificationRequests,
         notifications,
         auditLogs,
         wishlist,
@@ -1619,6 +1837,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createDirectPromotionAssignment,
         rejectPromotionRequest,
         removeActivePromotion,
+        submitVerificationRequest,
+        approveVerificationRequest,
+        rejectVerificationRequest,
         toggleWishlist,
         toggleFollowVendor,
         markNotificationRead,

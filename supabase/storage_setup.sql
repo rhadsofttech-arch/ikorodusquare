@@ -60,3 +60,20 @@ USING (
   bucket_id = 'product-images'
   AND (storage.foldername(name))[1] IS NOT NULL
 );
+
+-- ====================================================================
+-- STORAGE BUCKET: verification-receipts (₦3,000 Vendor Verification Proofs)
+-- ====================================================================
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'verification-receipts',
+  'verification-receipts',
+  true,
+  10485760, -- 10MB limit
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'application/pdf']
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = true,
+  file_size_limit = 10485760,
+  allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'application/pdf'];
+

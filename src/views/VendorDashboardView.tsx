@@ -37,6 +37,7 @@ import {
   Building2,
   Save,
   Loader2,
+  Copy,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO, PROMOTION_OPTIONS, IKORODU_AREAS } from '../data/mockData';
@@ -57,12 +58,14 @@ export const VendorDashboardView: React.FC = () => {
     reviews,
     enquiries,
     promotionRequests,
+    verificationRequests,
     addProduct,
     updateProduct,
     deleteProduct,
     replyReview,
     replyEnquiry,
     submitPromotionRequest,
+    submitVerificationRequest,
     updateVendorProfile,
     categories,
     setActiveTab,
@@ -70,7 +73,7 @@ export const VendorDashboardView: React.FC = () => {
     currentUser,
   } = useApp();
 
-  const [vendorTab, setVendorTab] = useState<'overview' | 'products' | 'profile' | 'enquiries' | 'reviews' | 'promotions' | 'qrcode'>('overview');
+  const [vendorTab, setVendorTab] = useState<'overview' | 'products' | 'profile' | 'enquiries' | 'reviews' | 'promotions' | 'verification' | 'qrcode'>('overview');
 
   // Strict Vendor Access Guard
   if (!currentUser || currentUser.role !== 'vendor') {
@@ -129,6 +132,16 @@ export const VendorDashboardView: React.FC = () => {
   const [txnRef, setTxnRef] = useState('');
   const [promoNotes, setPromoNotes] = useState('');
   const [promoSuccessMsg, setPromoSuccessMsg] = useState(false);
+
+  // Paid Verification State (₦3,000 one-time fee)
+  const [verifTxnRef, setVerifTxnRef] = useState('');
+  const [verifProofFileUploaded, setVerifProofFileUploaded] = useState(false);
+  const [verifProofFileName, setVerifProofFileName] = useState('');
+  const [verifProofFileUrl, setVerifProofFileUrl] = useState('');
+  const [isUploadingVerifReceipt, setIsUploadingVerifReceipt] = useState(false);
+  const [verifSuccessMsg, setVerifSuccessMsg] = useState(false);
+  const [verifErrorMsg, setVerifErrorMsg] = useState<string | null>(null);
+  const [copiedVerifField, setCopiedVerifField] = useState<string | null>(null);
 
   // Active vendor (match currentUser vendor strictly without falling back to other users' stores)
   const userVendor = vendors.find(
@@ -484,6 +497,74 @@ export const VendorDashboardView: React.FC = () => {
     }, 2500);
   };
 
+  const vendorVerifRequest = verificationRequests.find((r) => r.vendorId === vendor.id);
+
+  const handleCopyVerifText = (text: string, fieldName: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedVerifField(fieldName);
+    setTimeout(() => setCopiedVerifField(null), 2000);
+  };
+
+  const handleVerifReceiptSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingVerifReceipt(true);
+    setVerifProofFileName(file.name);
+    setVerifErrorMsg(null);
+
+    const url = await uploadFileToSupabaseStorage(
+      'verification-receipts',
+      `receipt-${vendor.id}-${Date.now()}.${file.name.split('.').pop()}`,
+      file
+    );
+    if (url) {
+      setVerifProofFileUrl(url);
+      setVerifProofFileUploaded(true);
+    } else {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setVerifProofFileUrl(reader.result as string);
+        setVerifProofFileUploaded(true);
+      };
+      reader.readAsDataURL(file);
+    }
+    setIsUploadingVerifReceipt(false);
+  };
+
+  const handleVerificationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifErrorMsg(null);
+
+    if (vendor.status !== 'approved') {
+      setVerifErrorMsg('Your business must first be approved before you can apply for verification.');
+      return;
+    }
+
+    if (!verifTxnRef.trim()) {
+      setVerifErrorMsg('Please enter your FCMB transaction reference.');
+      return;
+    }
+
+    if (!verifProofFileUploaded || !verifProofFileUrl) {
+      setVerifErrorMsg('Please upload your ₦3,000 bank transfer payment receipt.');
+      return;
+    }
+
+    submitVerificationRequest({
+      vendorId: vendor.id,
+      vendorName: vendor.businessName,
+      amountNaira: 3000,
+      bankName: MANUAL_PAYMENT_INFO.bankName,
+      accountName: MANUAL_PAYMENT_INFO.accountName,
+      accountNumber: MANUAL_PAYMENT_INFO.accountNumber,
+      proofUrl: verifProofFileUrl,
+      proofFileName: verifProofFileName || 'verification_receipt.png',
+      txnRef: verifTxnRef.trim(),
+    });
+
+    setVerifSuccessMsg(true);
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Top Bar with Back to Marketplace Button */}
@@ -617,6 +698,19 @@ export const VendorDashboardView: React.FC = () => {
         >
           <CreditCard className="w-3.5 h-3.5" />
           <span>Promotions & FCMB Transfer</span>
+        </button>
+        <button
+          onClick={() => setVendorTab('verification')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            vendorTab === 'verification'
+              ? 'bg-emerald-950 text-amber-300 shadow-xs'
+              : vendor.isVerified
+              ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
+              : 'bg-amber-50 text-amber-950 border border-amber-300'
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+          <span>{vendor.isVerified ? 'Verified Business' : 'Get Verified (₦3,000)'}</span>
         </button>
         <button
           onClick={() => setVendorTab('qrcode')}
@@ -781,7 +875,9 @@ export const VendorDashboardView: React.FC = () => {
                 </div>
                 <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
                   <span className="text-[10px] text-slate-500 font-bold block uppercase">Verified Status</span>
-                  <strong className="text-xs font-bold text-emerald-700">100% Verified</strong>
+                  <strong className={`text-xs font-bold ${vendor.isVerified ? 'text-emerald-700' : 'text-amber-800'}`}>
+                    {vendor.isVerified ? 'Verified Business' : 'Unverified (₦3k)'}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -1562,7 +1658,336 @@ export const VendorDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* 6. Business QR Code */}
+      {/* 6. Paid Vendor Verification (₦3,000) */}
+      {vendorTab === 'verification' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-4">
+            <div>
+              <h3 className="text-xl font-black text-slate-900 font-display flex items-center gap-2">
+                <ShieldCheck className="w-6 h-6 text-emerald-700" />
+                <span>Get Verified</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Official trust accreditation for legitimate registered merchants across IkoroduSquare.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-emerald-100 text-emerald-900 text-xs font-mono font-bold rounded-full border border-emerald-300">
+                ₦3,000 One-Time Fee
+              </span>
+            </div>
+          </div>
+
+          {/* Scenario 1: Vendor is Already Verified */}
+          {vendor.isVerified ? (
+            <div className="p-6 sm:p-8 bg-gradient-to-br from-emerald-900 via-emerald-950 to-teal-950 text-white rounded-3xl border border-emerald-700/80 shadow-sm space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-7 h-7 text-emerald-300" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-black text-white font-display flex items-center gap-2">
+                    <span>Verified Business</span>
+                    <span className="px-2.5 py-0.5 bg-emerald-400/20 text-emerald-300 text-[10px] font-mono font-bold rounded-full border border-emerald-400/30">
+                      ACTIVE
+                    </span>
+                  </h4>
+                  <p className="text-xs text-emerald-200/90 font-medium">
+                    Your business is already verified.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs text-emerald-100">
+                <div className="p-3 bg-emerald-900/60 rounded-2xl border border-emerald-700/60 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Verified Business badge active on your storefront</span>
+                </div>
+                <div className="p-3 bg-emerald-900/60 rounded-2xl border border-emerald-700/60 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Listed in the "Verified Only" directory filter</span>
+                </div>
+              </div>
+
+              {vendorVerifRequest && (
+                <div className="mt-4 pt-4 border-t border-emerald-800/80 text-[11px] text-emerald-300 flex flex-wrap items-center justify-between gap-2">
+                  <span>Payment Ref: <strong className="font-mono text-white">{vendorVerifRequest.txnRef}</strong></span>
+                  <span>Amount: <strong className="font-mono text-white">₦{vendorVerifRequest.amountNaira.toLocaleString()}</strong></span>
+                  <span>Approved: <strong className="text-white">{vendorVerifRequest.reviewedAt ? new Date(vendorVerifRequest.reviewedAt).toLocaleDateString() : 'Active'}</strong></span>
+                </div>
+              )}
+            </div>
+          ) : vendor.status !== 'approved' ? (
+            /* Scenario 2: Vendor registration is not yet approved/live */
+            <div className="p-6 bg-amber-50 rounded-3xl border border-amber-200 text-amber-950 space-y-3">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-6 h-6 text-amber-700 shrink-0" />
+                <div>
+                  <h4 className="text-sm font-bold text-amber-950">Registration Approval Required</h4>
+                  <p className="text-xs text-amber-800">
+                    Your business must first be approved before you can apply for verification.
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-amber-800/90 pl-9">
+                Our administrative team is currently reviewing your business registration application. Once your store is approved and published on the directory, you can return here to complete verification.
+              </p>
+            </div>
+          ) : (
+            /* Scenario 3: Approved Vendor - Verification Application & Payment */
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: Benefits & FCMB Transfer Details */}
+              <div className="lg:col-span-5 space-y-5">
+                {/* Benefits Card */}
+                <div className="p-5 bg-white rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
+                  <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    Verification Benefits
+                  </h4>
+                  <ul className="space-y-2.5 text-xs text-slate-700">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="font-medium">Verified Business badge on all listings</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="font-medium">Increased customer trust across Ikorodu</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="font-medium">Eligible for the "Verified Only" directory filter</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="font-medium">Verification displayed across the vendor storefront</span>
+                    </li>
+                  </ul>
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-[11px] text-slate-500 leading-relaxed">
+                    Note: Verification confirms authentic business identity. It does not alter advertisement placement or category ranking.
+                  </div>
+                </div>
+
+                {/* Bank Account Details */}
+                <div className="p-5 bg-emerald-950 text-white rounded-3xl border border-emerald-800 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-emerald-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-black uppercase tracking-wider text-amber-400">
+                        Official Bank Transfer
+                      </span>
+                    </div>
+                    <span className="text-xs font-black text-white font-mono">₦3,000</span>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <span className="text-[10px] text-emerald-300 font-bold block uppercase">Bank Name</span>
+                      <p className="font-bold text-white text-sm">{MANUAL_PAYMENT_INFO.bankName}</p>
+                    </div>
+
+                    <div className="p-3 bg-emerald-900/80 rounded-2xl border border-emerald-700/60 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-emerald-300 font-bold block uppercase">Account Number</span>
+                        <span className="text-base font-black font-mono text-amber-300 tracking-wider">
+                          {MANUAL_PAYMENT_INFO.accountNumber}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyVerifText(MANUAL_PAYMENT_INFO.accountNumber, 'accountNumber')}
+                        className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-300 text-[11px] font-bold rounded-xl transition-all flex items-center gap-1 border border-emerald-600"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{copiedVerifField === 'accountNumber' ? 'Copied!' : 'Copy'}</span>
+                      </button>
+                    </div>
+
+                    <div className="p-3 bg-emerald-900/80 rounded-2xl border border-emerald-700/60 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-emerald-300 font-bold block uppercase">Account Name</span>
+                        <span className="text-xs font-bold text-white">
+                          {MANUAL_PAYMENT_INFO.accountName}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyVerifText(MANUAL_PAYMENT_INFO.accountName, 'accountName')}
+                        className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-amber-300 text-[11px] font-bold rounded-xl transition-all flex items-center gap-1 border border-emerald-600"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{copiedVerifField === 'accountName' ? 'Copied!' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Submission Form & Status */}
+              <div className="lg:col-span-7 space-y-5">
+                {/* Existing Request Status Alert if already submitted */}
+                {vendorVerifRequest && (
+                  <div
+                    className={`p-5 rounded-3xl border shadow-xs space-y-3 ${
+                      vendorVerifRequest.status === 'pending'
+                        ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+                        : vendorVerifRequest.status === 'approved'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                        : 'bg-red-50 border-red-200 text-red-950'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {vendorVerifRequest.status === 'pending' && <Clock className="w-5 h-5 text-amber-600" />}
+                        {vendorVerifRequest.status === 'approved' && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+                        {vendorVerifRequest.status === 'rejected' && <AlertCircle className="w-5 h-5 text-red-600" />}
+                        <h4 className="text-sm font-bold">
+                          {vendorVerifRequest.status === 'pending' && 'Pending Review'}
+                          {vendorVerifRequest.status === 'approved' && 'Verification Approved'}
+                          {vendorVerifRequest.status === 'rejected' && 'Verification Payment Rejected'}
+                        </h4>
+                      </div>
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                          vendorVerifRequest.status === 'pending'
+                            ? 'bg-amber-200 text-amber-900 animate-pulse'
+                            : vendorVerifRequest.status === 'approved'
+                            ? 'bg-emerald-200 text-emerald-900'
+                            : 'bg-red-200 text-red-900'
+                        }`}
+                      >
+                        {vendorVerifRequest.status}
+                      </span>
+                    </div>
+
+                    {vendorVerifRequest.status === 'pending' && (
+                      <div className="text-xs text-amber-900 space-y-2">
+                        <p>
+                          Our administrative team is reviewing your ₦3,000 transfer proof (Ref: <strong className="font-mono">{vendorVerifRequest.txnRef}</strong>). Once verified, your official badge will activate immediately.
+                        </p>
+                        <p className="text-[11px] text-amber-800">
+                          Submitted on {new Date(vendorVerifRequest.requestedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+
+                    {vendorVerifRequest.status === 'rejected' && (
+                      <div className="text-xs text-red-900 space-y-2">
+                        <p>
+                          <strong>Reason:</strong> {vendorVerifRequest.adminNote || 'Payment verification could not be confirmed.'}
+                        </p>
+                        <p className="text-[11px] text-red-700">
+                          Please verify your transfer details, ensure your receipt is clear, and submit a new request below.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Payment Form (Shown if no pending request, or if previous request was rejected) */}
+                {(!vendorVerifRequest || vendorVerifRequest.status === 'rejected') && (
+                  <div className="p-6 bg-white rounded-3xl border border-slate-200/90 shadow-xs space-y-5">
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 font-display">
+                        Submit ₦3,000 Verification Payment Proof
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        Upload your bank transfer receipt and enter your transaction session reference.
+                      </p>
+                    </div>
+
+                    {verifSuccessMsg ? (
+                      <div className="p-5 bg-emerald-50 text-emerald-900 text-xs rounded-2xl border border-emerald-200 space-y-2">
+                        <div className="flex items-center gap-2 font-bold text-sm">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <span>Verification request submitted successfully.</span>
+                        </div>
+                        <p className="text-emerald-800">
+                          Our team will review your payment and update your verification status.
+                        </p>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleVerificationSubmit} className="space-y-4">
+                        {verifErrorMsg && (
+                          <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                            <span>{verifErrorMsg}</span>
+                          </div>
+                        )}
+
+                        {/* Receipt Upload Dropzone */}
+                        <div className="p-5 border-2 border-dashed border-emerald-300 bg-emerald-50/40 rounded-2xl text-center space-y-2 relative cursor-pointer hover:bg-emerald-100/40 transition-all">
+                          <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp,.pdf"
+                            onChange={handleVerifReceiptSelect}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          />
+                          <Upload className="w-8 h-8 text-emerald-700 mx-auto" />
+                          <div className="text-xs font-bold text-emerald-950">
+                            {isUploadingVerifReceipt ? (
+                              <span className="text-emerald-700 animate-pulse flex items-center justify-center gap-1.5">
+                                <Loader2 className="w-4 h-4 animate-spin" /> Uploading receipt to Supabase...
+                              </span>
+                            ) : verifProofFileUploaded ? (
+                              <span className="text-emerald-900 flex items-center justify-center gap-1">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Attached: {verifProofFileName}
+                              </span>
+                            ) : (
+                              'Click or drag & drop ₦3,000 transfer receipt (JPG, PNG, PDF)'
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500">
+                            File will be uploaded to Supabase Storage (<span className="font-mono text-emerald-900">verification-receipts</span>).
+                          </p>
+                          {verifProofFileUrl && (
+                            <div className="mt-2 p-2 bg-white rounded-xl border border-slate-200 inline-block shadow-xs">
+                              {verifProofFileName.endsWith('.pdf') ? (
+                                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                                  <FileText className="w-4 h-4 text-red-600" /> PDF Receipt Attached
+                                </div>
+                              ) : (
+                                <img src={verifProofFileUrl} alt="Receipt preview" className="h-16 rounded-lg object-contain mx-auto" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Transaction Reference / Session ID <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. FCMB-VERIF-984210 or 3000-NIP-12345"
+                            value={verifTxnRef}
+                            onChange={(e) => setVerifTxnRef(e.target.value)}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-emerald-950 focus:ring-2 focus:ring-emerald-500 outline-hidden"
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={!verifProofFileUploaded || isUploadingVerifReceipt}
+                          className={`w-full py-3 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 ${
+                            verifProofFileUploaded && !isUploadingVerifReceipt
+                              ? 'bg-amber-400 text-emerald-950 hover:bg-amber-500 cursor-pointer font-black'
+                              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                          }`}
+                        >
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>Submit Verification Request (₦3,000)</span>
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 7. Business QR Code */}
       {vendorTab === 'qrcode' && (
         <StorefrontQRCode vendor={vendor} />
       )}

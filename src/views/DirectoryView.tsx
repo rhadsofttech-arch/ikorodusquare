@@ -30,6 +30,7 @@ export const DirectoryView: React.FC = () => {
     categories,
     promotionRequests = [],
     isLoadingData,
+    isCriticalDataLoading,
     searchQuery,
     setSearchQuery,
     selectedCategory,
@@ -262,7 +263,7 @@ export const DirectoryView: React.FC = () => {
       </div>
 
       {/* Directory Grid View / Skeleton Loading */}
-      {isLoadingData ? (
+      {isCriticalDataLoading || isLoadingData ? (
         viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, idx) => (

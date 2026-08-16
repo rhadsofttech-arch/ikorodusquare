@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MANUAL_PAYMENT_INFO } from '../data/mockData';
-import { PromotionRequest, Vendor, VendorFeature } from '../types';
+import { PromotionRequest, VerificationRequest, Vendor, VendorFeature } from '../types';
 import { VendorFeatureBadge } from '../components/VendorFeatureBadge';
 import { useSEO } from '../hooks/useSEO';
 
@@ -44,6 +44,7 @@ export const AdminPortalView: React.FC = () => {
     vendors,
     products,
     promotionRequests,
+    verificationRequests,
     enquiries,
     reviews,
     isLoadingData,
@@ -61,6 +62,8 @@ export const AdminPortalView: React.FC = () => {
     createDirectPromotionAssignment,
     rejectPromotionRequest,
     removeActivePromotion,
+    approveVerificationRequest,
+    rejectVerificationRequest,
     approveReview,
     rejectReview,
     deleteReview,
@@ -83,8 +86,11 @@ export const AdminPortalView: React.FC = () => {
     }
   };
 
-  const [adminTab, setAdminTab] = useState<'pending-vendors' | 'promotions-queue' | 'all-vendors' | 'review-moderation' | 'audit-logs'>('pending-vendors');
+  const [adminTab, setAdminTab] = useState<'pending-vendors' | 'verification-requests' | 'promotions-queue' | 'all-vendors' | 'review-moderation' | 'audit-logs'>('pending-vendors');
   const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [verifStatusFilter, setVerifStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [rejectVerifModalReq, setRejectVerifModalReq] = useState<VerificationRequest | null>(null);
+  const [rejectVerifNote, setRejectVerifNote] = useState('');
 
   // Directory Merchants Filters & Search
   const [vendorSearch, setVendorSearch] = useState('');
@@ -120,6 +126,7 @@ export const AdminPortalView: React.FC = () => {
 
   const pendingVendors = vendors.filter((v) => v.status === 'pending');
   const pendingPromos = promotionRequests.filter((pr) => pr.status === 'pending');
+  const pendingVerifications = verificationRequests.filter((vr) => vr.status === 'pending');
   const pendingReviews = reviews.filter((r) => r.status === 'pending');
 
   const now = new Date();
@@ -135,9 +142,13 @@ export const AdminPortalView: React.FC = () => {
     return false;
   });
 
-  const totalRevenueNaira = promotionRequests
-    .filter((pr) => pr.status === 'approved')
-    .reduce((sum, pr) => sum + pr.amountNaira, 0);
+  const approvedVerificationsCount = verificationRequests.filter((vr) => vr.status === 'approved').length;
+
+  const totalRevenueNaira =
+    promotionRequests
+      .filter((pr) => pr.status === 'approved')
+      .reduce((sum, pr) => sum + pr.amountNaira, 0) +
+    approvedVerificationsCount * 3000;
 
   // Filtered Vendors List
   const filteredVendors = vendors.filter((v) => {
@@ -364,10 +375,27 @@ export const AdminPortalView: React.FC = () => {
           }`}
         >
           <Building2 className="w-4 h-4 text-amber-400" />
-          <span>Vendor Approvals Queue ({pendingVendors.length})</span>
+          <span>Vendor Approvals ({pendingVendors.length})</span>
           {pendingVendors.length > 0 && (
             <span className="w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
               {pendingVendors.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setAdminTab('verification-requests')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            adminTab === 'verification-requests'
+              ? 'bg-emerald-950 text-amber-300 shadow-sm'
+              : 'bg-white text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-amber-400" />
+          <span>Verification Requests ({pendingVerifications.length})</span>
+          {pendingVerifications.length > 0 && (
+            <span className="w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
+              {pendingVerifications.length}
             </span>
           )}
         </button>
@@ -553,6 +581,197 @@ export const AdminPortalView: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB: Paid Vendor Verification Requests (₦3,000) */}
+      {adminTab === 'verification-requests' && (
+        <div className="space-y-6">
+          <div className="p-4 bg-emerald-950 text-emerald-100 rounded-2xl text-xs space-y-1">
+            <div className="flex items-center gap-2 text-amber-300 font-bold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>₦3,000 Paid Merchant Verification Audit & Approval</span>
+            </div>
+            <p>
+              Match incoming ₦3,000 bank transfers to <strong>{MANUAL_PAYMENT_INFO.bankName}</strong> ({MANUAL_PAYMENT_INFO.accountName} - <strong className="font-mono text-amber-300">{MANUAL_PAYMENT_INFO.accountNumber}</strong>). Approving a request marks the vendor as <strong>Verified Business</strong> across IkoroduSquare without affecting search rankings or advertising.
+            </p>
+          </div>
+
+          {/* Status Filter Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-3xl border border-gray-150 shadow-xs">
+            <div>
+              <h3 className="text-base font-black text-emerald-950 font-display flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-700" />
+                <span>Verification Requests Queue</span>
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Review payment proofs, confirm bank transaction sessions, and activate official merchant badges.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl shrink-0 overflow-x-auto">
+              {(['pending', 'approved', 'rejected', 'all'] as const).map((st) => {
+                const count =
+                  st === 'all'
+                    ? verificationRequests.length
+                    : verificationRequests.filter((vr) => vr.status === st).length;
+                return (
+                  <button
+                    key={st}
+                    onClick={() => setVerifStatusFilter(st)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all whitespace-nowrap ${
+                      verifStatusFilter === st
+                        ? 'bg-emerald-950 text-amber-300 shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {st} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* List of Verification Requests */}
+          {(() => {
+            const filteredVerifs = verificationRequests.filter((vr) => {
+              if (verifStatusFilter === 'all') return true;
+              return vr.status === verifStatusFilter;
+            });
+
+            if (filteredVerifs.length === 0) {
+              return (
+                <div className="bg-white p-12 rounded-3xl border border-gray-150 text-center space-y-3">
+                  <ShieldCheck className="w-12 h-12 text-gray-300 mx-auto" />
+                  <h4 className="text-sm font-bold text-gray-700">No {verifStatusFilter} verification requests</h4>
+                  <p className="text-xs text-gray-500">
+                    {verifStatusFilter === 'pending'
+                      ? 'All submitted verification payments have been reviewed and resolved.'
+                      : 'No verification records matching this filter.'}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                {filteredVerifs.map((req) => {
+                  const targetVendor = vendors.find((v) => v.id === req.vendorId);
+                  return (
+                    <div
+                      key={req.id}
+                      className="bg-white p-5 sm:p-6 rounded-3xl border border-gray-150 shadow-xs space-y-4"
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-900 font-bold text-xs rounded-full border border-emerald-300">
+                              Verification Payment
+                            </span>
+                            <span className="font-mono font-black text-lg text-emerald-950">
+                              ₦{req.amountNaira.toLocaleString()}
+                            </span>
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                req.status === 'approved'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : req.status === 'pending'
+                                  ? 'bg-amber-100 text-amber-900 animate-pulse'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {req.status}
+                            </span>
+                          </div>
+
+                          <h4 className="text-base font-extrabold text-emerald-950">
+                            {req.vendorName || targetVendor?.businessName || 'Unknown Vendor'}
+                          </h4>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                            <span>
+                              Txn Ref: <strong className="font-mono text-emerald-950">{req.txnRef}</strong>
+                            </span>
+                            <span>
+                              Bank: <strong>{req.bankName}</strong> ({req.accountNumber})
+                            </span>
+                            <span>
+                              Submitted: <strong>{new Date(req.requestedAt).toLocaleString()}</strong>
+                            </span>
+                            {targetVendor && (
+                              <span>
+                                Current Status:{' '}
+                                <strong className={targetVendor.isVerified ? 'text-emerald-700' : 'text-slate-600'}>
+                                  {targetVendor.isVerified ? 'Verified' : 'Unverified'}
+                                </strong>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            onClick={() => setPreviewProofUrl(req.proofUrl)}
+                            className="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors"
+                          >
+                            <FileText className="w-4 h-4 text-emerald-700" />
+                            <span>View Receipt</span>
+                          </button>
+
+                          {req.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => approveVerificationRequest(req.id)}
+                                className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-amber-300 font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-4 h-4 text-amber-300" />
+                                <span>Approve Verification</span>
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setRejectVerifModalReq(req);
+                                  setRejectVerifNote('');
+                                }}
+                                className="px-3.5 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+
+                          {req.status === 'approved' && (
+                            <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Approved {req.reviewedAt ? new Date(req.reviewedAt).toLocaleDateString() : ''}
+                            </span>
+                          )}
+
+                          {req.status === 'rejected' && (
+                            <button
+                              onClick={() => {
+                                setRejectVerifModalReq(req);
+                                setRejectVerifNote(req.adminNote || '');
+                              }}
+                              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl"
+                            >
+                              Edit Note / Re-Review
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {req.adminNote && (
+                        <div className="text-xs bg-gray-50 p-3 rounded-2xl border border-gray-200 text-gray-700">
+                          <strong>Admin Note:</strong> {req.adminNote}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1839,6 +2058,76 @@ export const AdminPortalView: React.FC = () => {
                 className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl"
               >
                 Close Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL 5: Verification Request Rejection Modal */}
+      {rejectVerifModalReq && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 text-left border border-slate-200 shadow-2xl">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="text-base font-black text-emerald-950 font-display flex items-center gap-2">
+                  <XCircle className="w-5 h-5 text-red-600" />
+                  Reject Verification Request
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Provide a clear reason for the merchant (e.g. invalid receipt, mismatched amount).
+                </p>
+              </div>
+              <button
+                onClick={() => setRejectVerifModalReq(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+                <span className="text-slate-500 font-bold block">Merchant</span>
+                <p className="font-bold text-emerald-950 text-sm">{rejectVerifModalReq.vendorName}</p>
+                <span className="text-slate-500 text-[11px] font-mono">Ref: {rejectVerifModalReq.txnRef}</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Reason for Rejection <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="e.g. Transaction session reference not found on FCMB bank account statement. Please verify and resubmit."
+                  value={rejectVerifNote}
+                  onChange={(e) => setRejectVerifNote(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-red-500 outline-hidden"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t">
+              <button
+                type="button"
+                onClick={() => setRejectVerifModalReq(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  rejectVerificationRequest(
+                    rejectVerifModalReq.id,
+                    rejectVerifNote.trim() || 'Payment transaction reference could not be verified.'
+                  );
+                  setRejectVerifModalReq(null);
+                }}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+              >
+                Confirm Rejection
               </button>
             </div>
           </div>

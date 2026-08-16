@@ -29,6 +29,7 @@ export const MarketplaceView: React.FC = () => {
     categories,
     promotionRequests = [],
     isLoadingData,
+    isCriticalDataLoading,
     searchQuery,
     setSearchQuery,
     selectedCategory,
@@ -232,7 +233,7 @@ export const MarketplaceView: React.FC = () => {
       </div>
 
       {/* Grid View / Skeleton Loading */}
-      {isLoadingData ? (
+      {isCriticalDataLoading || isLoadingData ? (
         viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {Array.from({ length: 8 }).map((_, idx) => (

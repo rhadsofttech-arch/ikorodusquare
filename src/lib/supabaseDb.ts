@@ -5,6 +5,7 @@ import {
   Review,
   Enquiry,
   PromotionRequest,
+  VerificationRequest,
   NotificationItem,
   AuditLog,
   User,
@@ -872,6 +873,89 @@ export async function deletePromotionInSupabase(promoId: string): Promise<boolea
     return false;
   }
 }
+
+// ==========================================
+// PAID VENDOR VERIFICATION API (₦3,000)
+// ==========================================
+
+export async function fetchVerificationRequestsFromSupabase(): Promise<VerificationRequest[] | null> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase
+      .from('verification_requests')
+      .select('*')
+      .order('requested_at', { ascending: false });
+
+    if (error) {
+      console.warn('[SUPABASE] Query error fetching verification requests:', error.message);
+      return [];
+    }
+
+    if (!data) return [];
+
+    return data.map((row) => ({
+      id: row.id,
+      vendorId: row.vendor_id,
+      vendorName: row.vendor_name,
+      amountNaira: Number(row.amount_naira || 3000),
+      bankName: row.bank_name || 'First City Monument Bank (FCMB)',
+      accountName: row.account_name || 'Rhadsoft Tech - IkoroduSquare',
+      accountNumber: row.account_number || '9474918014',
+      proofUrl: row.proof_url || '',
+      proofFileName: row.proof_file_name || 'verification_receipt.png',
+      txnRef: row.txn_ref || `VR-${row.id}`,
+      status: row.status as any,
+      adminNote: row.admin_note,
+      requestedAt: row.requested_at,
+      reviewedAt: row.reviewed_at,
+    }));
+  } catch (err) {
+    console.warn('[SUPABASE] Exception fetching verification requests:', err);
+    return [];
+  }
+}
+
+export async function saveVerificationRequestToSupabase(req: VerificationRequest): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const row = {
+      id: req.id,
+      vendor_id: req.vendorId,
+      vendor_name: req.vendorName,
+      amount_naira: req.amountNaira || 3000,
+      bank_name: req.bankName || 'First City Monument Bank (FCMB)',
+      account_name: req.accountName || 'Rhadsoft Tech - IkoroduSquare',
+      account_number: req.accountNumber || '9474918014',
+      proof_url: req.proofUrl,
+      proof_file_name: req.proofFileName,
+      txn_ref: req.txnRef,
+      status: req.status,
+      admin_note: req.adminNote || null,
+      requested_at: req.requestedAt,
+      reviewed_at: req.reviewedAt || null,
+    };
+    const { error } = await supabase.from('verification_requests').upsert(row);
+    if (error) {
+      console.warn('[SUPABASE] saveVerificationRequest error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('[SUPABASE] Exception in saveVerificationRequest:', err);
+    return false;
+  }
+}
+
+export async function deleteVerificationRequestInSupabase(reqId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from('verification_requests').delete().eq('id', reqId);
+    return !error;
+  } catch (err) {
+    return false;
+  }
+}
+
 
 // ==========================================
 // NOTIFICATIONS & AUDIT LOGS API
