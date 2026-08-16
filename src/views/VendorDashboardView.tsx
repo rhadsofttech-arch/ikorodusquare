@@ -43,6 +43,7 @@ import { MANUAL_PAYMENT_INFO, PROMOTION_OPTIONS, IKORODU_AREAS } from '../data/m
 import { Product, PromoType, BusinessHours, IkoroduArea } from '../types';
 import { uploadFileToSupabaseStorage } from '../lib/supabaseDb';
 import { ProductImageUploader } from '../components/ProductImageUploader';
+import { StorefrontQRCode } from '../components/StorefrontQRCode';
 import { useSEO } from '../hooks/useSEO';
 
 export const VendorDashboardView: React.FC = () => {
@@ -1563,21 +1564,7 @@ export const VendorDashboardView: React.FC = () => {
 
       {/* 6. Business QR Code */}
       {vendorTab === 'qrcode' && (
-        <div className="bg-white p-8 rounded-3xl border border-slate-200/90 text-center space-y-4 max-w-md mx-auto shadow-xs">
-          <h3 className="text-lg font-black text-emerald-950 font-display">
-            Storefront QR Code
-          </h3>
-          <p className="text-xs text-slate-600">
-            Print this QR code for your shop banner or business cards in Sabo! Customers scanning it open your IkoroduSquare storefront directly.
-          </p>
-
-          <div className="p-6 bg-emerald-950 rounded-3xl inline-block border-4 border-amber-400 shadow-xl">
-            <QrCode className="w-44 h-44 text-amber-300 mx-auto" />
-            <span className="text-white font-mono font-bold text-xs block mt-2">
-              ikorodusquare.ng/s/{vendor.slug}
-            </span>
-          </div>
-        </div>
+        <StorefrontQRCode vendor={vendor} />
       )}
 
       {/* Add / Edit Product Modal */}
