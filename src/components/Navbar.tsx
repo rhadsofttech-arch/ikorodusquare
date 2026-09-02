@@ -319,8 +319,8 @@ export const Navbar: React.FC = () => {
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs">
         {/* Main Header Row */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
-          <div className="flex items-center justify-between gap-3 sm:gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
+          <div className="flex items-center justify-between gap-2 sm:gap-4 min-h-[44px]">
             {/* Logo */}
             <a
               href="/"
@@ -328,17 +328,17 @@ export const Navbar: React.FC = () => {
                 e.preventDefault();
                 handleNavClick('home');
               }}
-              className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0"
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0 min-w-0"
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-800 via-emerald-700 to-teal-600 flex items-center justify-center text-white shadow-sm border border-emerald-600/30 group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-emerald-800 via-emerald-700 to-teal-600 flex items-center justify-center text-white shadow-sm border border-emerald-600/30 group-hover:scale-105 transition-transform shrink-0">
                 <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-1">
-                  <span className="text-lg sm:text-xl font-black tracking-tight text-emerald-950 font-display">
+                  <span className="text-base sm:text-xl font-black tracking-tight text-emerald-950 font-display truncate">
                     Ikorodu<span className="text-amber-500">Square</span>
                   </span>
-                  <span className="text-[9px] sm:text-[10px] bg-emerald-100/80 text-emerald-900 px-1.5 py-0.5 rounded-full font-bold border border-emerald-300/60">
+                  <span className="text-[8px] sm:text-[10px] bg-emerald-100/90 text-emerald-900 px-1.5 py-0.2 rounded-full font-extrabold border border-emerald-300/60 shrink-0">
                     NG
                   </span>
                 </div>
@@ -396,26 +396,31 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* Actions & Register Button */}
-            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-              {/* Mobile Quick Search Button Toggle */}
+            <div className="flex items-center gap-1 sm:gap-2.5 md:gap-3 shrink-0">
+              {/* Mobile Quick Search Button Toggle (Mobile Only) */}
               <button
                 type="button"
-                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-                className="md:hidden p-2 text-slate-700 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors"
+                onClick={() => {
+                  setMobileSearchOpen(!mobileSearchOpen);
+                  if (mobileMenuOpen) setMobileMenuOpen(false);
+                }}
+                className="md:hidden p-2 text-slate-700 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors active:scale-95"
                 title="Quick Search"
+                aria-label="Search businesses and products"
               >
-                <Search className="w-5 h-5 text-emerald-800" />
+                <Search className="w-5 h-5 text-emerald-900" />
               </button>
 
-              {/* Notifications Dropdown */}
+              {/* Notifications Dropdown (Both Mobile & Desktop) */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-                  className="relative p-2 sm:p-2.5 text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors"
+                  className="relative p-2 sm:p-2.5 text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors active:scale-95"
                   title="Notifications"
+                  aria-label="Notifications"
                 >
-                  <Bell className="w-5 h-5" />
+                  <Bell className="w-5 h-5 text-slate-700" />
                   {unreadNotifs.length > 0 && (
                     <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white font-bold text-[10px] rounded-full flex items-center justify-center animate-pulse">
                       {unreadNotifs.length}
@@ -424,7 +429,7 @@ export const Navbar: React.FC = () => {
                 </button>
 
                 {notifDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-3">
+                  <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-3">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
                       <span className="text-xs font-bold text-emerald-950">Notifications</span>
                       <span className="text-[10px] text-slate-500">{userRoleNotifs.length} Total</span>
@@ -458,9 +463,9 @@ export const Navbar: React.FC = () => {
                 )}
               </div>
 
-              {/* Authentication / Account Menu */}
+              {/* Desktop-Only: Authentication / Account Menu */}
               {currentUser ? (
-                <div className="relative">
+                <div className="hidden md:block relative">
                   <button
                     type="button"
                     onClick={() => setAccountMenuOpen(!accountMenuOpen)}
@@ -557,14 +562,14 @@ export const Navbar: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => openAuthModal()}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 hover:border-emerald-600 text-slate-800 hover:text-emerald-950 text-xs font-bold rounded-xl transition-all hover:bg-slate-50"
+                  className="hidden md:flex items-center gap-1.5 px-3 py-2 border border-slate-300 hover:border-emerald-600 text-slate-800 hover:text-emerald-950 text-xs font-bold rounded-xl transition-all hover:bg-slate-50"
                 >
                   <LogIn className="w-3.5 h-3.5 text-emerald-700" />
                   <span>Sign In</span>
                 </button>
               )}
 
-              {/* Register Business CTA - HIDDEN WHEN LOGGED IN AS VENDOR */}
+              {/* Desktop-Only: Register Business CTA - HIDDEN WHEN LOGGED IN AS VENDOR */}
               {!isVendor && (
                 <a
                   href="/register-vendor"
@@ -572,7 +577,7 @@ export const Navbar: React.FC = () => {
                     e.preventDefault();
                     handleNavClick('register-vendor');
                   }}
-                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-900 hover:to-teal-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all hover:shadow-md"
+                  className="hidden md:flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-900 hover:to-teal-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all hover:shadow-md"
                 >
                   <PlusCircle className="w-4 h-4 text-amber-300" />
                   <span className="hidden sm:inline">Register Business</span>
@@ -580,13 +585,18 @@ export const Navbar: React.FC = () => {
                 </a>
               )}
 
-              {/* Mobile Hamburger Toggle */}
+              {/* Mobile/Tablet Hamburger Toggle */}
               <button
                 type="button"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
+                onClick={() => {
+                  setMobileMenuOpen(!mobileMenuOpen);
+                  if (mobileSearchOpen) setMobileSearchOpen(false);
+                }}
+                className="lg:hidden p-2 text-slate-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-xl transition-colors active:scale-95 ml-0.5"
+                title="Open Navigation Menu"
+                aria-label="Toggle navigation menu"
               >
-                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {mobileMenuOpen ? <X className="w-5 h-5 text-emerald-900" /> : <Menu className="w-5 h-5 text-slate-800" />}
               </button>
             </div>
           </div>
@@ -739,12 +749,70 @@ export const Navbar: React.FC = () => {
           </nav>
         </div>
 
-        {/* Mobile Menu Overlay */}
+        {/* Mobile Menu Overlay / Drawer */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-150">
+          <div className="lg:hidden border-t border-slate-200 bg-white/98 backdrop-blur-xl px-4 py-4 space-y-4 shadow-xl animate-in slide-in-from-top-2 duration-200 max-h-[85vh] overflow-y-auto">
+            {/* User Profile / Auth Status Header in Mobile Drawer */}
+            {currentUser ? (
+              <div className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50/80 rounded-2xl border border-emerald-100/90 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold font-display shadow-xs shrink-0">
+                    {isVendor ? (
+                      <Store className="w-5 h-5 text-amber-300" />
+                    ) : (
+                      <User className="w-5 h-5 text-emerald-100" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-sm text-slate-900 truncate">
+                      {isVendor ? vendorDisplayName : `${currentUser.firstName} ${currentUser.lastName || ''}`.trim()}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate">{currentUser.email}</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-200/70 text-emerald-900 border border-emerald-300/80 shrink-0">
+                  {currentUser.role}
+                </span>
+              </div>
+            ) : (
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between gap-2">
+                <div>
+                  <p className="font-bold text-xs text-slate-900">Welcome to IkoroduSquare</p>
+                  <p className="text-[11px] text-slate-500">Sign in to manage orders, wishlist & stores</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openAuthModal();
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0 flex items-center gap-1.5"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Sign In</span>
+                </button>
+              </div>
+            )}
+
             {/* Realtime Search Input in Mobile Menu */}
-            <div className="relative mb-3 z-50">
-              <div className="relative flex items-center border border-slate-200 rounded-xl bg-slate-50 focus-within:border-emerald-600 focus-within:bg-white transition-all p-1">
+            <div className="relative z-50">
+              <div className="relative flex items-center border border-slate-200 rounded-2xl bg-slate-100/90 focus-within:border-emerald-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all p-1">
+                {/* Area filter */}
+                <div className="relative border-r border-slate-200 pr-1.5 pl-1.5 py-1 flex items-center gap-1 text-[11px] text-slate-700 font-medium shrink-0">
+                  <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <select
+                    value={selectedArea}
+                    onChange={(e) => setSelectedArea(e.target.value as any)}
+                    className="bg-transparent border-none text-[11px] font-bold text-emerald-950 focus:outline-none cursor-pointer pr-1"
+                  >
+                    {ikoroduAreas.map((area) => (
+                      <option key={area} value={area}>
+                        {area === 'All' ? 'All' : area}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <input
                   type="text"
                   placeholder="Instant search businesses or products..."
@@ -757,12 +825,13 @@ export const Navbar: React.FC = () => {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSearchSubmit();
                   }}
-                  className="w-full pl-3 pr-8 py-1.5 text-xs text-emerald-950 placeholder-slate-400 bg-transparent focus:outline-none"
+                  className="w-full pl-2 pr-7 py-1.5 text-xs text-emerald-950 placeholder-slate-400 bg-transparent focus:outline-none font-medium"
                 />
                 <button
                   type="button"
                   onClick={handleSearchSubmit}
-                  className="p-1.5 text-emerald-700 hover:text-emerald-900"
+                  className="p-1 text-emerald-700 hover:text-emerald-900"
+                  aria-label="Search"
                 >
                   <Search className="w-4 h-4" />
                 </button>
@@ -772,93 +841,181 @@ export const Navbar: React.FC = () => {
               {renderSearchDropdown()}
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleNavClick('home')}
-              className="block w-full text-left py-2 font-semibold text-slate-800 text-xs border-b border-slate-100"
-            >
-              Home
-            </button>
-            <button
-              type="button"
-              onClick={() => handleNavClick('marketplace')}
-              className="block w-full text-left py-2 font-semibold text-amber-700 text-xs border-b border-slate-100 flex items-center justify-between"
-            >
-              <span>Product Marketplace</span>
-              <ShoppingBag className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleNavClick('directory')}
-              className="block w-full text-left py-2 font-semibold text-emerald-800 text-xs border-b border-slate-100 flex items-center justify-between"
-            >
-              <span>Business Directory</span>
-              <Store className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleNavClick('promotions-pricing')}
-              className="block w-full text-left py-2 font-semibold text-slate-800 text-xs border-b border-slate-100 flex items-center justify-between"
-            >
-              <span>Promotions & Pricing</span>
-              <CreditCard className="w-3.5 h-3.5" />
-            </button>
+            {/* Navigation Links Group */}
+            <div className="space-y-1 pt-1">
+              <div className="px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                Explore Marketplace
+              </div>
 
-            {/* Vendor Dashboard Mobile Link - ONLY for logged in vendors */}
-            {isVendor && (
               <button
                 type="button"
-                onClick={() => handleNavClick('vendor-portal')}
-                className="block w-full text-left py-2 font-semibold text-emerald-800 text-xs border-b border-slate-100"
+                onClick={() => handleNavClick('home')}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl font-bold text-xs transition-colors ${
+                  activeTab === 'home'
+                    ? 'bg-emerald-50 text-emerald-950 border border-emerald-200/80 font-extrabold'
+                    : 'text-slate-800 hover:bg-slate-50'
+                }`}
               >
-                Vendor Dashboard
+                <div className="flex items-center gap-2.5">
+                  <Building2 className="w-4 h-4 text-emerald-700" />
+                  <span>Home</span>
+                </div>
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleNavClick('marketplace')}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl font-bold text-xs transition-colors ${
+                  activeTab === 'marketplace'
+                    ? 'bg-emerald-50 text-emerald-950 border border-emerald-200/80 font-extrabold'
+                    : 'text-slate-800 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <ShoppingBag className="w-4 h-4 text-amber-500" />
+                  <span>Product Marketplace</span>
+                </div>
+                <span className="text-[10px] bg-amber-100 text-amber-900 font-extrabold px-2 py-0.5 rounded-full">
+                  Shop
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleNavClick('directory')}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl font-bold text-xs transition-colors ${
+                  activeTab === 'directory'
+                    ? 'bg-emerald-50 text-emerald-950 border border-emerald-200/80 font-extrabold'
+                    : 'text-slate-800 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Store className="w-4 h-4 text-emerald-600" />
+                  <span>Business Directory</span>
+                </div>
+                <span className="text-[10px] bg-emerald-100 text-emerald-900 font-extrabold px-2 py-0.5 rounded-full">
+                  Vendors
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleNavClick('promotions-pricing')}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl font-bold text-xs transition-colors ${
+                  activeTab === 'promotions-pricing' || activeTab === 'promotions'
+                    ? 'bg-emerald-50 text-emerald-950 border border-emerald-200/80 font-extrabold'
+                    : 'text-slate-800 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <CreditCard className="w-4 h-4 text-teal-600" />
+                  <span>Promotions & Pricing</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Authenticated Portals & Roles Group */}
+            {currentUser && (
+              <div className="space-y-1 pt-2 border-t border-slate-100">
+                <div className="px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                  Account & Portals
+                </div>
+
+                {isVendor && (
+                  <button
+                    type="button"
+                    onClick={() => handleNavClick('vendor-portal')}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl font-bold text-xs transition-colors ${
+                      activeTab === 'vendor-portal'
+                        ? 'bg-emerald-100 text-emerald-950 border border-emerald-300 font-extrabold'
+                        : 'text-emerald-900 bg-emerald-50/70 hover:bg-emerald-100/70'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Store className="w-4 h-4 text-emerald-700" />
+                      <span>Vendor Dashboard</span>
+                    </div>
+                    <span className="text-[10px] bg-emerald-200/80 text-emerald-900 font-extrabold px-2 py-0.5 rounded-full">
+                      Manage Store
+                    </span>
+                  </button>
+                )}
+
+                {currentUser.role === 'customer' && (
+                  <button
+                    type="button"
+                    onClick={() => handleNavClick('customer-portal')}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl font-bold text-xs transition-colors ${
+                      activeTab === 'customer-portal'
+                        ? 'bg-emerald-100 text-emerald-950 border border-emerald-300 font-extrabold'
+                        : 'text-slate-800 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <User className="w-4 h-4 text-emerald-700" />
+                      <span>Customer Portal</span>
+                    </div>
+                  </button>
+                )}
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleNavClick('admin-portal')}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl font-bold text-xs transition-colors ${
+                      activeTab === 'admin-portal' || activeTab === 'admin'
+                        ? 'bg-amber-100 text-amber-950 border border-amber-300 font-extrabold'
+                        : 'text-amber-900 bg-amber-50/70 hover:bg-amber-100/70'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ShieldCheck className="w-4 h-4 text-amber-600" />
+                      <span>Admin Portal</span>
+                    </div>
+                    <span className="text-[10px] bg-amber-200/80 text-amber-950 font-extrabold px-2 py-0.5 rounded-full">
+                      Administrator
+                    </span>
+                  </button>
+                )}
+              </div>
             )}
 
-            {/* Admin Dashboard Mobile Link - ONLY for logged in admins */}
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => handleNavClick('admin-portal')}
-                className="block w-full text-left py-2 font-semibold text-amber-800 text-xs border-b border-slate-100"
-              >
-                Admin Dashboard
-              </button>
-            )}
+            {/* Action CTA & Sign Out */}
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              {!isVendor && (
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('register-vendor')}
+                  className="w-full py-2.5 bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-900 hover:to-teal-800 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs"
+                >
+                  <PlusCircle className="w-4 h-4 text-amber-300" />
+                  <span>List / Register Your Business</span>
+                </button>
+              )}
 
-            {!currentUser ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  openAuthModal();
-                }}
-                className="w-full py-2.5 bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl flex items-center justify-center gap-2"
-              >
-                <LogIn className="w-4 h-4 text-emerald-700" />
-                <span>Sign In</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="w-full py-2.5 bg-red-50 text-red-700 text-xs font-bold rounded-xl flex items-center justify-center gap-2 border border-red-200"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out ({currentUser.firstName})</span>
-              </button>
-            )}
-
-            {!isVendor && (
-              <button
-                type="button"
-                onClick={() => handleNavClick('register-vendor')}
-                className="w-full py-2.5 bg-emerald-800 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs"
-              >
-                <PlusCircle className="w-4 h-4 text-amber-300" />
-                <span>Register Business</span>
-              </button>
-            )}
+              {currentUser ? (
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-xl flex items-center justify-center gap-2 border border-red-200/80 transition-colors"
+                >
+                  <LogOut className="w-4 h-4 text-red-600" />
+                  <span>Sign Out</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openAuthModal();
+                  }}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  <LogIn className="w-4 h-4 text-emerald-700" />
+                  <span>Sign In to Your Account</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 
