@@ -39,6 +39,7 @@ export const DirectoryView: React.FC = () => {
     setSelectedArea,
     setActiveTab,
     setSelectedVendorId,
+    navigateToVendor,
     trackVendorWhatsAppClick,
     trackVendorPhoneClick,
   } = useApp();
@@ -121,9 +122,8 @@ export const DirectoryView: React.FC = () => {
     return 0;
   });
 
-  const handleVendorClick = (id: string) => {
-    setSelectedVendorId(id);
-    setActiveTab('vendor-details');
+  const handleVendorClick = (vendorOrId: Vendor | string) => {
+    navigateToVendor(vendorOrId);
   };
 
   const selectedCategoryObj = categories.find((c) => c.name === selectedCategory);
@@ -353,7 +353,7 @@ export const DirectoryView: React.FC = () => {
                       />
                       <div className="flex-1 min-w-0">
                         <h3
-                          onClick={() => handleVendorClick(vendor.id)}
+                          onClick={() => handleVendorClick(vendor)}
                           className="font-black text-base text-emerald-950 hover:text-emerald-700 cursor-pointer transition-colors truncate font-display"
                         >
                           {vendor.businessName}
@@ -382,7 +382,7 @@ export const DirectoryView: React.FC = () => {
 
                 <div className="p-4 bg-gray-50/80 border-t border-gray-100 flex items-center gap-2">
                   <button
-                    onClick={() => handleVendorClick(vendor.id)}
+                    onClick={() => handleVendorClick(vendor)}
                     className="flex-1 py-2 text-xs font-bold text-emerald-950 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-colors text-center"
                   >
                     View Storefront
@@ -425,7 +425,7 @@ export const DirectoryView: React.FC = () => {
                 <div className="flex-1 min-w-0 space-y-1.5 text-center sm:text-left">
                   <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                     <h3
-                      onClick={() => handleVendorClick(vendor.id)}
+                      onClick={() => handleVendorClick(vendor)}
                       className="font-black text-lg text-emerald-950 hover:text-emerald-700 cursor-pointer font-display"
                     >
                       {vendor.businessName}
@@ -452,7 +452,7 @@ export const DirectoryView: React.FC = () => {
 
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleVendorClick(vendor.id)}
+                      onClick={() => handleVendorClick(vendor)}
                       className="px-4 py-2 bg-emerald-100 text-emerald-950 font-bold text-xs rounded-xl hover:bg-emerald-200"
                     >
                       View Store

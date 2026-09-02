@@ -29,7 +29,7 @@ export async function fetchVendorsFromSupabase(): Promise<Vendor[] | null> {
     }
     if (!data) return [];
 
-    return data.map((row) => ({
+    return (data as any[]).map((row: any) => ({
       id: row.id,
       userId: row.user_id || undefined,
       businessName: row.business_name,
@@ -260,31 +260,32 @@ export async function uploadFileToSupabaseStorage(
 ): Promise<string | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
-      upsert: true,
-    });
-    if (error) {
-      if (error.message?.toLowerCase().includes('not found') || error.message?.toLowerCase().includes('bucket')) {
-        try {
-          await supabase.storage.createBucket(bucketName, { public: true });
-          const retry = await supabase.storage.from(bucketName).upload(filePath, file, { upsert: true });
-          if (!retry.error && retry.data) {
-            data = retry.data;
-            error = null;
-          }
-        } catch (bErr) {
-          console.warn(`Error creating bucket ${bucketName}:`, bErr);
-        }
+    let processedFile = file;
+    // Auto-compress image before upload if not SVG or tiny file
+    if (file.type.startsWith('image/') && !file.type.includes('svg')) {
+      try {
+        const maxDim = bucketName === 'vendor-logos' ? 800 : bucketName === 'vendor-covers' ? 1600 : 1200;
+        processedFile = await compressImageBeforeUpload(file, maxDim, 0.85);
+      } catch (cErr) {
+        console.warn(`[STORAGE] Compression skipped for ${file.name}:`, cErr);
       }
     }
+
+    const { data, error } = await supabase.storage.from(bucketName).upload(filePath, processedFile, {
+      cacheControl: '3600',
+      upsert: true,
+      contentType: processedFile.type,
+    });
+
     if (error || !data) {
-      console.warn('Supabase storage upload error:', error?.message);
+      console.warn(`[STORAGE] Upload failed for bucket "${bucketName}" at "${filePath}":`, error?.message);
       return null;
     }
+
     const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
-    return publicUrlData.publicUrl;
+    return publicUrlData?.publicUrl || null;
   } catch (err) {
-    console.error('Error uploading file to Supabase storage:', err);
+    console.error(`[STORAGE] Exception uploading to bucket "${bucketName}":`, err);
     return null;
   }
 }
@@ -380,8 +381,8 @@ export async function compressImageBeforeUpload(
 
 /**
  * Primary product image uploader function.
- * Primary route: Supabase Storage bucket ('product-images').
- * Secondary fallback route: Compressed Data URL (temporary resilience safety mechanism).
+ * Uploads to Supabase Storage bucket ('product-images').
+ * If Storage upload fails, returns clear error without silently persisting Base64 to the database.
  */
 export async function uploadProductImageToSupabase(
   file: File,
@@ -409,7 +410,7 @@ export async function uploadProductImageToSupabase(
   // 3. Perform canvas image compression before upload
   let processedFile = file;
   try {
-    processedFile = await compressImageBeforeUpload(file);
+    processedFile = await compressImageBeforeUpload(file, 1200, 0.85);
   } catch (err) {
     console.warn('[PRODUCT IMAGE] Image compression skipped, using original file:', err);
   }
@@ -420,7 +421,7 @@ export async function uploadProductImageToSupabase(
   const filePath = `${cleanVendorId}/${cleanProductId}/prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
   const bucketName = 'product-images';
 
-  // 4. Primary Route: Supabase Storage
+  // 4. Upload to Supabase Storage
   if (isSupabaseConfigured()) {
     try {
       const { data, error } = await supabase.storage.from(bucketName).upload(filePath, processedFile, {
@@ -437,28 +438,25 @@ export async function uploadProductImageToSupabase(
       }
 
       if (error) {
-        console.warn(`[PRODUCT IMAGE] Supabase Storage primary upload failed [Bucket: ${bucketName}, Path: ${filePath}]:`, {
-          message: error.message,
-          name: error.name,
-          statusCode: (error as any).statusCode,
-        });
+        console.warn(`[PRODUCT IMAGE] Storage upload failed [Bucket: ${bucketName}, Path: ${filePath}]:`, error.message);
+        return {
+          url: null,
+          error: `Storage upload failed: ${error.message}. Please verify Supabase Storage configuration and retry.`,
+        };
       }
     } catch (storageErr: any) {
-      console.warn('[PRODUCT IMAGE] Exception during Supabase Storage primary upload:', storageErr);
+      console.warn('[PRODUCT IMAGE] Exception during Supabase Storage upload:', storageErr);
+      return {
+        url: null,
+        error: storageErr?.message || 'Failed to upload product image to Supabase Storage.',
+      };
     }
   }
 
-  // 5. Fallback Route: Compressed Data URL
-  console.warn('[PRODUCT IMAGE] Storage unavailable — using temporary Data URL fallback');
-  try {
-    const fallbackDataUrl = await convertFileToDataUrl(processedFile);
-    return { url: fallbackDataUrl, error: null };
-  } catch (dataUrlErr: any) {
-    return {
-      url: null,
-      error: `Image upload failed: ${dataUrlErr.message || 'Local file processing failed.'}`,
-    };
-  }
+  return {
+    url: null,
+    error: 'Supabase credentials are not configured for image storage.',
+  };
 }
 
 /**
@@ -769,6 +767,10 @@ export async function saveEnquiryToSupabase(enquiry: Enquiry): Promise<boolean> 
 // PROMOTIONS API
 // ==========================================
 
+/**
+ * Public promotion query: excludes heavy Base64 receipts, proof files, private bank details,
+ * transaction references, and admin notes to ensure high-performance homepage and marketplace loading.
+ */
 export async function fetchPromotionsFromSupabase(): Promise<PromotionRequest[] | null> {
   if (!isSupabaseConfigured()) return [];
   try {
@@ -778,7 +780,70 @@ export async function fetchPromotionsFromSupabase(): Promise<PromotionRequest[] 
       .order('requested_at', { ascending: false });
 
     if (error) {
-      console.warn('[SUPABASE] Query error fetching promotions:', error.message);
+      console.warn('[SUPABASE] Query error fetching public promotions:', error.message);
+      return [];
+    }
+
+    if (!data) return [];
+
+    return (data as any[]).map((row: any) => ({
+      id: row.id,
+      vendorId: row.vendor_id,
+      vendorName: row.vendor_name,
+      productId: (row as any).product_id || undefined,
+      productName: (row as any).product_name || undefined,
+      categoryId: (row as any).category_id || undefined,
+      categoryName: (row as any).category_name || undefined,
+      promoType: row.promo_type as any,
+      promoTitle: row.promo_title,
+      amountNaira: Number(row.amount_naira || 0),
+      durationWeeks: Number(row.duration_weeks || 2),
+      bankName: row.bank_name || 'First City Monument Bank (FCMB)',
+      accountName: row.account_name || 'Rhadsoft Tech - IkoroduSquare',
+      accountNumber: row.account_number || '9474918014',
+      proofUrl: row.proof_url || '',
+      proofFileName: row.proof_file_name || '',
+      txnRef: row.txn_ref || '',
+      notes: row.notes,
+      status: row.status as any,
+      paymentStatus: (row as any).payment_status || 'pending',
+      assignmentStatus: (row as any).assignment_status || 'unassigned',
+      adminNote: row.admin_note,
+      requestedAt: row.requested_at,
+      approvedAt: row.approved_at,
+      startDate: row.start_date || row.approved_at,
+      expiresAt: row.expires_at,
+      assignedSlot: (row.assigned_slot || row.promo_type) as any,
+      assignedTargetId: row.assigned_target_id || row.vendor_id,
+      assignedCategory: row.assigned_category,
+      bannerHeading: row.banner_heading || row.vendor_name,
+      bannerSubtext: row.banner_subtext || 'Special promotion on IkoroduSquare',
+      bannerImageUrl: row.banner_image_url,
+      ctaText: row.cta_text || 'Visit Store',
+      ctaUrl: row.cta_url,
+      assignedBy: row.assigned_by,
+      assignedAt: row.assigned_at,
+    }));
+  } catch (err) {
+    console.warn('[SUPABASE] Exception fetching public promotions:', err);
+    return [];
+  }
+}
+
+/**
+ * Admin promotion query: retrieves full promotion records including verification receipts,
+ * transaction references, and bank details for administrative verification and moderation.
+ */
+export async function fetchAdminPromotionsFromSupabase(): Promise<PromotionRequest[] | null> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase
+      .from('promotion_requests')
+      .select('*')
+      .order('requested_at', { ascending: false });
+
+    if (error) {
+      console.warn('[SUPABASE] Query error fetching admin promotions:', error.message);
       return [];
     }
 
@@ -823,7 +888,7 @@ export async function fetchPromotionsFromSupabase(): Promise<PromotionRequest[] 
       assignedAt: row.assigned_at,
     }));
   } catch (err) {
-    console.warn('[SUPABASE] Exception fetching promotions:', err);
+    console.warn('[SUPABASE] Exception fetching admin promotions:', err);
     return [];
   }
 }

@@ -350,6 +350,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const matched = vendors.find((v) => v.id === id);
       if (matched && matched.slug) {
         setSelectedVendorSlug(matched.slug);
+      } else {
+        setSelectedVendorSlug(id);
       }
     } else {
       setSelectedVendorSlug(null);
@@ -358,30 +360,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const navigateToVendor = (vendorOrIdOrSlug: Vendor | string) => {
     let targetVendor: Vendor | undefined;
-    if (typeof vendorOrIdOrSlug === 'object') {
+    let targetSlug = '';
+    let targetId: string | null = null;
+
+    if (typeof vendorOrIdOrSlug === 'object' && vendorOrIdOrSlug) {
       targetVendor = vendorOrIdOrSlug;
-    } else {
+      targetId = targetVendor.id;
+      targetSlug = targetVendor.slug || targetVendor.id;
+    } else if (typeof vendorOrIdOrSlug === 'string' && vendorOrIdOrSlug.trim()) {
+      const query = vendorOrIdOrSlug.trim();
       targetVendor = vendors.find(
-        (v) => v.id === vendorOrIdOrSlug || (v.slug && v.slug.toLowerCase() === vendorOrIdOrSlug.toLowerCase())
+        (v) => v.id === query || (v.slug && v.slug.toLowerCase() === query.toLowerCase())
       );
+      if (targetVendor) {
+        targetId = targetVendor.id;
+        targetSlug = targetVendor.slug || targetVendor.id;
+      } else {
+        targetSlug = query;
+      }
     }
 
-    if (targetVendor) {
-      setSelectedVendorIdState(targetVendor.id);
-      setSelectedVendorSlug(targetVendor.slug);
-      setActiveTabState('vendor-details');
-      const urlPath = `/store/${targetVendor.slug}`;
-      if (window.location.pathname !== urlPath) {
-        window.history.pushState({}, '', urlPath);
-      }
-    } else if (typeof vendorOrIdOrSlug === 'string') {
-      setSelectedVendorSlug(vendorOrIdOrSlug);
-      setActiveTabState('vendor-details');
-      const urlPath = `/store/${vendorOrIdOrSlug}`;
-      if (window.location.pathname !== urlPath) {
-        window.history.pushState({}, '', urlPath);
-      }
+    if (targetId) {
+      setSelectedVendorIdState(targetId);
     }
+    if (targetSlug) {
+      setSelectedVendorSlug(targetSlug);
+    }
+    setActiveTabState('vendor-details');
+
+    const urlPath = targetSlug ? `/store/${targetSlug}` : '/directory';
+    if (window.location.pathname !== urlPath) {
+      window.history.pushState({}, '', urlPath);
+    }
+
+    // Scroll to top immediately & on next animation frame
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
   };
 
   // Initial URL Route Sync & Popstate listener
@@ -395,13 +415,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveTabState('vendor-details');
         setSelectedVendorSlug(slug);
         const matched = vendors.find(
-          (v) => v.slug?.toLowerCase() === slug.toLowerCase() || v.id === slug
+          (v) => (v.slug && v.slug.toLowerCase() === slug.toLowerCase()) || v.id === slug
         );
         if (matched) {
           setSelectedVendorIdState(matched.id);
+        } else {
+          setSelectedVendorIdState(null);
         }
       }
     } else if (p === '/admin') {
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
       if (currentUser && currentUser.role === 'admin') {
         setActiveTabState('admin-portal');
       } else {
@@ -409,6 +433,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
       }
     } else if (p === '/vendor-portal' || p === '/vendor') {
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
       if (currentUser && currentUser.role === 'vendor') {
         setActiveTabState('vendor-portal');
       } else {
@@ -416,19 +442,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
       }
     } else if (p === '/customer-portal' || p === '/customer') {
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
       if (currentUser) {
         setActiveTabState('customer-portal');
       } else {
         setActiveTabState('home');
         if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
       }
-    } else if (p === '/marketplace') setActiveTabState('marketplace');
-    else if (p === '/directory') setActiveTabState('directory');
-    else if (p === '/categories') setActiveTabState('categories');
-    else if (p === '/promotions') setActiveTabState('promotions');
-    else if (p === '/register') setActiveTabState('register-vendor');
-    else setActiveTabState('home');
+    } else if (p === '/marketplace') {
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+      setActiveTabState('marketplace');
+    } else if (p === '/directory') {
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+      setActiveTabState('directory');
+    } else if (p === '/categories') {
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+      setActiveTabState('categories');
+    } else if (p === '/promotions') {
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+      setActiveTabState('promotions');
+    } else if (p === '/register') {
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+      setActiveTabState('register-vendor');
+    } else {
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+      setActiveTabState('home');
+    }
+
+    // Scroll to top on browser back/forward
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, [currentUser, vendors]);
+
+  // Set manual scroll restoration to prevent browser overriding programmatic scroll on route change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
+
+  // Sync selected vendor from URL when vendors list updates
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.toLowerCase().startsWith('/store/')) {
+      const slug = decodeURIComponent(window.location.pathname.substring(7)).trim();
+      if (slug) {
+        const matched = vendors.find(
+          (v) => (v.slug && v.slug.toLowerCase() === slug.toLowerCase()) || v.id === slug
+        );
+        if (matched) {
+          setSelectedVendorIdState(matched.id);
+          setSelectedVendorSlug(matched.slug || slug);
+        }
+      }
+    }
+  }, [vendors]);
 
   useEffect(() => {
     handlePopState();
@@ -468,14 +543,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (v && v.slug) slugToUse = v.slug;
       }
       urlPath = slugToUse ? `/store/${slugToUse}` : '/directory';
-    } else if (targetTab === 'admin-portal' || targetTab === 'admin') urlPath = '/admin';
-    else if (targetTab === 'marketplace') urlPath = '/marketplace';
-    else if (targetTab === 'directory') urlPath = '/directory';
-    else if (targetTab === 'categories') urlPath = '/categories';
-    else if (targetTab === 'promotions' || targetTab === 'promotions-pricing') urlPath = '/promotions';
-    else if (targetTab === 'vendor-portal') urlPath = '/vendor-portal';
-    else if (targetTab === 'register-vendor' || targetTab === 'vendor-register') urlPath = '/register';
-    else if (targetTab === 'customer-portal') urlPath = '/customer-portal';
+    } else if (targetTab === 'admin-portal' || targetTab === 'admin') {
+      urlPath = '/admin';
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+    } else if (targetTab === 'marketplace') {
+      urlPath = '/marketplace';
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+    } else if (targetTab === 'directory') {
+      urlPath = '/directory';
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+    } else if (targetTab === 'categories') {
+      urlPath = '/categories';
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+    } else if (targetTab === 'promotions' || targetTab === 'promotions-pricing') {
+      urlPath = '/promotions';
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+    } else if (targetTab === 'vendor-portal') {
+      urlPath = '/vendor-portal';
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+    } else if (targetTab === 'register-vendor' || targetTab === 'vendor-register') {
+      urlPath = '/register';
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+    } else if (targetTab === 'customer-portal') {
+      urlPath = '/customer-portal';
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+    } else if (targetTab === 'home') {
+      urlPath = '/';
+      setSelectedVendorSlug(null);
+      setSelectedVendorIdState(null);
+    }
 
     if (window.location.pathname !== urlPath) {
       if (shouldReplace) {
@@ -484,6 +588,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         window.history.pushState({}, '', urlPath);
       }
     }
+
+    // Scroll to top on tab change
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
   };
 
   // Synchronize authenticated user state with Supabase session and public.profiles

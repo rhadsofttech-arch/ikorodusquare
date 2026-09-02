@@ -32,7 +32,7 @@ import {
   BadgeCheck,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { IkoroduArea, PromotionOption } from '../types';
+import { IkoroduArea, PromotionOption, Vendor } from '../types';
 import { PROMOTION_OPTIONS, MANUAL_PAYMENT_INFO, IKORODU_AREAS } from '../data/mockData';
 import { IkoroduMapExplorer } from '../components/IkoroduMapExplorer';
 import { WhatsAppChatButton } from '../components/WhatsAppChatButton';
@@ -250,9 +250,8 @@ export const HomeView: React.FC = () => {
     return true;
   });
 
-  const handleVendorClick = (id: string) => {
-    setSelectedVendorId(id);
-    setActiveTab('vendor-details');
+  const handleVendorClick = (vendorOrId: Vendor | string) => {
+    navigateToVendor(vendorOrId);
   };
 
   const handleProductClick = (id: string) => {
@@ -1366,7 +1365,7 @@ export const HomeView: React.FC = () => {
                 {/* Action Buttons */}
                 <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
                   <button
-                    onClick={() => handleVendorClick(vendor.id)}
+                    onClick={() => handleVendorClick(vendor)}
                     className="flex-1 py-2 text-xs font-bold text-emerald-950 bg-emerald-100/80 hover:bg-emerald-200/80 rounded-xl transition-colors text-center"
                   >
                     View Storefront

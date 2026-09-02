@@ -129,9 +129,18 @@ export const VendorDashboardView: React.FC = () => {
   const [proofFileName, setProofFileName] = useState('');
   const [proofFileUrl, setProofFileUrl] = useState('');
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [receiptUploadError, setReceiptUploadError] = useState<string | null>(null);
   const [txnRef, setTxnRef] = useState('');
   const [promoNotes, setPromoNotes] = useState('');
   const [promoSuccessMsg, setPromoSuccessMsg] = useState(false);
+
+  // Logo & Cover & Gallery Upload States
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [coverUploadError, setCoverUploadError] = useState<string | null>(null);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
+  const [galleryUploadError, setGalleryUploadError] = useState<string | null>(null);
 
   // Paid Verification State (₦3,000 one-time fee)
   const [verifTxnRef, setVerifTxnRef] = useState('');
@@ -386,48 +395,73 @@ export const VendorDashboardView: React.FC = () => {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = await uploadFileToSupabaseStorage('vendor-logos', `logo-${vendor.id}-${Date.now()}.${file.name.split('.').pop()}`, file);
-    if (url) {
-      setProfileData((prev) => ({ ...prev, logoUrl: url }));
-    } else {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileData((prev) => ({ ...prev, logoUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+    setIsUploadingLogo(true);
+    setLogoUploadError(null);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const cleanVendorId = (vendor.id || 'v-anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filePath = `${cleanVendorId}/logo_${Date.now()}.${ext}`;
+      const url = await uploadFileToSupabaseStorage('vendor-logos', filePath, file);
+      if (url) {
+        setProfileData((prev) => ({ ...prev, logoUrl: url }));
+      } else {
+        setLogoUploadError('Logo upload failed. Please verify your connection or storage permissions and retry.');
+      }
+    } catch (err: any) {
+      setLogoUploadError(err?.message || 'Failed to upload logo.');
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = await uploadFileToSupabaseStorage('vendor-covers', `cover-${vendor.id}-${Date.now()}.${file.name.split('.').pop()}`, file);
-    if (url) {
-      setProfileData((prev) => ({ ...prev, coverImageUrl: url }));
-    } else {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileData((prev) => ({ ...prev, coverImageUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+    setIsUploadingCover(true);
+    setCoverUploadError(null);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const cleanVendorId = (vendor.id || 'v-anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filePath = `${cleanVendorId}/cover_${Date.now()}.${ext}`;
+      const url = await uploadFileToSupabaseStorage('vendor-covers', filePath, file);
+      if (url) {
+        setProfileData((prev) => ({ ...prev, coverImageUrl: url }));
+      } else {
+        setCoverUploadError('Cover image upload failed. Please verify your connection or storage permissions and retry.');
+      }
+    } catch (err: any) {
+      setCoverUploadError(err?.message || 'Failed to upload cover image.');
+    } finally {
+      setIsUploadingCover(false);
     }
   };
 
   const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const url = await uploadFileToSupabaseStorage('vendor-gallery', `gal-${vendor.id}-${Date.now()}-${i}.${file.name.split('.').pop()}`, file);
-      if (url) {
-        setProfileGallery((prev) => [...prev, url]);
-      } else {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setProfileGallery((prev) => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
+    setIsUploadingGallery(true);
+    setGalleryUploadError(null);
+    let uploadFailures = 0;
+    try {
+      const cleanVendorId = (vendor.id || 'v-anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const ext = file.name.split('.').pop() || 'jpg';
+        const filePath = `${cleanVendorId}/gallery_${Date.now()}_${i}.${ext}`;
+        const url = await uploadFileToSupabaseStorage('vendor-gallery', filePath, file);
+        if (url) {
+          setProfileGallery((prev) => [...prev, url]);
+        } else {
+          uploadFailures++;
+        }
       }
+      if (uploadFailures > 0) {
+        setGalleryUploadError(`${uploadFailures} image(s) failed to upload to Storage. Please retry.`);
+      }
+    } catch (err: any) {
+      setGalleryUploadError(err?.message || 'Failed to upload gallery images.');
+    } finally {
+      setIsUploadingGallery(false);
     }
   };
 
@@ -435,21 +469,27 @@ export const VendorDashboardView: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploadingReceipt(true);
+    setReceiptUploadError(null);
     setProofFileName(file.name);
-    
-    const url = await uploadFileToSupabaseStorage('promotion-receipts', `receipt-${vendor.id}-${Date.now()}.${file.name.split('.').pop()}`, file);
-    if (url) {
-      setProofFileUrl(url);
-      setProofFileUploaded(true);
-    } else {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProofFileUrl(reader.result as string);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const cleanVendorId = (vendor.id || 'v-anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filePath = `${cleanVendorId}/promo_receipt_${Date.now()}.${ext}`;
+      const url = await uploadFileToSupabaseStorage('promotion-receipts', filePath, file);
+      if (url) {
+        setProofFileUrl(url);
         setProofFileUploaded(true);
-      };
-      reader.readAsDataURL(file);
+      } else {
+        setProofFileUploaded(false);
+        setProofFileUrl('');
+        setReceiptUploadError('Failed to upload receipt to Supabase Storage. Please retry.');
+      }
+    } catch (err: any) {
+      setProofFileUploaded(false);
+      setReceiptUploadError(err?.message || 'Failed to upload receipt file.');
+    } finally {
+      setIsUploadingReceipt(false);
     }
-    setIsUploadingReceipt(false);
   };
 
   const handleSaveProfileSubmit = async (e: React.FormEvent) => {
@@ -512,23 +552,29 @@ export const VendorDashboardView: React.FC = () => {
     setVerifProofFileName(file.name);
     setVerifErrorMsg(null);
 
-    const url = await uploadFileToSupabaseStorage(
-      'verification-receipts',
-      `receipt-${vendor.id}-${Date.now()}.${file.name.split('.').pop()}`,
-      file
-    );
-    if (url) {
-      setVerifProofFileUrl(url);
-      setVerifProofFileUploaded(true);
-    } else {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setVerifProofFileUrl(reader.result as string);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const cleanVendorId = (vendor.id || 'v-anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filePath = `${cleanVendorId}/verif_receipt_${Date.now()}.${ext}`;
+      const url = await uploadFileToSupabaseStorage(
+        'verification-receipts',
+        filePath,
+        file
+      );
+      if (url) {
+        setVerifProofFileUrl(url);
         setVerifProofFileUploaded(true);
-      };
-      reader.readAsDataURL(file);
+      } else {
+        setVerifProofFileUploaded(false);
+        setVerifProofFileUrl('');
+        setVerifErrorMsg('Failed to upload receipt to Supabase Storage. Please verify connection and retry.');
+      }
+    } catch (err: any) {
+      setVerifProofFileUploaded(false);
+      setVerifErrorMsg(err?.message || 'Failed to upload verification receipt.');
+    } finally {
+      setIsUploadingVerifReceipt(false);
     }
-    setIsUploadingVerifReceipt(false);
   };
 
   const handleVerificationSubmit = (e: React.FormEvent) => {
@@ -1046,7 +1092,12 @@ export const VendorDashboardView: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-700">Business Logo</label>
                 <div className="flex items-center gap-4">
                   <div className="relative w-20 h-20 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0">
-                    {profileData.logoUrl ? (
+                    {isUploadingLogo ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-50 text-emerald-800 text-[10px] font-bold p-1 text-center">
+                        <Loader2 className="w-5 h-5 animate-spin mb-1 text-emerald-700" />
+                        <span>Uploading...</span>
+                      </div>
+                    ) : profileData.logoUrl ? (
                       <img src={profileData.logoUrl} alt="Logo preview" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400">
@@ -1055,12 +1106,18 @@ export const VendorDashboardView: React.FC = () => {
                     )}
                   </div>
                   <div className="space-y-2 flex-1">
-                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold cursor-pointer transition-all">
-                      <Upload className="w-4 h-4 text-emerald-700" />
-                      <span>Upload Logo</span>
-                      <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold cursor-pointer transition-all disabled:opacity-50">
+                      {isUploadingLogo ? <Loader2 className="w-4 h-4 animate-spin text-emerald-700" /> : <Upload className="w-4 h-4 text-emerald-700" />}
+                      <span>{isUploadingLogo ? 'Uploading to Storage...' : 'Upload Logo'}</span>
+                      <input type="file" accept="image/*" disabled={isUploadingLogo} onChange={handleLogoUpload} className="hidden" />
                     </label>
-                    <p className="text-[11px] text-slate-500">Square PNG, JPG, or WEBP. Max 5MB.</p>
+                    <p className="text-[11px] text-slate-500">Square PNG, JPG, or WEBP. Uploads directly to Supabase Storage.</p>
+                    {logoUploadError && (
+                      <div className="p-2 bg-red-50 border border-red-200 rounded-xl text-[11px] font-bold text-red-700 flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
+                        <span>{logoUploadError}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1070,7 +1127,12 @@ export const VendorDashboardView: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-700">Cover Banner Image</label>
                 <div className="space-y-2">
                   <div className="relative w-full h-24 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50">
-                    {profileData.coverImageUrl ? (
+                    {isUploadingCover ? (
+                      <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-800 text-xs font-bold gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
+                        <span>Uploading cover to Supabase Storage...</span>
+                      </div>
+                    ) : profileData.coverImageUrl ? (
                       <img src={profileData.coverImageUrl} alt="Cover preview" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400">
@@ -1078,11 +1140,20 @@ export const VendorDashboardView: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold cursor-pointer transition-all">
-                    <Upload className="w-4 h-4 text-emerald-700" />
-                    <span>Upload Cover Image</span>
-                    <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
-                  </label>
+                  <div className="flex items-center gap-3">
+                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold cursor-pointer transition-all disabled:opacity-50">
+                      {isUploadingCover ? <Loader2 className="w-4 h-4 animate-spin text-emerald-700" /> : <Upload className="w-4 h-4 text-emerald-700" />}
+                      <span>{isUploadingCover ? 'Uploading...' : 'Upload Cover Image'}</span>
+                      <input type="file" accept="image/*" disabled={isUploadingCover} onChange={handleCoverUpload} className="hidden" />
+                    </label>
+                    <span className="text-[11px] text-slate-500">Wide banner format (1600x600 recommended)</span>
+                  </div>
+                  {coverUploadError && (
+                    <div className="p-2 bg-red-50 border border-red-200 rounded-xl text-[11px] font-bold text-red-700 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
+                      <span>{coverUploadError}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1376,17 +1447,27 @@ export const VendorDashboardView: React.FC = () => {
           {/* Gallery Images Manager */}
           <div className="p-6 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-amber-500" />
-                Storefront Gallery Photos ({profileGallery.length})
-              </h4>
+              <div>
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-amber-500" />
+                  Storefront Gallery Photos ({profileGallery.length})
+                </h4>
+                <p className="text-[11px] text-slate-500">Uploaded to Supabase Storage (<span className="font-mono text-emerald-800">vendor-gallery</span>)</p>
+              </div>
 
-              <label className="px-3 py-1.5 bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-emerald-900 transition-colors">
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Photos</span>
-                <input type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
+              <label className="px-3 py-1.5 bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-emerald-900 transition-colors disabled:opacity-50">
+                {isUploadingGallery ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                <span>{isUploadingGallery ? 'Uploading to Storage...' : 'Add Photos'}</span>
+                <input type="file" accept="image/*" multiple disabled={isUploadingGallery} onChange={handleGalleryUpload} className="hidden" />
               </label>
             </div>
+
+            {galleryUploadError && (
+              <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <span>{galleryUploadError}</span>
+              </div>
+            )}
 
             {profileGallery.length === 0 ? (
               <p className="text-xs text-slate-400 italic py-4 text-center">
@@ -1556,18 +1637,28 @@ export const VendorDashboardView: React.FC = () => {
                   </div>
                 ) : (
                   <form onSubmit={handlePromotionUploadSubmit} className="space-y-4">
+                    {receiptUploadError && (
+                      <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                        <span>{receiptUploadError}</span>
+                      </div>
+                    )}
+
                     {/* Real Receipt File Dropzone */}
                     <div className="p-4 border-2 border-dashed border-emerald-300 bg-emerald-50/50 rounded-2xl text-center space-y-2 relative cursor-pointer hover:bg-emerald-100/50 transition-all">
                       <input
                         type="file"
                         accept=".jpg,.jpeg,.png,.pdf"
+                        disabled={isUploadingReceipt}
                         onChange={handleReceiptFileSelect}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       />
                       <Upload className="w-8 h-8 text-emerald-700 mx-auto" />
                       <div className="text-xs font-bold text-emerald-950">
                         {isUploadingReceipt ? (
-                          <span className="text-emerald-700 animate-pulse">Uploading file to Supabase...</span>
+                          <span className="text-emerald-700 animate-pulse flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-emerald-700" /> Uploading receipt to Supabase Storage...
+                          </span>
                         ) : proofFileUploaded ? (
                           <span className="text-emerald-900 flex items-center justify-center gap-1">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Attached: {proofFileName}
@@ -1577,7 +1668,7 @@ export const VendorDashboardView: React.FC = () => {
                         )}
                       </div>
                       <p className="text-[10px] text-slate-500">
-                        File will be uploaded to Supabase Storage and reviewed by Admin.
+                        File will be securely uploaded to Supabase Storage (<span className="font-mono text-emerald-800">promotion-receipts</span>) and kept private for Admin review.
                       </p>
                       {proofFileUrl && (
                         <div className="mt-2 p-2 bg-white rounded-xl border border-slate-200 inline-block">

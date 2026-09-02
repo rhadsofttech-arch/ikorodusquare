@@ -70,6 +70,7 @@ export const AdminPortalView: React.FC = () => {
     auditLogs,
     setActiveTab,
     setSelectedVendorId,
+    navigateToVendor,
     setSelectedProductId,
     setSelectedCategory,
     categories,
@@ -1322,8 +1323,7 @@ export const AdminPortalView: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setSelectedVendorId(targetVendor.id);
-                                    setActiveTab('business-details');
+                                    navigateToVendor(targetVendor);
                                   }}
                                   className="font-bold text-emerald-800 hover:underline flex items-center gap-0.5"
                                 >

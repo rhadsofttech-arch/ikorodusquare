@@ -1,0 +1,292 @@
+{
+  "timestamp": "2026-08-22T00:50:37.281Z",
+  "bucketsStatus": {
+    "vendor-logos": {
+      "exists": false,
+      "isPublic": null,
+      "uploadPermissionVerified": false,
+      "error": "new row violates row-level security policy"
+    },
+    "vendor-covers": {
+      "exists": false,
+      "isPublic": null,
+      "uploadPermissionVerified": false,
+      "error": "new row violates row-level security policy"
+    },
+    "vendor-gallery": {
+      "exists": false,
+      "isPublic": null,
+      "uploadPermissionVerified": false,
+      "error": "new row violates row-level security policy"
+    },
+    "product-images": {
+      "exists": false,
+      "isPublic": null,
+      "uploadPermissionVerified": false,
+      "error": "new row violates row-level security policy"
+    },
+    "promotion-receipts": {
+      "exists": false,
+      "isPublic": null,
+      "uploadPermissionVerified": false,
+      "error": "new row violates row-level security policy"
+    },
+    "verification-receipts": {
+      "exists": false,
+      "isPublic": null,
+      "uploadPermissionVerified": false,
+      "error": "new row violates row-level security policy"
+    }
+  },
+  "totalBase64Records": 22,
+  "totalBase64Bytes": 10193725,
+  "byTableCount": {
+    "public.vendors": 20,
+    "public.promotion_requests": 2
+  },
+  "findings": [
+    {
+      "table": "public.vendors",
+      "recordId": "209b687a-b182-4b98-844a-150696dd5e3c",
+      "vendorName": "Cherubim & Seraphim Movement Church Seal of Life",
+      "column": "logo_url",
+      "mimeType": "image/png",
+      "sizeBytes": 238618,
+      "formattedSize": "233.03 KB",
+      "intendedBucket": "vendor-logos",
+      "intendedPath": "209b687a-b182-4b98-844a-150696dd5e3c/logo_209b687a-b182-4b98-844a-150696dd5e3c.png"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "209b687a-b182-4b98-844a-150696dd5e3c",
+      "vendorName": "Cherubim & Seraphim Movement Church Seal of Life",
+      "column": "cover_image_url",
+      "mimeType": "image/png",
+      "sizeBytes": 1879436,
+      "formattedSize": "1.79 MB",
+      "intendedBucket": "vendor-covers",
+      "intendedPath": "209b687a-b182-4b98-844a-150696dd5e3c/cover_209b687a-b182-4b98-844a-150696dd5e3c.png"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "7abcf01d-596d-4b47-a049-820e01f93f67",
+      "vendorName": "MyPropifyNG",
+      "column": "logo_url",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 63108,
+      "formattedSize": "61.63 KB",
+      "intendedBucket": "vendor-logos",
+      "intendedPath": "7abcf01d-596d-4b47-a049-820e01f93f67/logo_7abcf01d-596d-4b47-a049-820e01f93f67.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "7abcf01d-596d-4b47-a049-820e01f93f67",
+      "vendorName": "MyPropifyNG",
+      "column": "cover_image_url",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 125250,
+      "formattedSize": "122.31 KB",
+      "intendedBucket": "vendor-covers",
+      "intendedPath": "7abcf01d-596d-4b47-a049-820e01f93f67/cover_7abcf01d-596d-4b47-a049-820e01f93f67.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "7abcf01d-596d-4b47-a049-820e01f93f67",
+      "vendorName": "MyPropifyNG",
+      "column": "gallery_urls[0]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 125250,
+      "formattedSize": "122.31 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "7abcf01d-596d-4b47-a049-820e01f93f67/gallery_7abcf01d-596d-4b47-a049-820e01f93f67_0.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7",
+      "vendorName": "Sparklestitches by oabit",
+      "column": "logo_url",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 177405,
+      "formattedSize": "173.25 KB",
+      "intendedBucket": "vendor-logos",
+      "intendedPath": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7/logo_ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7",
+      "vendorName": "Sparklestitches by oabit",
+      "column": "cover_image_url",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 240440,
+      "formattedSize": "234.80 KB",
+      "intendedBucket": "vendor-covers",
+      "intendedPath": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7/cover_ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7",
+      "vendorName": "Sparklestitches by oabit",
+      "column": "gallery_urls[2]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 199427,
+      "formattedSize": "194.75 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7/gallery_ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7_2.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7",
+      "vendorName": "Sparklestitches by oabit",
+      "column": "gallery_urls[3]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 153981,
+      "formattedSize": "150.37 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7/gallery_ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7_3.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7",
+      "vendorName": "Sparklestitches by oabit",
+      "column": "gallery_urls[4]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 126911,
+      "formattedSize": "123.94 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7/gallery_ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7_4.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7",
+      "vendorName": "Sparklestitches by oabit",
+      "column": "gallery_urls[5]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 123293,
+      "formattedSize": "120.40 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7/gallery_ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7_5.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7",
+      "vendorName": "Sparklestitches by oabit",
+      "column": "gallery_urls[6]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 110557,
+      "formattedSize": "107.97 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7/gallery_ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7_6.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7",
+      "vendorName": "Sparklestitches by oabit",
+      "column": "gallery_urls[7]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 109782,
+      "formattedSize": "107.21 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7/gallery_ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7_7.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151",
+      "vendorName": "Bisstoll Concept ",
+      "column": "logo_url",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 554429,
+      "formattedSize": "541.43 KB",
+      "intendedBucket": "vendor-logos",
+      "intendedPath": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151/logo_c0813dbd-5f40-4a9b-904c-e2ceb50ba151.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151",
+      "vendorName": "Bisstoll Concept ",
+      "column": "cover_image_url",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 3536492,
+      "formattedSize": "3.37 MB",
+      "intendedBucket": "vendor-covers",
+      "intendedPath": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151/cover_c0813dbd-5f40-4a9b-904c-e2ceb50ba151.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151",
+      "vendorName": "Bisstoll Concept ",
+      "column": "gallery_urls[0]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 292629,
+      "formattedSize": "285.77 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151/gallery_c0813dbd-5f40-4a9b-904c-e2ceb50ba151_0.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151",
+      "vendorName": "Bisstoll Concept ",
+      "column": "gallery_urls[1]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 28918,
+      "formattedSize": "28.24 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151/gallery_c0813dbd-5f40-4a9b-904c-e2ceb50ba151_1.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151",
+      "vendorName": "Bisstoll Concept ",
+      "column": "gallery_urls[2]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 55038,
+      "formattedSize": "53.75 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151/gallery_c0813dbd-5f40-4a9b-904c-e2ceb50ba151_2.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151",
+      "vendorName": "Bisstoll Concept ",
+      "column": "gallery_urls[3]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 85561,
+      "formattedSize": "83.56 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151/gallery_c0813dbd-5f40-4a9b-904c-e2ceb50ba151_3.jpeg"
+    },
+    {
+      "table": "public.vendors",
+      "recordId": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151",
+      "vendorName": "Bisstoll Concept ",
+      "column": "gallery_urls[4]",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 14423,
+      "formattedSize": "14.08 KB",
+      "intendedBucket": "vendor-gallery",
+      "intendedPath": "c0813dbd-5f40-4a9b-904c-e2ceb50ba151/gallery_c0813dbd-5f40-4a9b-904c-e2ceb50ba151_4.jpeg"
+    },
+    {
+      "table": "public.promotion_requests",
+      "recordId": "pr-1786406589807",
+      "vendorName": "Sparklestitches by oabit",
+      "column": "proof_url",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 177405,
+      "formattedSize": "173.25 KB",
+      "intendedBucket": "promotion-receipts",
+      "intendedPath": "ed2e5c56-4ccd-4864-9b1a-d17fe7196ff7/promo_receipt_pr-1786406589807.jpeg"
+    },
+    {
+      "table": "public.promotion_requests",
+      "recordId": "pr-1786538148209",
+      "vendorName": "Rhadsoft Tech",
+      "column": "proof_url",
+      "mimeType": "image/png",
+      "sizeBytes": 1775372,
+      "formattedSize": "1.69 MB",
+      "intendedBucket": "promotion-receipts",
+      "intendedPath": "8fb9e7b0-a645-404d-b7fe-1a12450c6810/promo_receipt_pr-1786538148209.png"
+    }
+  ],
+  "formattedTotalBytes": "9.72 MB"
+}

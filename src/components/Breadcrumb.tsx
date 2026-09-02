@@ -9,13 +9,25 @@ export const Breadcrumb: React.FC = () => {
     selectedCategory,
     setSelectedCategory,
     selectedVendorId,
+    selectedVendorSlug,
     selectedProductId,
     vendors,
     products,
   } = useApp();
 
-  // Selected vendor & product
-  const vendor = selectedVendorId ? vendors.find((v) => v.id === selectedVendorId) : null;
+  // Extract slug from URL if present (e.g. /store/:slug)
+  let currentSlugFromUrl = '';
+  if (typeof window !== 'undefined' && window.location.pathname.toLowerCase().startsWith('/store/')) {
+    currentSlugFromUrl = decodeURIComponent(window.location.pathname.substring(7)).trim();
+  }
+
+  // Selected vendor & product with canonical matching
+  const vendor = currentSlugFromUrl
+    ? vendors.find((v) => (v.slug && v.slug.toLowerCase() === currentSlugFromUrl.toLowerCase()) || v.id === currentSlugFromUrl)
+    : (selectedVendorSlug
+        ? vendors.find((v) => (v.slug && v.slug.toLowerCase() === selectedVendorSlug.toLowerCase()) || v.id === selectedVendorSlug)
+        : vendors.find((v) => v.id === selectedVendorId));
+
   const product = selectedProductId ? products.find((p) => p.id === selectedProductId) : null;
 
   // Don't render breadcrumb on home view

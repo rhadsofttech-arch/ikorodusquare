@@ -55,6 +55,8 @@ export const BusinessDetailsView: React.FC = () => {
     toggleFollowVendor,
     trackVendorWhatsAppClick,
     trackVendorPhoneClick,
+    isLoadingData,
+    isCriticalDataLoading,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'catalog' | 'gallery' | 'reviews'>('overview');
@@ -80,9 +82,19 @@ export const BusinessDetailsView: React.FC = () => {
     currentSlugFromUrl = decodeURIComponent(window.location.pathname.substring(7)).trim();
   }
 
+  // Canonical resolution: URL parameter first, then selectedVendorSlug, then selectedVendorId
   const vendor = currentSlugFromUrl
     ? vendors.find((v) => (v.slug && v.slug.toLowerCase() === currentSlugFromUrl.toLowerCase()) || v.id === currentSlugFromUrl)
-    : vendors.find((v) => v.id === selectedVendorId || (v.slug && selectedVendorSlug && v.slug.toLowerCase() === selectedVendorSlug.toLowerCase()));
+    : (selectedVendorSlug
+        ? vendors.find((v) => (v.slug && v.slug.toLowerCase() === selectedVendorSlug.toLowerCase()) || v.id === selectedVendorSlug)
+        : vendors.find((v) => v.id === selectedVendorId));
+
+  // Reset scroll to top when vendor changes or view mounts
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [vendor?.id, vendor?.slug]);
 
   const vendorProducts = vendor ? products.filter((p) => p.vendorId === vendor.id && p.status === 'approved') : [];
   // Approved reviews or user pending reviews
@@ -155,6 +167,15 @@ export const BusinessDetailsView: React.FC = () => {
         ]
       : undefined,
   });
+
+  if (!vendor && (isCriticalDataLoading || isLoadingData)) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-12 space-y-4">
+        <div className="w-12 h-12 border-4 border-emerald-800 border-t-amber-400 rounded-full animate-spin" />
+        <p className="text-sm font-bold text-emerald-950">Loading storefront details...</p>
+      </div>
+    );
+  }
 
   if (!vendor) {
     return (
