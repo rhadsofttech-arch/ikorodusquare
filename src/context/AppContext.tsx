@@ -116,6 +116,7 @@ interface AppContextType {
   approveVendor: (vendorId: string) => Promise<void>;
   rejectVendor: (vendorId: string, reason?: string) => Promise<void>;
   suspendVendor: (vendorId: string) => Promise<void>;
+  archiveVendor: (vendorId: string) => Promise<void>;
   reactivateVendor: (vendorId: string) => Promise<void>;
   deleteVendorPermanently: (vendorId: string) => Promise<void>;
   toggleVerifyVendor: (vendorId: string) => void;
@@ -1073,7 +1074,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveAuditLogToSupabase(log);
   };
 
+  const archiveVendor = async (vendorId: string) => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      console.warn('[SECURITY] Unauthorized attempt to archive vendor:', vendorId);
+      alert('Security Exception: Only platform administrators can archive vendor storefronts.');
+      return;
+    }
+    const targetVendor = vendors.find((v) => v.id === vendorId);
+    const vendorName = targetVendor ? targetVendor.businessName : vendorId;
+
+    setVendors((prev) =>
+      prev.map((v) => (v.id === vendorId ? { ...v, status: 'suspended' } : v))
+    );
+    await updateVendorInSupabase(vendorId, { status: 'suspended' });
+
+    const log: AuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'VENDOR_SUSPENDED',
+      performedBy: 'Admin',
+      role: 'admin',
+      details: `Archived/Suspended vendor "${vendorName}" (ID: ${vendorId}). Preserved all products, reviews, and enquiries without cascading deletion.`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [log, ...prev]);
+    saveAuditLogToSupabase(log);
+  };
+
   const deleteVendorPermanently = async (vendorId: string) => {
+    // 1. Enforce strict Admin Authorization
+    if (!currentUser || currentUser.role !== 'admin') {
+      console.error('[SECURITY VIOLATION] Unauthorized attempt to permanently delete vendor:', vendorId);
+      alert('Security Exception: Only authorized platform administrators can permanently delete vendor records.');
+      return;
+    }
+
     const targetVendor = vendors.find((v) => v.id === vendorId);
     const vendorName = targetVendor ? targetVendor.businessName : vendorId;
 
@@ -2092,6 +2126,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         approveVendor,
         rejectVendor,
         suspendVendor,
+        archiveVendor,
         reactivateVendor,
         deleteVendorPermanently,
         toggleVerifyVendor,

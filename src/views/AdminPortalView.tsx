@@ -52,6 +52,7 @@ export const AdminPortalView: React.FC = () => {
     approveVendor,
     rejectVendor,
     suspendVendor,
+    archiveVendor,
     reactivateVendor,
     deleteVendorPermanently,
     toggleVerifyVendor,
@@ -105,6 +106,7 @@ export const AdminPortalView: React.FC = () => {
   const [vendorCategoryFilter, setVendorCategoryFilter] = useState<string>('All');
   const [selectedVendorDetail, setSelectedVendorDetail] = useState<Vendor | null>(null);
   const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // Promotion Approval Modal State
   const [assignSlotModalReq, setAssignSlotModalReq] = useState<PromotionRequest | null>(null);
@@ -1809,41 +1811,127 @@ export const AdminPortalView: React.FC = () => {
       )}
 
       {/* MODAL 3: Delete Vendor Confirmation Modal */}
-      {vendorToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-red-200 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-black text-slate-900">
-              Permanently Delete Vendor?
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Are you sure you want to permanently delete <strong>"{vendorToDelete.businessName}"</strong>? This will remove the vendor storefront, all listed products, promotion requests, reviews, and enquiries.
-            </p>
-            <p className="text-[11px] text-red-600 font-bold bg-red-50 p-2 rounded-xl border border-red-200">
-              This action cannot be undone. System audit log will record this deletion.
-            </p>
-            <div className="flex justify-center gap-3 pt-2">
-              <button
-                onClick={() => setVendorToDelete(null)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  deleteVendorPermanently(vendorToDelete.id);
-                  setVendorToDelete(null);
-                }}
-                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow"
-              >
-                Confirm Permanent Delete
-              </button>
+      {vendorToDelete && (() => {
+        const vendorProdsCount = products.filter((p) => p.vendorId === vendorToDelete.id).length;
+        const vendorReviewsCount = reviews.filter((r) => r.vendorId === vendorToDelete.id).length;
+        const vendorEnqsCount = enquiries.filter((e) => e.vendorId === vendorToDelete.id).length;
+        const vendorPromosCount = promotionRequests.filter((pr) => pr.vendorId === vendorToDelete.id).length;
+        const isMatch = deleteConfirmText.trim().toLowerCase() === vendorToDelete.businessName.trim().toLowerCase();
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-red-300">
+              <div className="flex items-center gap-3 border-b border-red-100 pb-3">
+                <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Vendor Removal Safeguard
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Managing removal for: <strong className="text-slate-800">{vendorToDelete.businessName}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* RECOMMENDED OPTION: Archive/Suspend */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-left space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                    Recommended &amp; Safe
+                  </span>
+                  <h4 className="text-xs font-bold text-emerald-950">
+                    Archive / Suspend Vendor
+                  </h4>
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  Immediately delists this vendor from the public directory, home, and search. <strong>Preserves</strong> all {vendorProdsCount} products, {vendorReviewsCount} reviews, and customer enquiries. Can be reactivated at any time.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await archiveVendor(vendorToDelete.id);
+                    setVendorToDelete(null);
+                    setDeleteConfirmText('');
+                  }}
+                  className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Archive &amp; Suspend Vendor (Safe — Preserves Records)</span>
+                </button>
+              </div>
+
+              {/* DANGEROUS OPTION: Permanent Cascade Deletion */}
+              <div className="border border-red-200 bg-red-50/50 rounded-2xl p-4 text-left space-y-3">
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <h4 className="text-xs font-black uppercase tracking-wide">
+                    Permanent Cascade Deletion
+                  </h4>
+                </div>
+
+                <div className="text-[11px] text-slate-600 space-y-1">
+                  <p className="font-semibold text-red-900">
+                    This will permanently and irreversibly erase from Supabase:
+                  </p>
+                  <ul className="list-disc list-inside text-[11px] text-slate-700 space-y-0.5">
+                    <li>Vendor profile &amp; storefront (<code className="text-red-700 font-mono">public.vendors</code>)</li>
+                    <li><strong className="text-red-700">{vendorProdsCount}</strong> listed products (<code className="text-red-700 font-mono">public.products</code> via CASCADE)</li>
+                    <li><strong className="text-red-700">{vendorReviewsCount}</strong> customer reviews (<code className="text-red-700 font-mono">public.reviews</code> via CASCADE)</li>
+                    <li><strong className="text-red-700">{vendorEnqsCount}</strong> customer enquiries (<code className="text-red-700 font-mono">public.enquiries</code> via CASCADE)</li>
+                    <li><strong className="text-red-700">{vendorPromosCount}</strong> promotion requests (<code className="text-red-700 font-mono">public.promotion_requests</code> via CASCADE)</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                  <label className="block text-[11px] font-bold text-slate-700">
+                    To authorize permanent deletion, type <span className="font-mono bg-red-100 text-red-800 px-1 py-0.5 rounded select-all font-bold">{vendorToDelete.businessName}</span> below:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder={`Type "${vendorToDelete.businessName}" to confirm`}
+                    className="w-full text-xs px-3 py-2 border border-red-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-red-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVendorToDelete(null);
+                      setDeleteConfirmText('');
+                    }}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!isMatch}
+                    onClick={async () => {
+                      if (!isMatch) return;
+                      await deleteVendorPermanently(vendorToDelete.id);
+                      setVendorToDelete(null);
+                      setDeleteConfirmText('');
+                    }}
+                    className={`px-4 py-2 font-bold text-xs rounded-xl shadow transition-colors flex items-center gap-1.5 ${
+                      isMatch
+                        ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'
+                        : 'bg-red-200 text-red-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Confirm Permanent Delete</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODAL 3b: Direct Promotion Assignment Creator Modal */}
       {directPlacementModalOpen && (

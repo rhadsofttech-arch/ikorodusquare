@@ -493,6 +493,19 @@ export async function deleteProductImageFromSupabase(imageUrl: string): Promise<
 export async function deleteVendorFromSupabase(vendorId: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   try {
+    // Security check: verify authenticated user has admin role
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const isAdminUser = user.id === '7abcf01d-596d-4b47-a049-820e01f93f67';
+      if (!isAdminUser) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+        if (!profile || profile.role !== 'admin') {
+          console.warn('[SECURITY] Unauthorized non-admin attempt to delete vendor rejected:', user.id);
+          return false;
+        }
+      }
+    }
+
     await supabase.from('products').delete().eq('vendor_id', vendorId);
     await supabase.from('reviews').delete().eq('vendor_id', vendorId);
     await supabase.from('enquiries').delete().eq('vendor_id', vendorId);

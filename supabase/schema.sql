@@ -74,8 +74,44 @@ ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Vendors viewable by everyone" ON public.vendors FOR SELECT USING (true);
 CREATE POLICY "Anyone can register vendor" ON public.vendors FOR INSERT WITH CHECK (true);
-CREATE POLICY "Anyone can update vendor" ON public.vendors FOR UPDATE USING (true);
-CREATE POLICY "Anyone can delete vendor" ON public.vendors FOR DELETE USING (true);
+
+-- Authenticated vendors can update their own storefront; Admins can update all vendors
+CREATE POLICY "Admins and vendor owners can update vendors"
+ON public.vendors
+FOR UPDATE
+TO authenticated
+USING (
+  auth.uid() = '7abcf01d-596d-4b47-a049-820e01f93f67'::uuid
+  OR auth.uid() = user_id
+  OR EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE profiles.id = auth.uid()
+    AND profiles.role = 'admin'
+  )
+)
+WITH CHECK (
+  auth.uid() = '7abcf01d-596d-4b47-a049-820e01f93f67'::uuid
+  OR auth.uid() = user_id
+  OR EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE profiles.id = auth.uid()
+    AND profiles.role = 'admin'
+  )
+);
+
+-- Only authorized administrator can delete vendors
+CREATE POLICY "Only authorized administrators can delete vendors"
+ON public.vendors
+FOR DELETE
+TO authenticated
+USING (
+  auth.uid() = '7abcf01d-596d-4b47-a049-820e01f93f67'::uuid
+  OR EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE profiles.id = auth.uid()
+    AND profiles.role = 'admin'
+  )
+);
 
 -- 3. PRODUCTS TABLE
 CREATE TABLE IF NOT EXISTS public.products (
