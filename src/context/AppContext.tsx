@@ -90,6 +90,17 @@ interface AppContextType {
   selectedArea: IkoroduArea | 'All';
   setSelectedArea: (area: IkoroduArea | 'All') => void;
 
+  // Near Me & Geolocation
+  isNearMeActive: boolean;
+  setIsNearMeActive: (active: boolean) => void;
+  userLocation: { latitude: number; longitude: number } | null;
+  locationStatus: 'idle' | 'prompting' | 'active' | 'denied' | 'unavailable';
+  locationError: string | null;
+  nearMeRadiusKm: number;
+  setNearMeRadiusKm: (radius: number) => void;
+  requestNearMe: () => Promise<boolean>;
+  disableNearMe: () => void;
+
   // Actions
   addVendorRegistration: (vendorData: Partial<Vendor>) => Promise<Vendor>;
   updateVendorProfile: (vendorId: string, updatedData: Partial<Vendor>) => Promise<void>;
@@ -272,6 +283,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedArea, setSelectedArea] = useState<IkoroduArea | 'All'>('All');
+
+  // Near Me & Location States
+  const [isNearMeActive, setIsNearMeActive] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'prompting' | 'active' | 'denied' | 'unavailable'>('idle');
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [nearMeRadiusKm, setNearMeRadiusKm] = useState<number>(5);
+
+  const requestNearMe = useCallback(async (): Promise<boolean> => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      setLocationStatus('unavailable');
+      setLocationError('Geolocation is not supported by your browser.');
+      setIsNearMeActive(false);
+      return false;
+    }
+
+    setLocationStatus('prompting');
+    setLocationError(null);
+
+    return new Promise<boolean>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          setUserLocation(coords);
+          setLocationStatus('active');
+          setLocationError(null);
+          setIsNearMeActive(true);
+          resolve(true);
+        },
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            setLocationStatus('denied');
+            setLocationError('Location access was denied. You can still search IkoroduSquare normally.');
+          } else {
+            setLocationStatus('unavailable');
+            setLocationError('Location unavailable or request timed out. You can continue searching normally.');
+          }
+          setIsNearMeActive(false);
+          resolve(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000,
+        }
+      );
+    });
+  }, []);
+
+  const disableNearMe = useCallback(() => {
+    setIsNearMeActive(false);
+  }, []);
 
   // Tier 1: Critical Public Catalog (Vendors, Products, Promotions)
   const fetchCriticalPublicData = useCallback(async () => {
@@ -1922,6 +1988,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedCategory,
         selectedArea,
         setSelectedArea,
+        isNearMeActive,
+        setIsNearMeActive,
+        userLocation,
+        locationStatus,
+        locationError,
+        nearMeRadiusKm,
+        setNearMeRadiusKm,
+        requestNearMe,
+        disableNearMe,
         addVendorRegistration,
         updateVendorProfile,
         registerCustomer,

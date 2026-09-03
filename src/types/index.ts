@@ -90,6 +90,8 @@ export interface Vendor {
   description: string;
   address: string;
   area: IkoroduArea;
+  latitude?: number;
+  longitude?: number;
   lga: string;
   state: string;
   country: string;

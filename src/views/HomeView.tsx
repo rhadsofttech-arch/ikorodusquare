@@ -30,6 +30,7 @@ import {
   ThumbsUp,
   Flame,
   BadgeCheck,
+  Navigation,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IkoroduArea, PromotionOption, Vendor } from '../types';
@@ -40,6 +41,8 @@ import { ProductSkeletonCard } from '../components/ProductSkeletonCard';
 import { VendorSkeletonCard } from '../components/VendorSkeletonCard';
 import { useSEO } from '../hooks/useSEO';
 import { getCategoryIcon } from '../lib/categoryIcons';
+import { useSmartSearch } from '../hooks/useSmartSearch';
+import { SmartSearchDropdown } from '../components/SmartSearchDropdown';
 
 export const HomeView: React.FC = () => {
   const {
@@ -70,7 +73,19 @@ export const HomeView: React.FC = () => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPromoForModal, setSelectedPromoForModal] = useState<PromotionOption>(PROMOTION_OPTIONS[1]);
   const [recommendationFilter, setRecommendationFilter] = useState<'all' | 'under50k' | 'topRated' | 'artisan'>('all');
-  const [showPredictiveDropdown, setShowPredictiveDropdown] = useState(true);
+
+  const {
+    results: searchResults,
+    isLoading: isSearchLoading,
+    isDropdownOpen,
+    setIsDropdownOpen,
+    isNearMeActive,
+    toggleNearMe,
+    locationStatus,
+    locationError,
+    nearMeRadiusKm,
+    setNearMeRadiusKm,
+  } = useSmartSearch();
 
   useSEO({
     title: 'IkoroduSquare | Local Business Directory & Marketplace in Ikorodu',
@@ -156,31 +171,6 @@ export const HomeView: React.FC = () => {
   );
 
   const ikoroduAreas: IkoroduArea[] = IKORODU_AREAS;
-
-  // Predictive Search Autocomplete Logic
-  const matchingProducts = searchQuery.trim()
-    ? featuredProducts.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.vendorArea.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 4)
-    : [];
-
-  const matchingVendors = searchQuery.trim()
-    ? approvedVendors.filter(
-        (v) =>
-          v.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          v.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          v.area.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 3)
-    : [];
-
-  const matchingCategories = searchQuery.trim()
-    ? categories.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 3)
-    : [];
-
-  const hasSearchResults = matchingProducts.length > 0 || matchingVendors.length > 0 || matchingCategories.length > 0;
 
   // Interactive Area Explorer Districts
   const ikoroduDistricts = [
@@ -461,17 +451,20 @@ export const HomeView: React.FC = () => {
                   <Search className="w-4 h-4 text-slate-400 shrink-0" />
                   <input
                     type="text"
-                    placeholder="Search products, solar, lace, phones, bakery..."
+                    placeholder="Search products, services, solar, lace, bakery..."
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
-                      setShowPredictiveDropdown(true);
+                      setIsDropdownOpen(true);
                     }}
-                    onFocus={() => setShowPredictiveDropdown(true)}
+                    onFocus={() => setIsDropdownOpen(true)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        setShowPredictiveDropdown(false);
+                        setIsDropdownOpen(false);
                         setActiveTab('marketplace');
+                      }
+                      if (e.key === 'Escape') {
+                        setIsDropdownOpen(false);
                       }
                     }}
                     className="w-full min-w-0 bg-transparent text-xs sm:text-sm font-medium focus:outline-none placeholder-slate-400 py-1"
@@ -484,9 +477,45 @@ export const HomeView: React.FC = () => {
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}
+
+                  {/* Near Me Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleNearMe();
+                      setIsDropdownOpen(true);
+                    }}
+                    title={
+                      isNearMeActive
+                        ? `Near Me is active (${nearMeRadiusKm}km) - click to turn off`
+                        : 'Filter businesses and products closest to you'
+                    }
+                    className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                      isNearMeActive
+                        ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                        : locationStatus === 'prompting'
+                        ? 'bg-amber-100 text-amber-900 animate-pulse'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    <Navigation
+                      className={`w-3.5 h-3.5 ${
+                        isNearMeActive ? 'fill-white text-white' : 'text-emerald-700'
+                      }`}
+                    />
+                    <span className="hidden xs:inline sm:inline">
+                      {locationStatus === 'prompting'
+                        ? 'Locating...'
+                        : isNearMeActive
+                        ? `Near Me (${nearMeRadiusKm}km)`
+                        : 'Near Me'}
+                    </span>
+                    {isNearMeActive && <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />}
+                  </button>
+
                   <button
                     onClick={() => {
-                      setShowPredictiveDropdown(false);
+                      setIsDropdownOpen(false);
                       setActiveTab('marketplace');
                     }}
                     className="px-3 sm:px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs rounded-lg transition-colors shrink-0 shadow-sm whitespace-nowrap"
@@ -504,8 +533,7 @@ export const HomeView: React.FC = () => {
                     key={tag}
                     onClick={() => {
                       setSearchQuery(tag);
-                      setShowPredictiveDropdown(false);
-                      setActiveTab('marketplace');
+                      setIsDropdownOpen(true);
                     }}
                     className="px-2 sm:px-2.5 py-0.5 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 rounded-lg text-[10px] sm:text-[11px] font-medium border border-emerald-700/60 whitespace-nowrap transition-colors shrink-0"
                   >
@@ -515,124 +543,45 @@ export const HomeView: React.FC = () => {
               </div>
             </div>
 
-            {/* PREDICTIVE SEARCH AUTOCOMPLETE DROPDOWN */}
-            {searchQuery.trim() !== '' && showPredictiveDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 max-h-96 overflow-y-auto divide-y divide-slate-100 w-full max-w-full">
-                {!hasSearchResults ? (
-                  <div className="p-4 text-center text-xs text-slate-500">
-                    No exact matches found for "<span className="font-bold text-slate-800">{searchQuery}</span>". Try searching in all areas.
-                  </div>
-                ) : (
-                  <>
-                    {/* Matching Products */}
-                    {matchingProducts.length > 0 && (
-                      <div className="p-3 bg-slate-50/50">
-                        <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 px-1">
-                          <span className="flex items-center gap-1"><ShoppingBag className="w-3 h-3 text-emerald-600" /> Matching Products</span>
-                          <span>{matchingProducts.length} items</span>
-                        </div>
-                        <div className="space-y-1">
-                          {matchingProducts.map((p) => (
-                            <div
-                              key={p.id}
-                              onClick={() => {
-                                setShowPredictiveDropdown(false);
-                                handleProductClick(p.id);
-                              }}
-                              className="flex items-center gap-3 p-2 hover:bg-emerald-50 rounded-xl cursor-pointer transition-colors"
-                            >
-                              <img src={getProductCoverImage(p)} alt={p.name || 'Product'} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-slate-200" />
-                              <div className="flex-1 min-w-0">
-                                <h5 className="text-xs font-bold text-slate-900 truncate">{p.name}</h5>
-                                <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                                  <span>{p.vendorName}</span>
-                                  <span>•</span>
-                                  <span className="text-emerald-700 font-semibold">{p.vendorArea}</span>
-                                </div>
-                              </div>
-                              <span className="text-xs font-black text-emerald-950 font-mono shrink-0">₦{safeFormatPrice(p.price)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Matching Businesses */}
-                    {matchingVendors.length > 0 && (
-                      <div className="p-3">
-                        <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 px-1">
-                          <span className="flex items-center gap-1"><Store className="w-3 h-3 text-amber-500" /> Verified Storefronts</span>
-                          <span>{matchingVendors.length} vendors</span>
-                        </div>
-                        <div className="space-y-1">
-                          {matchingVendors.map((v) => (
-                            <div
-                              key={v.id}
-                              onClick={() => {
-                                setShowPredictiveDropdown(false);
-                                handleVendorClick(v.id);
-                              }}
-                              className="flex items-center justify-between p-2 hover:bg-amber-50/60 rounded-xl cursor-pointer transition-colors"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs shrink-0">
-                                  {v.businessName.charAt(0)}
-                                </div>
-                                <div className="truncate">
-                                  <div className="flex items-center gap-1">
-                                    <h5 className="text-xs font-bold text-slate-900 truncate">{v.businessName}</h5>
-                                    {v.isVerified && <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                                  </div>
-                                  <p className="text-[10px] text-slate-500 truncate">{v.category} • {v.area}</p>
-                                </div>
-                              </div>
-                              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded-full shrink-0">
-                                View Store
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Matching Categories */}
-                    {matchingCategories.length > 0 && (
-                      <div className="p-3 bg-slate-50/50">
-                        <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2 px-1">
-                          Categories
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {matchingCategories.map((c) => (
-                            <button
-                              key={c.id}
-                              onClick={() => {
-                                setSearchQuery(c.name);
-                                setShowPredictiveDropdown(false);
-                                setActiveTab('marketplace');
-                              }}
-                              className="px-3 py-1 bg-white hover:bg-emerald-100 text-slate-800 hover:text-emerald-950 text-xs font-semibold rounded-lg border border-slate-200 shadow-2xs transition-colors"
-                            >
-                              {c.name} ({c.vendorCount} stores)
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Bottom Action Footer */}
-                    <div
-                      className="p-2.5 bg-slate-100 text-center text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
-                      onClick={() => {
-                        setShowPredictiveDropdown(false);
-                        setActiveTab('marketplace');
-                      }}
-                    >
-                      View all marketplace results for "{searchQuery}" →
-                    </div>
-                  </>
-                )}
-              </div>
+            {/* Backdrop to dismiss dropdown */}
+            {isDropdownOpen && (searchQuery.trim().length > 0 || isNearMeActive) && (
+              <div
+                className="fixed inset-0 z-40 bg-black/10"
+                onClick={() => setIsDropdownOpen(false)}
+              />
             )}
+
+            {/* Smart Search Autocomplete Dropdown */}
+            <div className="relative z-50">
+              <SmartSearchDropdown
+                isOpen={isDropdownOpen && (searchQuery.trim().length > 0 || isNearMeActive)}
+                isLoading={isSearchLoading}
+                query={searchQuery}
+                results={searchResults}
+                isNearMeActive={isNearMeActive}
+                nearMeRadiusKm={nearMeRadiusKm}
+                setNearMeRadiusKm={setNearMeRadiusKm}
+                locationStatus={locationStatus}
+                locationError={locationError}
+                onSelectVendor={(id, slug) => {
+                  setIsDropdownOpen(false);
+                  handleVendorClick(slug || id);
+                }}
+                onSelectProduct={(id) => {
+                  setIsDropdownOpen(false);
+                  handleProductClick(id);
+                }}
+                onViewAllMarketplace={() => {
+                  setIsDropdownOpen(false);
+                  setActiveTab('marketplace');
+                }}
+                onViewAllDirectory={() => {
+                  setIsDropdownOpen(false);
+                  setActiveTab('directory');
+                }}
+                onClose={() => setIsDropdownOpen(false)}
+              />
+            </div>
           </div>
         </div>
       </section>
