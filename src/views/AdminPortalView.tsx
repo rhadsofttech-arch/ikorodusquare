@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -88,8 +88,14 @@ export const AdminPortalView: React.FC = () => {
   };
 
   const [adminTab, setAdminTab] = useState<'pending-vendors' | 'verification-requests' | 'promotions-queue' | 'all-vendors' | 'review-moderation' | 'audit-logs'>('pending-vendors');
-  const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [verifStatusFilter, setVerifStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+
+  useEffect(() => {
+    if (adminTab === 'review-moderation') {
+      refreshData();
+    }
+  }, [adminTab]);
   const [rejectVerifModalReq, setRejectVerifModalReq] = useState<VerificationRequest | null>(null);
   const [rejectVerifNote, setRejectVerifNote] = useState('');
 
@@ -435,7 +441,7 @@ export const AdminPortalView: React.FC = () => {
           }`}
         >
           <MessageSquare className="w-4 h-4 text-amber-400" />
-          <span>Review Moderation ({pendingReviews.length})</span>
+          <span>Review Moderation ({reviews.length})</span>
           {pendingReviews.length > 0 && (
             <span className="w-5 h-5 bg-amber-500 text-emerald-950 rounded-full text-[10px] font-bold flex items-center justify-center">
               {pendingReviews.length}
@@ -1234,20 +1240,27 @@ export const AdminPortalView: React.FC = () => {
             </div>
 
             {/* Status Filter Tabs */}
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl shrink-0">
-              {(['pending', 'approved', 'rejected', 'all'] as const).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setReviewStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
-                    reviewStatusFilter === st
-                      ? 'bg-emerald-950 text-amber-300 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  {st} {st === 'pending' ? `(${pendingReviews.length})` : ''}
-                </button>
-              ))}
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl shrink-0 flex-wrap">
+              {(['all', 'approved', 'pending', 'rejected'] as const).map((st) => {
+                let count = reviews.length;
+                if (st === 'approved') count = reviews.filter((r) => r.status === 'approved' || !r.status).length;
+                if (st === 'pending') count = pendingReviews.length;
+                if (st === 'rejected') count = reviews.filter((r) => r.status === 'rejected').length;
+
+                return (
+                  <button
+                    key={st}
+                    onClick={() => setReviewStatusFilter(st)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                      reviewStatusFilter === st
+                        ? 'bg-emerald-950 text-amber-300 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {st} ({count})
+                  </button>
+                );
+              })}
             </div>
           </div>
 

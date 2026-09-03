@@ -32,6 +32,7 @@ import {
   deleteProductImageFromSupabase,
   fetchReviewsFromSupabase,
   saveReviewToSupabase,
+  deleteReviewFromSupabase,
   fetchEnquiriesFromSupabase,
   saveEnquiryToSupabase,
   fetchPromotionsFromSupabase,
@@ -386,7 +387,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
 
       const [resReviews, resEnquiries, resVerifs, resNotifs, resLogs] = results;
-      if (resReviews.status === 'fulfilled' && resReviews.value !== null) setReviews(resReviews.value);
+      if (resReviews.status === 'fulfilled' && resReviews.value !== null) {
+        const fetchedReviews = resReviews.value;
+        setReviews(fetchedReviews);
+        // Automatically reconcile vendor rating and reviewCount with real database reviews
+        setVendors((prevVendors) =>
+          prevVendors.map((v) => {
+            const applicable = fetchedReviews.filter(
+              (r) => r.vendorId === v.id && (r.status === 'approved' || !r.status || r.status === 'pending')
+            );
+            const count = applicable.length;
+            const avg = count > 0 ? Number((applicable.reduce((acc, r) => acc + (Number(r.rating) || 0), 0) / count).toFixed(1)) : 0;
+            if (v.rating !== avg || v.reviewCount !== count) {
+              return { ...v, rating: avg, reviewCount: count };
+            }
+            return v;
+          })
+        );
+      }
       if (resEnquiries.status === 'fulfilled' && resEnquiries.value !== null) setEnquiries(resEnquiries.value);
       if (resVerifs.status === 'fulfilled' && resVerifs.value !== null) setVerificationRequests(resVerifs.value);
       if (resNotifs.status === 'fulfilled' && resNotifs.value !== null) setNotifications(resNotifs.value);
@@ -1252,55 +1270,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Review Actions
-  const addReview = (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
-    const targetVendor = vendors.find((v) => v.id === reviewData.vendorId);
-    const vendorName = targetVendor ? targetVendor.businessName : 'Vendor';
-
-    const newReview: Review = {
-      ...reviewData,
-      id: `r-${Date.now()}`,
-      status: reviewData.status || 'pending', // Default pending moderation for customer reviews
-      createdAt: new Date().toISOString(),
-    };
-    setReviews((prev) => [newReview, ...prev]);
-    saveReviewToSupabase(newReview);
-
-    // Create notification for admin moderation
-    const notif: NotificationItem = {
-      id: `n-${Date.now()}`,
-      userId: 'admin',
-      targetRole: 'admin',
-      title: 'New Review Pending Moderation',
-      message: `${reviewData.customerName} submitted a ${reviewData.rating}-star review for "${vendorName}". Review requires admin moderation before appearing publicly.`,
-      type: 'review',
-      isRead: false,
-      createdAt: new Date().toISOString(),
-    };
-    setNotifications((prev) => [notif, ...prev]);
-    saveNotificationToSupabase(notif);
-
-    // If review was pre-approved (e.g. by admin), recalculate rating immediately
-    if (newReview.status === 'approved') {
-      recalculateVendorRating(reviewData.vendorId, newReview);
+  const computeVendorReviewStats = (vendorId: string, allReviews: Review[]) => {
+    const applicable = allReviews.filter(
+      (r) => r.vendorId === vendorId && (r.status === 'approved' || !r.status || r.status === 'pending')
+    );
+    const count = applicable.length;
+    if (count === 0) {
+      return { rating: 0, reviewCount: 0 };
     }
+    const sum = applicable.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+    const avg = Number((sum / count).toFixed(1));
+    return { rating: avg, reviewCount: count };
   };
 
   const recalculateVendorRating = (vendorId: string, extraReview?: Review) => {
-    let currentReviews = reviews.filter((r) => r.vendorId === vendorId && (r.status === 'approved' || !r.status));
-    if (extraReview && extraReview.status === 'approved' && !currentReviews.some((r) => r.id === extraReview.id)) {
+    let currentReviews = reviews.filter((r) => r.vendorId === vendorId && (r.status === 'approved' || !r.status || r.status === 'pending'));
+    if (extraReview && !currentReviews.some((r) => r.id === extraReview.id)) {
       currentReviews = [extraReview, ...currentReviews];
     }
 
-    if (currentReviews.length === 0) return;
-
-    const totalRating = currentReviews.reduce((sum, r) => sum + r.rating, 0);
-    const avgRating = Number((totalRating / currentReviews.length).toFixed(1));
+    const count = currentReviews.length;
+    const totalRating = currentReviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0);
+    const avgRating = count > 0 ? Number((totalRating / count).toFixed(1)) : 0;
 
     setVendors((prev) =>
       prev.map((v) => {
         if (v.id === vendorId) {
-          const updated = { ...v, rating: avgRating, reviewCount: currentReviews.length };
-          updateVendorInSupabase(v.id, { rating: avgRating, reviewCount: currentReviews.length });
+          const updated = { ...v, rating: avgRating, reviewCount: count };
+          updateVendorInSupabase(v.id, { rating: avgRating, reviewCount: count });
           return updated;
         }
         return v;
@@ -1308,27 +1305,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const addReview = (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
+    const targetVendor = vendors.find((v) => v.id === reviewData.vendorId);
+    const vendorName = targetVendor ? targetVendor.businessName : 'Vendor';
+
+    const newReview: Review = {
+      ...reviewData,
+      id: `r-${Date.now()}`,
+      status: reviewData.status || 'approved', // Approved & live immediately across storefront, homepage & admin
+      createdAt: new Date().toISOString(),
+    };
+
+    // 1. Immediately update reviews state
+    const nextReviews = [newReview, ...reviews.filter((r) => r.id !== newReview.id)];
+    setReviews(nextReviews);
+
+    // 2. Persist to Supabase
+    saveReviewToSupabase(newReview);
+
+    // 3. Immediately update vendor reviewCount and rating
+    const stats = computeVendorReviewStats(reviewData.vendorId, nextReviews);
+    setVendors((prev) =>
+      prev.map((v) => {
+        if (v.id === reviewData.vendorId) {
+          return { ...v, rating: stats.rating, reviewCount: stats.reviewCount };
+        }
+        return v;
+      })
+    );
+
+    // 4. Persist updated vendor stats to Supabase vendors table
+    updateVendorInSupabase(reviewData.vendorId, {
+      rating: stats.rating,
+      reviewCount: stats.reviewCount,
+    });
+
+    // 5. Create notification for admin
+    const notif: NotificationItem = {
+      id: `n-${Date.now()}`,
+      userId: 'admin',
+      targetRole: 'admin',
+      title: 'New Customer Review Submitted',
+      message: `${reviewData.customerName} submitted a ${reviewData.rating}-star review for "${vendorName}".`,
+      type: 'review',
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications((prev) => [notif, ...prev]);
+    saveNotificationToSupabase(notif);
+  };
+
   const approveReview = (reviewId: string) => {
     let targetVendorId = '';
     let ratingStars = 5;
     let reviewerName = '';
 
-    setReviews((prev) =>
-      prev.map((r) => {
-        if (r.id === reviewId) {
-          targetVendorId = r.vendorId;
-          ratingStars = r.rating;
-          reviewerName = r.customerName;
-          const updated = { ...r, status: 'approved' as const };
-          saveReviewToSupabase(updated);
-          return updated;
-        }
-        return r;
-      })
-    );
+    const nextReviews = reviews.map((r) => {
+      if (r.id === reviewId) {
+        targetVendorId = r.vendorId;
+        ratingStars = r.rating;
+        reviewerName = r.customerName;
+        const updated = { ...r, status: 'approved' as const };
+        saveReviewToSupabase(updated);
+        return updated;
+      }
+      return r;
+    });
+    setReviews(nextReviews);
 
     if (targetVendorId) {
-      recalculateVendorRating(targetVendorId);
+      const stats = computeVendorReviewStats(targetVendorId, nextReviews);
+      setVendors((prev) =>
+        prev.map((v) => {
+          if (v.id === targetVendorId) {
+            return { ...v, rating: stats.rating, reviewCount: stats.reviewCount };
+          }
+          return v;
+        })
+      );
+      updateVendorInSupabase(targetVendorId, {
+        rating: stats.rating,
+        reviewCount: stats.reviewCount,
+      });
 
       const targetVendor = vendors.find((v) => v.id === targetVendorId);
       const vendorName = targetVendor ? targetVendor.businessName : 'your store';
@@ -1338,7 +1396,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `n-${Date.now()}`,
         userId: targetVendorId,
         title: 'New Storefront Review Approved',
-        message: `A ${ratingStars}-star review from ${reviewerName} has been approved by admin and is now live on your storefront.`,
+        message: `A ${ratingStars}-star review from ${reviewerName} has been approved and is live on your storefront.`,
         type: 'review',
         isRead: false,
         createdAt: new Date().toISOString(),
@@ -1364,18 +1422,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let targetVendorId = '';
     let reviewerName = '';
 
-    setReviews((prev) =>
-      prev.map((r) => {
-        if (r.id === reviewId) {
-          targetVendorId = r.vendorId;
-          reviewerName = r.customerName;
-          const updated = { ...r, status: 'rejected' as const };
-          saveReviewToSupabase(updated);
-          return updated;
-        }
-        return r;
-      })
-    );
+    const nextReviews = reviews.map((r) => {
+      if (r.id === reviewId) {
+        targetVendorId = r.vendorId;
+        reviewerName = r.customerName;
+        const updated = { ...r, status: 'rejected' as const };
+        saveReviewToSupabase(updated);
+        return updated;
+      }
+      return r;
+    });
+    setReviews(nextReviews);
+
+    if (targetVendorId) {
+      const stats = computeVendorReviewStats(targetVendorId, nextReviews);
+      setVendors((prev) =>
+        prev.map((v) => {
+          if (v.id === targetVendorId) {
+            return { ...v, rating: stats.rating, reviewCount: stats.reviewCount };
+          }
+          return v;
+        })
+      );
+      updateVendorInSupabase(targetVendorId, {
+        rating: stats.rating,
+        reviewCount: stats.reviewCount,
+      });
+    }
 
     const log: AuditLog = {
       id: `log-${Date.now()}`,
@@ -1391,9 +1464,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteReview = (reviewId: string) => {
     const target = reviews.find((r) => r.id === reviewId);
-    setReviews((prev) => prev.filter((r) => r.id !== reviewId));
-    if (target) {
-      recalculateVendorRating(target.vendorId);
+    const vendorId = target?.vendorId;
+    const nextReviews = reviews.filter((r) => r.id !== reviewId);
+    setReviews(nextReviews);
+    deleteReviewFromSupabase(reviewId);
+
+    if (vendorId) {
+      const stats = computeVendorReviewStats(vendorId, nextReviews);
+      setVendors((prev) =>
+        prev.map((v) => {
+          if (v.id === vendorId) {
+            return { ...v, rating: stats.rating, reviewCount: stats.reviewCount };
+          }
+          return v;
+        })
+      );
+      updateVendorInSupabase(vendorId, {
+        rating: stats.rating,
+        reviewCount: stats.reviewCount,
+      });
     }
   };
 

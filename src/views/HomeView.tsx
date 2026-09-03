@@ -73,6 +73,27 @@ export const HomeView: React.FC = () => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPromoForModal, setSelectedPromoForModal] = useState<PromotionOption>(PROMOTION_OPTIONS[1]);
   const [recommendationFilter, setRecommendationFilter] = useState<'all' | 'under50k' | 'topRated' | 'artisan'>('all');
+  const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(false);
+
+  // Real-time aggregate review counts and ratings directly from reviews state
+  const vendorReviewsStatsMap = React.useMemo(() => {
+    const map: Record<string, { count: number; avgRating: number }> = {};
+    (reviews || []).forEach((r) => {
+      if (r.status === 'approved' || !r.status || r.status === 'pending') {
+        if (!map[r.vendorId]) {
+          map[r.vendorId] = { count: 0, avgRating: 0 };
+        }
+        map[r.vendorId].count += 1;
+        map[r.vendorId].avgRating += Number(r.rating) || 0;
+      }
+    });
+    Object.keys(map).forEach((vid) => {
+      if (map[vid].count > 0) {
+        map[vid].avgRating = Number((map[vid].avgRating / map[vid].count).toFixed(1));
+      }
+    });
+    return map;
+  }, [reviews]);
 
   const {
     results: searchResults,
@@ -298,6 +319,7 @@ export const HomeView: React.FC = () => {
     badgeLabel: string;
     timeAgo: string;
     timestamp: number;
+    starRating?: number;
     onClick: () => void;
   }[] = [];
 
@@ -377,7 +399,7 @@ export const HomeView: React.FC = () => {
 
   // 3. Approved Reviews
   (reviews || [])
-    .filter((r) => r.status === 'approved' || !r.status)
+    .filter((r) => r.status === 'approved' || !r.status || r.status === 'pending')
     .forEach((r) => {
       const targetVendor = vendors.find((v) => v.id === r.vendorId);
       if (!targetVendor) return;
@@ -385,12 +407,13 @@ export const HomeView: React.FC = () => {
       liveActivities.push({
         id: `act-r-${r.id}`,
         title: `${targetVendor.businessName} received a new review`,
-        subtitle: `Rating: ${r.rating}/5 — "${r.comment.length > 50 ? r.comment.substring(0, 50) + '...' : r.comment}"`,
+        subtitle: r.comment ? `"${r.comment.length > 50 ? r.comment.substring(0, 50) + '...' : r.comment}"` : 'Customer left feedback',
         location: `${targetVendor.area}, Ikorodu`,
         badgeIcon: <Star className="w-3 h-3 text-amber-300 fill-amber-300 shrink-0" />,
         badgeLabel: 'New Review',
         timeAgo: getRelativeTime(r.createdAt),
         timestamp: isNaN(t) ? Date.now() - 86400000 : t,
+        starRating: Number(r.rating) || 5,
         onClick: () => {
           setSelectedVendorId(targetVendor.id);
           setActiveTab('vendor-details');
@@ -586,27 +609,27 @@ export const HomeView: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. Live on IkoroduSquare - Horizontal Activity Feed */}
-      <section className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-xl overflow-hidden relative border border-emerald-800/60">
+      {/* 2. Live on IkoroduSquare - Compact Horizontal Activity Carousel */}
+      <section className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 shadow-xl overflow-hidden relative border border-emerald-800/60">
         <div className="absolute -top-24 -right-24 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-emerald-800/60 pb-3.5">
+        <div className="relative z-10 space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between gap-3 border-b border-emerald-800/60 pb-2.5 sm:pb-3.5">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="relative flex h-2.5 w-2.5">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-emerald-400"></span>
                 </span>
-                <span className="text-[11px] font-black text-amber-300 uppercase tracking-widest font-mono">
+                <span className="text-[10px] sm:text-[11px] font-black text-amber-300 uppercase tracking-widest font-mono">
                   Live Activity Feed
                 </span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white font-display">
+              <h2 className="text-base sm:text-2xl font-black text-white font-display">
                 Live on IkoroduSquare
               </h2>
-              <p className="text-xs sm:text-sm text-emerald-200/90 font-medium">
+              <p className="hidden sm:block text-xs sm:text-sm text-emerald-200/90 font-medium">
                 See what's happening across local businesses right now.
               </p>
             </div>
@@ -614,24 +637,25 @@ export const HomeView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('directory')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-300 hover:text-amber-200 transition-colors self-start sm:self-auto group"
+              className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-amber-300 hover:text-amber-200 transition-colors shrink-0 group py-1 px-2 rounded-lg hover:bg-emerald-900/60"
             >
-              <span>View all activity →</span>
+              <span>View all activity</span>
+              <span className="group-hover:translate-x-0.5 transition-transform">→</span>
             </button>
           </div>
 
           {/* Horizontally Scrollable Activity Row */}
           {isCriticalDataLoading || isLoadingData ? (
-            <div className="flex items-stretch gap-3.5 overflow-x-auto pb-3 pt-1 -mx-1 px-1">
+            <div className="flex items-stretch gap-2.5 sm:gap-3.5 overflow-x-auto pb-2 pt-1 -mx-1 px-1">
               {Array.from({ length: 4 }).map((_, idx) => (
                 <div
                   key={idx}
-                  className="w-72 sm:w-80 shrink-0 bg-emerald-900/50 border border-emerald-700/40 rounded-2xl p-4 flex flex-col justify-between space-y-3 animate-pulse"
+                  className="w-[82vw] min-w-[250px] max-w-[305px] sm:w-80 shrink-0 bg-emerald-900/50 border border-emerald-700/40 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col justify-between space-y-2.5 animate-pulse"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="h-4 bg-emerald-800/80 rounded-full w-24" />
-                      <div className="h-3 bg-emerald-800/60 rounded w-16" />
+                      <div className="h-4 bg-emerald-800/80 rounded-full w-20" />
+                      <div className="h-3 bg-emerald-800/60 rounded w-14" />
                     </div>
                     <div className="h-4 bg-emerald-800/80 rounded w-3/4" />
                     <div className="h-3 bg-emerald-800/50 rounded w-full" />
@@ -644,37 +668,52 @@ export const HomeView: React.FC = () => {
               ))}
             </div>
           ) : recentLiveActivities.length > 0 ? (
-            <div className="flex items-stretch gap-3.5 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-emerald-700 scrollbar-track-emerald-900/50 -mx-1 px-1">
+            <div className="flex items-stretch gap-2.5 sm:gap-3.5 overflow-x-auto pb-2 pt-1 scrollbar-none snap-x snap-mandatory -mx-1 px-1">
               {recentLiveActivities.map((act) => (
                 <div
                   key={act.id}
                   onClick={act.onClick}
-                  className="w-72 sm:w-80 shrink-0 bg-emerald-900/70 hover:bg-emerald-800/90 border border-emerald-700/60 rounded-2xl p-4 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl flex flex-col justify-between group"
+                  className="w-[82vw] min-w-[250px] max-w-[305px] sm:w-80 shrink-0 snap-start bg-emerald-900/70 hover:bg-emerald-800/90 border border-emerald-700/60 rounded-xl sm:rounded-2xl p-3 sm:p-4 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-xl flex flex-col justify-between group"
                 >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-600/50 font-extrabold text-amber-300 text-[10px]">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-600/50 font-extrabold text-amber-300 text-[9px] uppercase tracking-wider">
                         <span>{act.badgeIcon}</span>
                         <span>{act.badgeLabel}</span>
                       </span>
                       <span className="text-[10px] font-mono text-emerald-300/90 font-semibold flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <Clock className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
                         {act.timeAgo}
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="font-extrabold text-white text-xs sm:text-sm line-clamp-2 group-hover:text-amber-300 transition-colors leading-snug">
+                      <h3 className="font-extrabold text-white text-xs sm:text-sm line-clamp-1 group-hover:text-amber-300 transition-colors leading-snug">
                         {act.title}
                       </h3>
-                      <p className="text-[11px] text-emerald-200/80 line-clamp-2 mt-1 font-medium">
+
+                      {act.starRating !== undefined && act.starRating > 0 && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <div className="flex items-center gap-0.5 text-amber-400">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3 h-3 ${i < Math.round(act.starRating!) ? 'fill-amber-400 text-amber-400' : 'text-emerald-800'}`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-[10px] font-black text-amber-300">{act.starRating.toFixed(1)}</span>
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-emerald-200/80 line-clamp-1 mt-0.5 font-medium">
                         {act.subtitle}
                       </p>
                     </div>
                   </div>
 
-                  <div className="pt-2.5 mt-3 border-t border-emerald-800/60 flex items-center justify-between text-[11px] text-emerald-300 font-semibold">
-                    <span className="flex items-center gap-1 truncate max-w-[80%]">
+                  <div className="pt-2 mt-2.5 border-t border-emerald-800/60 flex items-center justify-between text-[10px] sm:text-[11px] text-emerald-300 font-semibold">
+                    <span className="flex items-center gap-1 truncate max-w-[75%]">
                       <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
                       <span className="truncate">{act.location}</span>
                     </span>
@@ -686,7 +725,7 @@ export const HomeView: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="py-8 text-center bg-emerald-900/30 rounded-2xl border border-emerald-800/40 p-6">
+            <div className="py-6 text-center bg-emerald-900/30 rounded-2xl border border-emerald-800/40 p-4">
               <p className="text-xs text-emerald-200 font-medium">No recent live activity recorded yet.</p>
             </div>
           )}
@@ -805,16 +844,24 @@ export const HomeView: React.FC = () => {
                       {vendor.description}
                     </p>
 
-                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-                      <div className="flex items-center gap-1 text-amber-500 font-bold">
-                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                        <span>{vendor.rating > 0 ? vendor.rating : '5.0'}</span>
-                        <span className="text-slate-400 font-normal">({vendor.reviewCount || 1} reviews)</span>
-                      </div>
-                      <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md">
-                        {vendor.area}, Ikorodu
-                      </span>
-                    </div>
+                    {(() => {
+                      const stats = vendorReviewsStatsMap[vendor.id];
+                      const revCount = stats !== undefined ? stats.count : (vendor.reviewCount || 0);
+                      const revRating = stats !== undefined && stats.count > 0 ? stats.avgRating : (vendor.rating > 0 ? vendor.rating : 5.0);
+
+                      return (
+                        <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                          <div className="flex items-center gap-1 text-amber-500 font-bold">
+                            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                            <span>{revRating > 0 ? revRating.toFixed(1) : (revCount > 0 ? '5.0' : 'New')}</span>
+                            <span className="text-slate-400 font-normal">({revCount} {revCount === 1 ? 'review' : 'reviews'})</span>
+                          </div>
+                          <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md">
+                            {vendor.area}, Ikorodu
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -1019,14 +1066,14 @@ export const HomeView: React.FC = () => {
         )}
       </section>
 
-      {/* 3. Browse Business Categories (MINIMALIST COMPACT STYLE) */}
-      <section className="space-y-4">
+      {/* 3. Browse Business Categories (COMPACT TWO-COLUMN MOBILE GRID) */}
+      <section className="space-y-3.5 sm:space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-black text-slate-900 font-display">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 font-display">
               Browse Business Categories
             </h2>
-            <p className="text-xs text-slate-500">Find local stores and essential products across Ikorodu</p>
+            <p className="text-[11px] sm:text-xs text-slate-500">Find local stores and essential products across Ikorodu</p>
           </div>
           <a
             href="/categories"
@@ -1034,38 +1081,59 @@ export const HomeView: React.FC = () => {
               e.preventDefault();
               setActiveTab('categories');
             }}
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
+            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer shrink-0"
           >
             <span>All Categories</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </a>
         </div>
 
-        {/* Minimalist Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {categories.map((cat) => (
-            <a
-              key={cat.id}
-              href={`/directory?category=${encodeURIComponent(cat.name)}`}
-              onClick={(e) => {
-                e.preventDefault();
-                setSelectedCategory(cat.name);
-                setActiveTab('directory');
-              }}
-              className="p-3 bg-white border border-slate-200 rounded-2xl flex items-center gap-2.5 cursor-pointer hover:bg-slate-50 transition-colors shadow-2xs group"
-            >
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                {getCategoryIcon(cat.slug || cat.id, 'w-4 h-4')}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-xs font-bold text-slate-900 truncate group-hover:text-emerald-800 transition-colors">
-                  {cat.name}
-                </h3>
-                <span className="text-[10px] text-slate-500 font-medium">{cat.vendorCount} stores</span>
-              </div>
-            </a>
-          ))}
+        {/* Compact Two-Column Mobile Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3">
+          {categories.map((cat, idx) => {
+            const isHiddenOnMobile = !isCategoriesExpanded && idx >= 8;
+            return (
+              <a
+                key={cat.id}
+                href={`/directory?category=${encodeURIComponent(cat.name)}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSelectedCategory(cat.name);
+                  setActiveTab('directory');
+                }}
+                className={`p-2.5 sm:p-3 bg-white border border-slate-200 rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-2.5 cursor-pointer hover:bg-slate-50 transition-all shadow-2xs group min-h-[52px] ${
+                  isHiddenOnMobile ? 'hidden sm:flex' : 'flex'
+                }`}
+              >
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                  {getCategoryIcon(cat.slug || cat.id, 'w-3.5 h-3.5 sm:w-4 sm:h-4')}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-xs font-bold text-slate-900 truncate group-hover:text-emerald-800 transition-colors leading-tight">
+                    {cat.name}
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-medium block truncate">
+                    {cat.vendorCount || 0} stores
+                  </span>
+                </div>
+              </a>
+            );
+          })}
         </div>
+
+        {/* Mobile View All / Show Less Button */}
+        {categories.length > 8 && (
+          <div className="sm:hidden pt-1 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+            >
+              <span>{isCategoriesExpanded ? 'Show fewer categories' : `View all ${categories.length} categories`}</span>
+              {isCategoriesExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        )}
       </section>
 
       {/* 4. Trending Local Products & Marketplace Deals */}
@@ -1295,19 +1363,27 @@ export const HomeView: React.FC = () => {
                       {vendor.description}
                     </p>
 
-                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-                      <div className="flex items-center gap-1 text-amber-500 font-bold">
-                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                        <span>{vendor.rating > 0 ? vendor.rating : 'New'}</span>
-                        <span className="text-slate-400 font-normal">
-                          ({vendor.reviewCount} reviews)
-                        </span>
-                      </div>
+                    {(() => {
+                      const stats = vendorReviewsStatsMap[vendor.id];
+                      const revCount = stats !== undefined ? stats.count : (vendor.reviewCount || 0);
+                      const revRating = stats !== undefined && stats.count > 0 ? stats.avgRating : (vendor.rating > 0 ? vendor.rating : 5.0);
 
-                      <span className="text-[11px] text-slate-500 font-medium">
-                        {vendor.yearsInBusiness} yrs in business
-                      </span>
-                    </div>
+                      return (
+                        <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                          <div className="flex items-center gap-1 text-amber-500 font-bold">
+                            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                            <span>{revRating > 0 ? revRating.toFixed(1) : (revCount > 0 ? '5.0' : 'New')}</span>
+                            <span className="text-slate-400 font-normal">
+                              ({revCount} {revCount === 1 ? 'review' : 'reviews'})
+                            </span>
+                          </div>
+
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            {vendor.yearsInBusiness} yrs in business
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 

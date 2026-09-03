@@ -245,7 +245,7 @@ export const BusinessDetailsView: React.FC = () => {
       customerName: authorName,
       rating: reviewRating,
       comment: reviewComment,
-      status: 'pending',
+      status: 'approved',
     });
 
     setReviewSubmitted(true);

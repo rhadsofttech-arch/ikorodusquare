@@ -662,7 +662,7 @@ export async function fetchReviewsFromSupabase(): Promise<Review[] | null> {
   try {
     const { data, error } = await supabase
       .from('reviews')
-      .select('*')
+      .select('id, vendor_id, product_id, customer_id, customer_name, customer_avatar, rating, comment, vendor_reply, vendor_replied_at, created_at')
       .order('created_at', { ascending: false });
 
     if (error || !data) return null;
@@ -673,13 +673,15 @@ export async function fetchReviewsFromSupabase(): Promise<Review[] | null> {
       customerId: row.customer_id || 'c-101',
       customerName: row.customer_name || 'Anonymous Buyer',
       customerAvatar: row.customer_avatar,
-      rating: Number(row.rating),
-      comment: row.comment,
+      rating: Number(row.rating) || 5,
+      comment: row.comment || '',
+      status: ((row as any).status as any) || 'approved',
       vendorReply: row.vendor_reply,
       vendorRepliedAt: row.vendor_replied_at,
       createdAt: row.created_at,
     }));
   } catch (err) {
+    console.error('Error fetching reviews from Supabase:', err);
     return null;
   }
 }
@@ -700,8 +702,28 @@ export async function saveReviewToSupabase(review: Review): Promise<boolean> {
       created_at: review.createdAt,
     };
     const { error } = await supabase.from('reviews').upsert(row);
-    return !error;
+    if (error) {
+      console.warn('Error saving review to Supabase:', error);
+      return false;
+    }
+    return true;
   } catch (err) {
+    console.warn('Exception saving review to Supabase:', err);
+    return false;
+  }
+}
+
+export async function deleteReviewFromSupabase(reviewId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
+    if (error) {
+      console.warn('Error deleting review from Supabase:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Exception deleting review from Supabase:', err);
     return false;
   }
 }
